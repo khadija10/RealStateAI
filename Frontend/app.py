@@ -1,6 +1,7 @@
 import streamlit as st
 import requests
 import json
+import os
 from datetime import datetime
 
 # Configuration page
@@ -30,9 +31,10 @@ with st.sidebar:
     
     st.write("---")
     st.write("### ⚙️ Configuration")
+    default_api_url = os.getenv("API_URL", "http://localhost:8000")
     api_url = st.text_input(
         "URL API Backend",
-        value="http://localhost:8000",
+        value=default_api_url,
         help="URL de l'API FastAPI"
     )
     

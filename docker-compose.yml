@@ -25,7 +25,7 @@ services:
   backend:
     build:
       context: .
-      dockerfile: Dockerfile
+      dockerfile: Backend/Dockerfile
     container_name: realestate_api
     environment:
       DATABASE_URL: postgresql://realestate_user:secure_password_dev@db:5432/realestate_ai
@@ -41,6 +41,24 @@ services:
     networks:
       - realestate_network
     command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+
+  # Streamlit Frontend
+  frontend:
+    build:
+      context: .
+      dockerfile: Frontend/Dockerfile
+    container_name: realestate_frontend
+    environment:
+      API_URL: http://backend:8000
+    ports:
+      - "8501:8501"
+    volumes:
+      - ./Frontend:/app
+    depends_on:
+      backend:
+        condition: service_started
+    networks:
+      - realestate_network
 
   # pgAdmin (optionnel, pour visualiser la DB)
   pgadmin:
