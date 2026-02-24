@@ -223,7 +223,7 @@ docker compose ps
 
 ## 📄 License
 
-MIT License - voir [LICENSE.md](./LICENSE.md)
+Apache 2.0 - voir [LICENSE.md](./LICENSE.md)
 
 ---
 
