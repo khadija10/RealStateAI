@@ -2,7 +2,7 @@
 
 [![Status](https://img.shields.io/badge/status-in%20development-blue)](./ROADMAP.md)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11+-green)](https://www.python.org/)
-[![Node 18+](https://img.shields.io/badge/node-18+-green)](https://nodejs.org/)
+[![Streamlit](https://img.shields.io/badge/frontend-streamlit-red)](https://streamlit.io/)
 
 ## 📖 Vue d'ensemble
 
@@ -31,8 +31,9 @@ Ce projet est une **certification professionnelle RNCP Titre 7** couvrant 4 acti
 
 ```
 Frontend
-   └─ React / Next.js (TypeScript)
-      └─ Tailwind CSS, Recharts, Leaflet
+   └─ Streamlit (prototype rapide)
+      └─ Interface simple pour validation du POC
+      └─ React / Next.js prévu en phase suivante
 
 Backend
    └─ FastAPI (Python 3.11)
@@ -57,7 +58,6 @@ Deployment
 
 ### Prérequis
 - Docker & Docker Compose
-- Node.js 18+
 - Python 3.11+
 - Git
 
@@ -69,15 +69,14 @@ git clone https://github.com/your-org/RealEstateAI.git
 cd RealEstateAI
 
 # Démarrer les services
-docker-compose up -d
+docker compose up --build -d
 
-# Frontend (http://localhost:3000)
-cd frontend
-npm install
-npm run dev
+# Frontend (Streamlit, http://localhost:8501)
+cd Frontend
+streamlit run app.py
 
 # Backend (http://localhost:8000)
-cd ../backend
+cd ../Backend
 pip install -r requirements.txt
 python -m uvicorn main:app --reload
 ```
@@ -86,9 +85,11 @@ python -m uvicorn main:app --reload
 Créer `.env` à la racine :
 ```
 DATABASE_URL=postgresql://user:password@db:5432/realestate
-NEXT_PUBLIC_API_URL=http://localhost:8000
+API_URL=http://localhost:8000
 ENVIRONMENT=development
 ```
+Note: Streamlit est utilisé uniquement pour le prototype (plus rapide et plus simple). Une interface React/Next.js est prévue pour la version produit.
+
 
 ---
 
@@ -182,11 +183,11 @@ cd backend
 pytest tests/
 
 # Frontend tests
-cd ../frontend
-npm test
+cd ../Frontend
+python -m streamlit run app.py
 
 # Integration tests
-docker-compose exec backend pytest tests/integration/
+docker compose ps
 ```
 
 ---
@@ -222,7 +223,7 @@ docker-compose exec backend pytest tests/integration/
 
 ## 📄 License
 
-MIT License - voir [LICENSE.md](./LICENSE.md)
+Apache 2.0 - voir [LICENSE.md](./LICENSE.md)
 
 ---
 
@@ -239,3 +240,6 @@ MIT License - voir [LICENSE.md](./LICENSE.md)
 **Last updated** : Aujourd'hui  
 **Status** : 🔴 Phase 1 - Stratégie en cours  
 **Prochaines étapes** : Validation prototype semaine 4
+
+
+

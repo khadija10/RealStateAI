@@ -1,0 +1,2 @@
+﻿-- Optional DB init script
+-- Add schema or seed SQL here if needed.
