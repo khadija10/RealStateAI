@@ -1,272 +1,298 @@
 import streamlit as st
 import requests
-import json
 import os
 from datetime import datetime
 
-# Configuration page
+# =========================
+# CONFIGURATION PAGE
+# =========================
 st.set_page_config(
     page_title="RealEstateAI",
     page_icon="🏠",
     layout="wide",
-    initial_sidebar_state="expanded"
+    initial_sidebar_state="expanded",
 )
 
-# Titre & description
-st.title("🏠 RealEstateAI")
-st.subheader("Estimateur de prix immobilier avec IA")
+# =========================
+# CUSTOM CSS (Design Premium)
+# =========================
+st.markdown(
+    """
+<style>
+#MainMenu {visibility: hidden;}
+footer {visibility: hidden;}
+header {visibility: hidden;}
 
-# Sidebar info
+.block-container { padding-top: 1.5rem; padding-bottom: 2rem; }
+
+.card {
+    padding: 1.25rem 1.25rem;
+    border-radius: 16px;
+    border: 1px solid rgba(200,200,200,0.18);
+    background: rgba(255,255,255,0.03);
+    margin-bottom: 1rem;
+}
+
+.small { opacity: 0.75; font-size: 0.95rem; }
+.h1 { font-size: 2rem; font-weight: 800; line-height: 1.1; margin: 0; }
+.h2 { font-size: 1.15rem; font-weight: 700; margin: 0; }
+hr { margin: 1.2rem 0; }
+</style>
+""",
+    unsafe_allow_html=True,
+)
+
+# =========================
+# BACKEND CONFIG
+# =========================
+DEFAULT_API_URL = os.getenv("BACKEND_URL", "http://localhost:8000").rstrip("/")
+
+# =========================
+# HEADER
+# =========================
+st.markdown(
+    """
+<div class="card">
+  <div style="display:flex; justify-content:space-between; align-items:center; gap:12px;">
+    <div>
+      <div class="h1">🏠 RealEstateAI</div>
+      <div class="small">Estimateur immobilier – FastAPI + Streamlit (prototype)</div>
+    </div>
+  </div>
+</div>
+""",
+    unsafe_allow_html=True,
+)
+
+# =========================
+# SIDEBAR
+# =========================
 with st.sidebar:
-    st.write("### 📊 Informations")
-    st.info("""
-    **RealEstateAI** - Prototype de plateforme d'estimation immobilière
-    
-    Utilise un modèle simple de régression pour estimer les prix basés sur :
-    - Surface du bien
-    - Nombre de pièces
-    - Localisation
-    - Type de propriété
-    """)
-    
-    st.write("---")
-    st.write("### ⚙️ Configuration")
-    default_api_url = os.getenv("API_URL", "http://localhost:8000")
+    st.write("### ⚙️ Configuration API")
+
     api_url = st.text_input(
         "URL API Backend",
-        value=default_api_url,
-        help="URL de l'API FastAPI"
-    )
-    
-    # Test connexion
+        value=DEFAULT_API_URL,
+        help="Ex: http://localhost:8000 (local) ou http://backend:8000 (docker)",
+    ).rstrip("/")
+
     if st.button("🔍 Tester connexion API"):
         try:
-            resp = requests.get(f"{api_url}/api/health")
+            resp = requests.get(f"{api_url}/api/health", timeout=5)
             if resp.status_code == 200:
                 st.success("✅ Connexion API OK")
             else:
-                st.error("❌ Erreur API")
+                st.error("❌ API répond mais erreur")
         except Exception as e:
-            st.error(f"❌ Erreur connexion : {str(e)}")
+            st.error("❌ Backend indisponible")
+            st.caption(str(e))
 
-# Tabs
+    st.write("---")
+    st.caption("Astuce démo : utilise le bouton “Remplir exemple (Paris)” dans l’onglet Estimateur.")
+
+# =========================
+# TABS
+# =========================
 tab1, tab2, tab3 = st.tabs(["🏠 Accueil", "📊 Estimateur", "ℹ️ À propos"])
 
-# ===== TAB 1 : ACCUEIL =====
+# =========================
+# TAB 1 - ACCUEIL
+# =========================
 with tab1:
-    col1, col2 = st.columns(2)
-    
-    with col1:
-        st.write("## Bienvenue sur RealEstateAI")
-        st.write("""
-        Estimez le prix de votre propriété immobilière en quelques secondes!
-        
-        ### Caractéristiques
-        - ✅ Estimation rapide
-        - ✅ Basée sur données marché
-        - ✅ Intervalle de confiance
-        - ✅ Explainability
-        """)
-    
-    with col2:
-        st.metric("Propriétés analysées", "12,500+")
-        st.metric("Précision modèle", "±15%")
-        st.metric("Zones couvertes", "Île-de-France")
-    
-    st.write("---")
-    
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.info("💡 **Rapide** - Résultat en < 1 sec")
-    with col2:
-        st.info("📈 **Fiable** - Modèle entraîné")
-    with col3:
-        st.info("🎯 **Transparent** - Explainability inclus")
+    col1, col2 = st.columns([1.3, 1])
 
-# ===== TAB 2 : ESTIMATEUR =====
+    with col1:
+        st.markdown(
+            """
+<div class="card">
+  <div class="h2">Bienvenue</div>
+  <div class="small" style="margin-top:0.4rem;">
+    Estimez le prix d’un bien en quelques secondes à partir de la surface, du nombre de pièces,
+    du type et de la localisation (lat/lng).
+  </div>
+  <hr/>
+  <div class="small">
+    ✅ MVP connecté à une API FastAPI<br/>
+    ✅ Intervalle de confiance<br/>
+    ✅ Déployable via Docker
+  </div>
+</div>
+""",
+            unsafe_allow_html=True,
+        )
+
+    with col2:
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.metric("Précision (cible)", "±15%")
+        st.metric("Statut", "Prototype")
+        st.metric("Zone", "Île-de-France")
+        st.markdown("</div>", unsafe_allow_html=True)
+
+# =========================
+# TAB 2 - ESTIMATEUR
+# =========================
 with tab2:
-    st.write("## Estimez votre propriété")
-    st.write("Remplissez les informations ci-dessous pour obtenir une estimation de prix")
-    
-    # Formulaire
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="h2">Estimation</div>', unsafe_allow_html=True)
+    st.caption("Renseigne les champs puis clique sur “Estimer le prix”.")
+
+    # Bouton démo
+    if st.button("⚡ Remplir exemple (Paris)"):
+        st.session_state["location_lat"] = 48.8566
+        st.session_state["location_lng"] = 2.3522
+        st.session_state["area_m2"] = 65.0
+        st.session_state["rooms"] = 2
+        st.session_state["property_type"] = "apartment"
+
     col1, col2 = st.columns(2)
-    
+
     with col1:
         st.subheader("📍 Localisation")
         location_lat = st.number_input(
             "Latitude",
-            value=48.8566,
+            value=float(st.session_state.get("location_lat", 48.8566)),
             min_value=41.0,
             max_value=51.0,
             step=0.0001,
-            help="Latitude du bien (Paris : 48.8566)"
+            key="location_lat",
         )
-        
         location_lng = st.number_input(
             "Longitude",
-            value=2.3522,
+            value=float(st.session_state.get("location_lng", 2.3522)),
             min_value=-5.0,
             max_value=8.0,
             step=0.0001,
-            help="Longitude du bien (Paris : 2.3522)"
+            key="location_lng",
         )
-    
+
     with col2:
         st.subheader("🏠 Caractéristiques")
         area_m2 = st.number_input(
             "Surface (m²)",
-            value=65.0,
+            value=float(st.session_state.get("area_m2", 65.0)),
             min_value=10.0,
             max_value=500.0,
             step=5.0,
-            help="Surface habitable en mètres carrés"
+            key="area_m2",
         )
-        
         rooms = st.number_input(
             "Nombre de pièces",
-            value=2,
+            value=int(st.session_state.get("rooms", 2)),
             min_value=1,
             max_value=10,
             step=1,
-            help="Nombre total de pièces"
+            key="rooms",
         )
-    
+
+    types = ["apartment", "house", "studio"]
+    current_type = st.session_state.get("property_type", "apartment")
+    if current_type not in types:
+        current_type = "apartment"
+
     property_type = st.selectbox(
-        "Type de propriété",
-        ["apartment", "house", "studio"],
-        help="Sélectionnez le type de bien"
+        "Type de bien",
+        types,
+        index=types.index(current_type),
+        key="property_type",
     )
-    
-    st.write("---")
-    
-    # Bouton d'estimation
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col2:
-        estimate_button = st.button(
-            "💰 Estimer le prix",
-            use_container_width=True,
-            key="estimate"
-        )
-    
-    # Traitement
+
+    st.write("")
+    estimate_button = st.button("💰 Estimer le prix", use_container_width=True)
+    st.markdown("</div>", unsafe_allow_html=True)  # end card
+
+    # Call API + Résultat
     if estimate_button:
-        with st.spinner("Estimation en cours..."):
-            try:
-                # Appel API
-                payload = {
-                    "area_m2": area_m2,
-                    "rooms": rooms,
-                    "location_lat": location_lat,
-                    "location_lng": location_lng,
-                    "property_type": property_type
-                }
-                
+        payload = {
+            "area_m2": float(area_m2),
+            "rooms": int(rooms),
+            "location_lat": float(location_lat),
+            "location_lng": float(location_lng),
+            "property_type": str(property_type),
+        }
+
+        try:
+            with st.spinner("Calcul en cours..."):
                 response = requests.post(
                     f"{api_url}/api/predictions/estimate",
                     json=payload,
-                    timeout=5
+                    timeout=10,
                 )
-                
-                if response.status_code == 200:
-                    result = response.json()
-                    
-                    # Afficher résultat
-                    st.success("✅ Estimation calculée!")
-                    
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.metric(
-                            "Prix estimé",
-                            f"€{result['predicted_price']:,.0f}",
-                            delta=None
-                        )
-                    with col2:
-                        st.metric(
-                            "Prix par m²",
-                            f"€{result['price_per_m2']:,.0f}"
-                        )
-                    with col3:
-                        st.metric(
-                            "Confiance",
-                            result['confidence_interval']['confidence']
-                        )
-                    
-                    # Intervalle confiance
-                    st.write("### 📊 Intervalle de confiance")
-                    col1, col2, col3 = st.columns(3)
-                    with col1:
-                        st.write(f"**Min** : €{result['confidence_interval']['lower']:,.0f}")
-                    with col2:
-                        st.write(f"**Estimation** : €{result['predicted_price']:,.0f}")
-                    with col3:
-                        st.write(f"**Max** : €{result['confidence_interval']['upper']:,.0f}")
-                    
-                    # Détails
-                    with st.expander("📋 Détails estimation"):
-                        st.json(result)
-                    
-                    # Résumé
-                    st.write("---")
-                    st.info(f"""
-                    **Résumé** :
-                    - Surface : {area_m2} m²
-                    - Pièces : {rooms}
-                    - Type : {property_type}
-                    - Prix estimé : €{result['predicted_price']:,.0f}
-                    - Modèle : {result['model']}
-                    """)
-                else:
-                    st.error(f"Erreur API : {response.status_code}")
-            
-            except requests.exceptions.ConnectionError:
-                st.error("❌ Impossible de se connecter à l'API. Vérifiez que le backend est en cours d'exécution.")
-            except Exception as e:
-                st.error(f"❌ Erreur : {str(e)}")
 
-# ===== TAB 3 : À PROPOS =====
+            if response.status_code == 200:
+                result = response.json()
+
+                predicted_price = float(result.get("predicted_price", 0))
+                price_per_m2 = float(result.get("price_per_m2", 0))
+
+                ci = result.get("confidence_interval", {}) or {}
+                lower = float(ci.get("lower", 0))
+                upper = float(ci.get("upper", 0))
+                confidence = str(ci.get("confidence", "—"))
+
+                price_str = f"€ {predicted_price:,.0f}".replace(",", " ")
+                ppm2_str = f"€ {price_per_m2:,.0f}".replace(",", " ")
+                min_str = f"€ {lower:,.0f}".replace(",", " ")
+                max_str = f"€ {upper:,.0f}".replace(",", " ")
+
+                st.markdown('<div class="card">', unsafe_allow_html=True)
+                st.markdown('<div class="h2">Résultat</div>', unsafe_allow_html=True)
+
+                c1, c2, c3 = st.columns(3)
+                c1.metric("💰 Prix estimé", price_str)
+                c2.metric("📊 Prix / m²", ppm2_str)
+                c3.metric("Confiance", confidence)
+
+                st.write("### 📈 Intervalle de confiance")
+                c1, c2, c3 = st.columns(3)
+                c1.write(f"**Min** : {min_str}")
+                c2.write(f"**Estimation** : {price_str}")
+                c3.write(f"**Max** : {max_str}")
+
+                with st.expander("📋 Détails techniques"):
+                    st.write("Résultat API :")
+                    st.json(result)
+                    st.write("Payload envoyé :")
+                    st.json(payload)
+
+                st.markdown("</div>", unsafe_allow_html=True)
+
+            else:
+                st.error(f"Erreur API : {response.status_code}")
+                try:
+                    st.json(response.json())
+                except Exception:
+                    st.write(response.text)
+
+        except requests.exceptions.ConnectionError:
+            st.error("Backend indisponible. Lance Docker ou vérifie l’URL API.")
+        except Exception as e:
+            st.error(f"❌ Erreur : {str(e)}")
+
+# =========================
+# TAB 3 - À PROPOS
+# =========================
 with tab3:
-    st.write("## À propos de RealEstateAI")
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        st.write("""
-        ### 🎯 Mission
-        Fournir des estimations précises et transparentes du marché immobilier français.
-        
-        ### 💻 Stack Technique
-        - **Frontend** : Streamlit
-        - **Backend** : FastAPI
-        - **ML** : Modèle simple (sera XGBoost)
-        - **Data** : Mock (sera PostgreSQL)
-        """)
-    
-    with col2:
-        st.write("""
-        ### 📚 Certification
-        RNCP Titre 7 - Ingénieur Transformation Digitale
-        
-        ### 🚀 Roadmap
-        - Phase 0 (Aujourd'hui) : Prototype
-        - Phase 1 : Stratégie & Business Plan
-        - Phase 2 : UX/UI avancée
-        - Phase 3-4 : Développement complet
-        """)
-    
-    st.write("---")
-    
-    st.write("### 📞 Support")
-    st.write("""
-    **Questions ?**
-    - Voir la documentation dans le sidebar
-    - Tester la connexion API
-    - Vérifier les logs du terminal
-    """)
-    
-    st.write("---")
-    col1, col2, col3 = st.columns(3)
-    with col1:
-        st.metric("Version", "0.1.0")
-    with col2:
-        st.metric("Statut", "Prototype")
-    with col3:
-        st.metric("Mise à jour", datetime.now().strftime("%d/%m/%Y"))
+    st.markdown(
+        """
+<div class="card">
+  <div class="h2">À propos</div>
+  <div class="small" style="margin-top:0.4rem;">
+    Ce prototype démontre une architecture Data + API + Frontend, déployable via Docker.
+  </div>
+  <hr/>
+  <div class="small">
+    <b>Stack</b><br/>
+    • Frontend : Streamlit<br/>
+    • Backend : FastAPI<br/>
+    • Modèle : Régression simple<br/>
+    • Déploiement : Docker
+  </div>
+</div>
+""",
+        unsafe_allow_html=True,
+    )
+
+    c1, c2, c3 = st.columns(3)
+    c1.metric("Version", "0.1.0")
+    c2.metric("Statut", "Prototype")
+    c3.metric("Date", datetime.now().strftime("%d/%m/%Y"))

@@ -1,83 +1,22 @@
-﻿
 services:
-  # PostgreSQL Database
-  db:
-    image: postgres:15-alpine
-    container_name: realestate_db
-    environment:
-      POSTGRES_USER: realestate_user
-      POSTGRES_PASSWORD: secure_password_dev
-      POSTGRES_DB: realestate_ai
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./Backend/db/init.sql:/docker-entrypoint-initdb.d/init.sql
-    networks:
-      - realestate_network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U realestate_user -d realestate_ai"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # FastAPI Backend
   backend:
     build:
       context: .
       dockerfile: Backend/Dockerfile
-    container_name: realestate_api
-    environment:
-      DATABASE_URL: postgresql://realestate_user:secure_password_dev@db:5432/realestate_ai
-      ENVIRONMENT: development
-      LOG_LEVEL: info
+    container_name: realestate_backend
     ports:
       - "8000:8000"
-    volumes:
-      - ./Backend:/app
-    depends_on:
-      db:
-        condition: service_healthy
-    networks:
-      - realestate_network
-    command: uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+    restart: unless-stopped
 
-  # Streamlit Frontend
   frontend:
     build:
       context: .
       dockerfile: Frontend/Dockerfile
     container_name: realestate_frontend
-    environment:
-      API_URL: http://backend:8000
     ports:
       - "8501:8501"
-    volumes:
-      - ./Frontend:/app
-    depends_on:
-      backend:
-        condition: service_started
-    networks:
-      - realestate_network
-
-  # pgAdmin (optionnel, pour visualiser la DB)
-  pgadmin:
-    image: dpage/pgadmin4:latest
-    container_name: realestate_pgadmin
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@realestateai.com
-      PGADMIN_DEFAULT_PASSWORD: admin
-    ports:
-      - "5050:80"
+      - BACKEND_URL=http://backend:8000
     depends_on:
-      - db
-    networks:
-      - realestate_network
-
-volumes:
-  postgres_data:
-
-networks:
-  realestate_network:
-    driver: bridge
-
+      - backend
+    restart: unless-stopped
