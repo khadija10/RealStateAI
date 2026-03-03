@@ -47,6 +47,21 @@ hr { margin: 1.2rem 0; }
 # =========================
 DEFAULT_API_URL = os.getenv("BACKEND_URL", "http://localhost:8000").rstrip("/")
 
+
+@st.cache_data(ttl=300)
+def fetch_communes(api_base_url: str):
+    try:
+        resp = requests.get(f"{api_base_url}/api/metadata/communes", timeout=8)
+        if resp.status_code != 200:
+            return []
+        data = resp.json() or {}
+        communes = data.get("communes", [])
+        if not isinstance(communes, list):
+            return []
+        return [str(c) for c in communes if c]
+    except Exception:
+        return []
+
 # =========================
 # HEADER
 # =========================
@@ -108,7 +123,7 @@ with tab1:
   <div class="h2">Bienvenue</div>
   <div class="small" style="margin-top:0.4rem;">
     Estimez le prix d’un bien en quelques secondes à partir de la surface, du nombre de pièces,
-    du type et de la localisation (lat/lng).
+    du type et de la commune.
   </div>
   <hr/>
   <div class="small">
@@ -138,8 +153,8 @@ with tab2:
 
     # Bouton démo
     if st.button("⚡ Remplir exemple (Paris)"):
-        st.session_state["location_lat"] = 48.8566
-        st.session_state["location_lng"] = 2.3522
+        st.session_state["address"] = "10 Rue de Rivoli, 75001 Paris"
+        st.session_state["commune_select"] = "PARIS 01"
         st.session_state["area_m2"] = 65.0
         st.session_state["rooms"] = 2
         st.session_state["property_type"] = "apartment"
@@ -148,22 +163,34 @@ with tab2:
 
     with col1:
         st.subheader("📍 Localisation")
-        location_lat = st.number_input(
-            "Latitude",
-            value=float(st.session_state.get("location_lat", 48.8566)),
-            min_value=41.0,
-            max_value=51.0,
-            step=0.0001,
-            key="location_lat",
+        communes = fetch_communes(api_url)
+
+        address = st.text_input(
+            "Adresse",
+            value=st.session_state.get("address", ""),
+            placeholder="Ex: 10 Rue de Rivoli, 75001 Paris",
+            key="address",
         )
-        location_lng = st.number_input(
-            "Longitude",
-            value=float(st.session_state.get("location_lng", 2.3522)),
-            min_value=-5.0,
-            max_value=8.0,
-            step=0.0001,
-            key="location_lng",
-        )
+        if communes:
+            selected = st.session_state.get("commune_select", "")
+            commune_options = [""] + communes
+            if selected and selected not in commune_options:
+                commune_options = [selected] + commune_options
+            commune = st.selectbox(
+                "Commune",
+                commune_options,
+                index=commune_options.index(selected) if selected in commune_options else 0,
+                key="commune_select",
+                help="Recherche disponible: tape pour filtrer",
+            )
+        else:
+            st.caption("Liste des communes indisponible, saisie manuelle activée.")
+            commune = st.text_input(
+                "Commune",
+                value=st.session_state.get("commune_select", ""),
+                placeholder="Ex: PARIS 01",
+                key="commune_select",
+            )
 
     with col2:
         st.subheader("🏠 Caractéristiques")
@@ -205,9 +232,9 @@ with tab2:
         payload = {
             "area_m2": float(area_m2),
             "rooms": int(rooms),
-            "location_lat": float(location_lat),
-            "location_lng": float(location_lng),
             "property_type": str(property_type),
+            "address": str(address).strip() or None,
+            "commune": str(commune).strip() or None,
         }
 
         try:
