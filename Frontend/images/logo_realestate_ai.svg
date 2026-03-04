@@ -1,0 +1,144 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#1e1a16;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#0f0d0b;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="copperGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#d4793f;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#8f4418;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="stoneGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#f0ebe3;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#d4ccc0;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="roofGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" style="stop-color:#c9853a;stop-opacity:1" />
+      <stop offset="60%" style="stop-color:#b5612a;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#7a3d16;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow">
+      <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="4" stdDeviation="6" flood-color="rgba(0,0,0,0.5)"/>
+    </filter>
+    <clipPath id="circleClip">
+      <circle cx="200" cy="200" r="185"/>
+    </clipPath>
+  </defs>
+
+  <!-- BACKGROUND -->
+  <circle cx="200" cy="200" r="200" fill="url(#bgGrad)"/>
+  <circle cx="200" cy="200" r="185" fill="none" stroke="rgba(181,97,42,0.25)" stroke-width="1.5"/>
+  <circle cx="200" cy="200" r="178" fill="none" stroke="rgba(181,97,42,0.08)" stroke-width="1"/>
+
+  <!-- BUILDING SHADOW -->
+  <ellipse cx="200" cy="318" rx="86" ry="9" fill="rgba(0,0,0,0.4)"/>
+
+  <g filter="url(#shadow)" clip-path="url(#circleClip)">
+
+    <!-- MANSARD ROOF -->
+    <path d="M122 168 L200 112 L278 168 L278 208 L122 208 Z" fill="url(#roofGrad)"/>
+    <path d="M122 168 L200 112 L200 208 L122 208 Z" fill="rgba(0,0,0,0.1)"/>
+    <line x1="122" y1="168" x2="278" y2="168" stroke="rgba(255,255,255,0.12)" stroke-width="1"/>
+
+    <!-- DORMER WINDOWS -->
+    <rect x="140" y="153" width="24" height="17" rx="2" fill="rgba(12,10,8,0.92)" stroke="rgba(181,97,42,0.5)" stroke-width="1"/>
+    <rect x="142" y="155" width="9" height="13" rx="1" fill="rgba(212,121,63,0.15)"/>
+    <rect x="153" y="155" width="9" height="13" rx="1" fill="rgba(212,121,63,0.15)"/>
+
+    <rect x="188" y="135" width="24" height="17" rx="2" fill="rgba(12,10,8,0.92)" stroke="rgba(181,97,42,0.55)" stroke-width="1.2"/>
+    <rect x="190" y="137" width="9" height="13" rx="1" fill="rgba(212,121,63,0.22)"/>
+    <rect x="201" y="137" width="9" height="13" rx="1" fill="rgba(212,121,63,0.22)"/>
+
+    <rect x="236" y="153" width="24" height="17" rx="2" fill="rgba(12,10,8,0.92)" stroke="rgba(181,97,42,0.5)" stroke-width="1"/>
+    <rect x="238" y="155" width="9" height="13" rx="1" fill="rgba(212,121,63,0.15)"/>
+    <rect x="249" y="155" width="9" height="13" rx="1" fill="rgba(212,121,63,0.15)"/>
+
+    <!-- ROOF FINIAL -->
+    <line x1="200" y1="102" x2="200" y2="112" stroke="url(#copperGrad)" stroke-width="2.5"/>
+    <circle cx="200" cy="100" r="5" fill="url(#copperGrad)" filter="url(#glow)"/>
+
+    <!-- FACADE -->
+    <rect x="112" y="208" width="176" height="110" fill="url(#stoneGrad)"/>
+    <rect x="256" y="208" width="32" height="110" fill="rgba(0,0,0,0.06)"/>
+
+    <!-- CORNICE -->
+    <rect x="112" y="206" width="176" height="7" fill="rgba(181,97,42,0.7)"/>
+    <rect x="112" y="212" width="176" height="2" fill="rgba(255,255,255,0.25)"/>
+
+    <!-- FLOOR DIVIDERS -->
+    <rect x="112" y="248" width="176" height="3" fill="rgba(181,97,42,0.3)"/>
+    <rect x="112" y="279" width="176" height="3" fill="rgba(181,97,42,0.3)"/>
+
+    <!-- WINDOWS FLOOR 1 -->
+    <rect x="124" y="216" width="28" height="28" rx="2" fill="rgba(12,10,8,0.88)" stroke="rgba(181,97,42,0.45)" stroke-width="1"/>
+    <rect x="126" y="218" width="11" height="26" rx="1" fill="rgba(212,121,63,0.13)"/>
+    <rect x="139" y="218" width="11" height="26" rx="1" fill="rgba(212,121,63,0.13)"/>
+    <line x1="124" y1="218" x2="152" y2="218" stroke="rgba(181,97,42,0.55)" stroke-width="1.5"/>
+
+    <rect x="172" y="216" width="28" height="28" rx="2" fill="rgba(12,10,8,0.88)" stroke="rgba(181,97,42,0.55)" stroke-width="1.2"/>
+    <rect x="174" y="218" width="11" height="26" rx="1" fill="rgba(212,121,63,0.22)"/>
+    <rect x="187" y="218" width="11" height="26" rx="1" fill="rgba(212,121,63,0.22)"/>
+    <line x1="172" y1="218" x2="200" y2="218" stroke="rgba(181,97,42,0.65)" stroke-width="1.5"/>
+
+    <rect x="220" y="216" width="28" height="28" rx="2" fill="rgba(12,10,8,0.88)" stroke="rgba(181,97,42,0.45)" stroke-width="1"/>
+    <rect x="222" y="218" width="11" height="26" rx="1" fill="rgba(212,121,63,0.13)"/>
+    <rect x="235" y="218" width="11" height="26" rx="1" fill="rgba(212,121,63,0.13)"/>
+    <line x1="220" y1="218" x2="248" y2="218" stroke="rgba(181,97,42,0.55)" stroke-width="1.5"/>
+
+    <!-- WINDOWS FLOOR 2 -->
+    <rect x="124" y="253" width="28" height="22" rx="2" fill="rgba(12,10,8,0.82)" stroke="rgba(181,97,42,0.35)" stroke-width="1"/>
+    <rect x="126" y="255" width="11" height="18" rx="1" fill="rgba(212,121,63,0.1)"/>
+    <rect x="139" y="255" width="11" height="18" rx="1" fill="rgba(212,121,63,0.1)"/>
+
+    <rect x="172" y="253" width="28" height="22" rx="2" fill="rgba(12,10,8,0.82)" stroke="rgba(181,97,42,0.35)" stroke-width="1"/>
+    <rect x="174" y="255" width="11" height="18" rx="1" fill="rgba(212,121,63,0.1)"/>
+    <rect x="187" y="255" width="11" height="18" rx="1" fill="rgba(212,121,63,0.1)"/>
+
+    <rect x="220" y="253" width="28" height="22" rx="2" fill="rgba(12,10,8,0.82)" stroke="rgba(181,97,42,0.35)" stroke-width="1"/>
+    <rect x="222" y="255" width="11" height="18" rx="1" fill="rgba(212,121,63,0.1)"/>
+    <rect x="235" y="255" width="11" height="18" rx="1" fill="rgba(212,121,63,0.1)"/>
+
+    <!-- ENTRANCE DOOR -->
+    <path d="M181 318 L181 290 Q181 281 200 281 Q219 281 219 290 L219 318 Z"
+          fill="rgba(12,10,8,0.94)" stroke="rgba(181,97,42,0.65)" stroke-width="1.5"/>
+    <rect x="183" y="291" width="14" height="14" rx="1" fill="rgba(181,97,42,0.14)" stroke="rgba(181,97,42,0.3)" stroke-width="0.8"/>
+    <rect x="203" y="291" width="14" height="14" rx="1" fill="rgba(181,97,42,0.14)" stroke="rgba(181,97,42,0.3)" stroke-width="0.8"/>
+    <rect x="183" y="306" width="14" height="10" rx="1" fill="rgba(181,97,42,0.1)" stroke="rgba(181,97,42,0.25)" stroke-width="0.8"/>
+    <rect x="203" y="306" width="14" height="10" rx="1" fill="rgba(181,97,42,0.1)" stroke="rgba(181,97,42,0.25)" stroke-width="0.8"/>
+    <circle cx="199" cy="301" r="1.8" fill="url(#copperGrad)"/>
+    <circle cx="201" cy="301" r="1.8" fill="url(#copperGrad)"/>
+    <path d="M195 282 L200 276 L205 282 Z" fill="url(#copperGrad)"/>
+
+    <!-- PILASTERS -->
+    <rect x="112" y="208" width="10" height="110" fill="rgba(0,0,0,0.05)"/>
+    <rect x="278" y="208" width="10" height="110" fill="rgba(0,0,0,0.08)"/>
+
+    <!-- BASE LINE -->
+    <rect x="102" y="315" width="196" height="6" rx="2" fill="url(#copperGrad)" opacity="0.85"/>
+
+  </g>
+
+  <!-- AI SPARK -->
+  <g filter="url(#glow)" opacity="0.92">
+    <circle cx="298" cy="120" r="18" fill="rgba(181,97,42,0.13)" stroke="rgba(181,97,42,0.45)" stroke-width="1.2"/>
+    <line x1="298" y1="107" x2="298" y2="112" stroke="#d4793f" stroke-width="2" stroke-linecap="round"/>
+    <line x1="298" y1="128" x2="298" y2="133" stroke="#d4793f" stroke-width="2" stroke-linecap="round"/>
+    <line x1="285" y1="120" x2="290" y2="120" stroke="#d4793f" stroke-width="2" stroke-linecap="round"/>
+    <line x1="306" y1="120" x2="311" y2="120" stroke="#d4793f" stroke-width="2" stroke-linecap="round"/>
+    <line x1="289" y1="111" x2="293" y2="115" stroke="#d4793f" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="303" y1="125" x2="307" y2="129" stroke="#d4793f" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="307" y1="111" x2="303" y2="115" stroke="#d4793f" stroke-width="1.5" stroke-linecap="round"/>
+    <line x1="293" y1="125" x2="289" y2="129" stroke="#d4793f" stroke-width="1.5" stroke-linecap="round"/>
+    <circle cx="298" cy="120" r="4" fill="url(#copperGrad)"/>
+  </g>
+
+  <!-- OUTER RING -->
+  <circle cx="200" cy="200" r="195" fill="none" stroke="rgba(181,97,42,0.1)" stroke-width="2"/>
+</svg>
