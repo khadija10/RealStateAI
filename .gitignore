@@ -212,3 +212,23 @@ __marimo__/
 Backend/Data pipeline/Data/*.txt
 Backend/Data pipeline/Data/*.zip
 Backend/Data pipeline/outputs/*.csv
+
+# Frontend (Node/Vite)
+node_modules/
+Frontend/node_modules/
+Frontend/dist/
+Frontend/dist-ssr/
+*.local
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
