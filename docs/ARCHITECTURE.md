@@ -5,7 +5,7 @@
 Le projet est structuré selon une architecture modulaire :
 
 ```
-Frontend (Streamlit)
+Frontend (React + Vite)
         ↓
 Backend API (FastAPI)
         ↓
@@ -31,7 +31,7 @@ Responsabilités :
 
 ## Frontend
 
-- Framework : Streamlit
+- Framework : React + Vite
 - Interface utilisateur interactive
 - Communication HTTP avec le backend
 

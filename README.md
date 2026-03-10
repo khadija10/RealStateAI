@@ -2,15 +2,22 @@
 
 RealStateAI is a full-stack real estate estimation prototype based on French DVF open data.
 
+## Version
+- Prototype v0.2 (current)
+
+## Versioning
+- Tag a release: `git tag -a v0.2 -m "Prototype v0.2"`
+- Push tags: `git push --tags`
+
 ## Current Scope
 - FastAPI backend for price estimation
-- Streamlit frontend with interactive form
+- React (Vite) frontend with interactive form
 - DVF data pipeline (cleaning + filtering for Ile-de-France)
 - Dockerized local deployment
 
 ## Tech Stack
 - Backend: FastAPI, Pydantic, Pandas
-- Frontend: Streamlit
+- Frontend: React + Vite + Tailwind
 - Data: DVF TXT files -> cleaned CSV
 - Infra: Docker, Docker Compose
 
@@ -26,7 +33,8 @@ RealStateAI/
 │       ├── Traitement/
 │       └── outputs/
 ├── Frontend/
-│   └── app.py
+│   ├── src/
+│   └── index.html
 ├── docs/
 │   ├── SETUP.md
 │   └── TECHNICAL_GUIDE.md
@@ -98,7 +106,8 @@ python3 -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```bash
 source data_env/bin/activate
 cd Frontend
-BACKEND_URL=http://localhost:8000 streamlit run app.py
+npm install
+VITE_API_URL=http://localhost:8000 npm run dev
 ```
 
 ## Testing

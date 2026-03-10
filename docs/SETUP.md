@@ -71,11 +71,12 @@ cd ~/RealStateAI/Backend
 python3 -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### Frontend
+### Frontend (Vite)
 ```bash
 source data_env/bin/activate
 cd ~/RealStateAI/Frontend
-BACKEND_URL=http://localhost:8000 streamlit run app.py
+npm install
+VITE_API_URL=http://localhost:8000 npm run dev
 ```
 
 ## 6) Tests
