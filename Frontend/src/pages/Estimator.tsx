@@ -26,12 +26,14 @@ export default function Estimator() {
   const [surface, setSurface] = useState<number>(65);
   const [rooms, setRooms] = useState<number>(3);
   const [propertyType, setPropertyType] = useState<string>('apartment');
+  const [propertyTypes, setPropertyTypes] = useState<string[]>([]);
   const [estimation, setEstimation] = useState<EstimationResultData | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [showResult, setShowResult] = useState<boolean>(false);
 
   useEffect(() => {
     loadCommunes();
+    loadPropertyTypes();
   }, []);
 
   const loadCommunes = async () => {
@@ -45,6 +47,31 @@ export default function Estimator() {
       console.error('Error loading communes:', e);
       setCommunes([]);
     }
+  };
+
+  const loadPropertyTypes = async () => {
+    try {
+      const resp = await fetch(`${API_URL}/api/metadata/property-types`);
+      if (!resp.ok) throw new Error('Failed to load property types');
+      const data = await resp.json();
+      const items = Array.isArray(data?.types) ? data.types : [];
+      const cleaned = items.filter((t: string) => !!t);
+      setPropertyTypes(cleaned);
+      setPropertyType((prev) => (cleaned.includes(prev) ? prev : (cleaned[0] || '')));
+    } catch (e) {
+      console.error('Error loading property types:', e);
+      setPropertyTypes([]);
+      setPropertyType('');
+    }
+  };
+
+  const formatPropertyType = (value: string) => {
+    const labels: Record<string, string> = {
+      apartment: 'Appartement',
+      house: 'Maison',
+    };
+    if (labels[value]) return labels[value];
+    return value.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
   };
 
   const calculateEstimation = async () => {
@@ -214,10 +241,17 @@ export default function Estimator() {
                       value={propertyType}
                       onChange={(e) => setPropertyType(e.target.value)}
                       className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 focus:border-orange-500 outline-none transition-all"
+                      disabled={propertyTypes.length === 0}
                     >
-                      <option value="apartment">Appartement</option>
-                      <option value="house">Maison</option>
-                      <option value="studio">Studio</option>
+                      {propertyTypes.length === 0 ? (
+                        <option value="">Aucun type disponible</option>
+                      ) : (
+                        propertyTypes.map((type) => (
+                          <option key={type} value={type}>
+                            {formatPropertyType(type)}
+                          </option>
+                        ))
+                      )}
                     </select>
                   </div>
                 </div>

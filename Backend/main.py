@@ -214,6 +214,22 @@ def communes():
     return {"communes": unique_sorted, "count": len(unique_sorted), "error": None}
 
 
+@app.get("/api/metadata/property-types")
+def property_types():
+    if DVF_DF is None:
+        return {"types": [], "count": 0, "error": DVF_ERROR}
+
+    items = (
+        DVF_DF["type_bien"]
+        .dropna()
+        .astype(str)
+        .str.strip()
+        .str.lower()
+    )
+    unique_sorted = sorted(set(t for t in items if t))
+    return {"types": unique_sorted, "count": len(unique_sorted), "error": None}
+
+
 class EstimationRequest(BaseModel):
     area_m2: float = Field(..., gt=5)
     rooms: int = 0
