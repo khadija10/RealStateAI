@@ -49,6 +49,17 @@ Pas d’entraînement automatique d’un modèle ML.
 
 ---
 
+### 🟡 Machine Learning (évaluation simple)
+
+Comparaison sur un échantillon de 50k lignes (DVF 2023–2024) :
+- Baseline (médiane prix/m² par commune + type) : MAE ≈ 190 882 ; MAPE ≈ 158.51
+- Modèle RandomForest (features simples) : MAE ≈ 244 177 ; MAPE ≈ 182.04
+
+Conclusion :
+La baseline médiane est plus précise que le modèle simple à ce stade.
+
+---
+
 ### 🟡 Infrastructure
 
 - Dockerfiles backend & frontend
