@@ -9,6 +9,11 @@ from pydantic import BaseModel, Field
 import uvicorn
 
 try:
+    from joblib import load
+except Exception:  # pragma: no cover - optional in runtime
+    load = None
+
+try:
     from Backend.utils.address_parser import parse_address
     from Backend.utils.dvf_search import find_similar_properties, SearchConfig
     from Backend.utils.price_calculation import calculate_price
@@ -35,6 +40,30 @@ DEFAULT_DVF_CLEAN_PATH = DVF_OUTPUTS_DIR / "DVF_clean.csv"
 DVF_DF: Optional[pd.DataFrame] = None
 DVF_ERROR: Optional[str] = None
 DVF_FILE_USED: Optional[str] = None
+MODEL = None
+MODEL_ERROR: Optional[str] = None
+MODEL_PATH = (Path(__file__).resolve().parent / "models" / "price_model.pkl")
+
+
+def _load_model():
+    global MODEL, MODEL_ERROR
+
+    if load is None:
+        MODEL = None
+        MODEL_ERROR = "joblib not available"
+        return
+
+    if not MODEL_PATH.exists():
+        MODEL = None
+        MODEL_ERROR = "model file not found"
+        return
+
+    try:
+        MODEL = load(MODEL_PATH)
+        MODEL_ERROR = None
+    except Exception as e:
+        MODEL = None
+        MODEL_ERROR = str(e)
 
 
 def _resolve_dvf_path() -> Optional[Path]:
@@ -145,16 +174,17 @@ def startup_event():
         DVF_ERROR = "DVF file not found"
         DVF_DF = None
         DVF_FILE_USED = None
-        return
+    else:
+        try:
+            DVF_DF = _load_dvf(str(dvf_path))
+            DVF_ERROR = None
+            DVF_FILE_USED = str(dvf_path)
+        except Exception as e:
+            DVF_ERROR = str(e)
+            DVF_DF = None
+            DVF_FILE_USED = None
 
-    try:
-        DVF_DF = _load_dvf(str(dvf_path))
-        DVF_ERROR = None
-        DVF_FILE_USED = str(dvf_path)
-    except Exception as e:
-        DVF_ERROR = str(e)
-        DVF_DF = None
-        DVF_FILE_USED = None
+    _load_model()
 
 
 @app.get("/api/health")
@@ -164,6 +194,8 @@ def health():
         "dvf_loaded": DVF_DF is not None,
         "dvf_file": DVF_FILE_USED,
         "error": DVF_ERROR,
+        "model_loaded": MODEL is not None,
+        "model_error": MODEL_ERROR,
     }
 
 
@@ -223,13 +255,37 @@ def estimate(req: EstimationRequest):
     surface = req.area_m2
     type_bien = req.property_type.lower()
 
-    if DVF_DF is None:
-        return mock_estimate(surface, type_bien)
-
     commune_value = req.commune
     if not commune_value and req.address:
         parsed = parse_address(req.address)
         commune_value = parsed.get("commune")
+
+    if MODEL is not None and commune_value:
+        commune_norm = str(commune_value).strip().lower()
+        payload = pd.DataFrame(
+            [
+                {
+                    "commune": commune_norm,
+                    "type_bien": type_bien,
+                    "surface_m2": surface,
+                }
+            ]
+        )
+        pred = float(MODEL.predict(payload)[0])
+        margin = pred * 0.15
+        return {
+            "predicted_price": round(pred, 2),
+            "price_per_m2": round(pred / surface, 2),
+            "confidence_interval": {
+                "lower": round(pred - margin, 2),
+                "upper": round(pred + margin, 2),
+                "confidence": "85%",
+            },
+            "model": "ml-simple",
+        }
+
+    if DVF_DF is None:
+        return mock_estimate(surface, type_bien)
 
     if not commune_value:
         raise HTTPException(400, "commune requise pour DVF")

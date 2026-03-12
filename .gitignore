@@ -213,6 +213,9 @@ Backend/Data pipeline/Data/*.txt
 Backend/Data pipeline/Data/*.zip
 Backend/Data pipeline/outputs/*.csv
 
+# Trained models
+Backend/models/
+
 # Frontend (Node/Vite)
 node_modules/
 Frontend/node_modules/
