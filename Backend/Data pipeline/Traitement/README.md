@@ -186,6 +186,27 @@ Le CSV final contient notamment :
 - Année
 - id
 
+## Contrôle qualité du nettoyage (run 2024)
+
+Sur le fichier généré `DVF_clean_2023_2024.csv` :
+
+- Lignes totales : `257354`
+- `Valeur fonciere <= 0` : `0`
+- `Surface reelle bati <= 0` : `0`
+- Départements hors IDF : `0`
+- Types de biens conservés : `apartment`, `house`
+- Doublons `(adresse, Date mutation, Valeur fonciere)` : `0`
+
+Points à améliorer :
+
+- `prix_au_m2 <= 0` : `2` lignes restent présentes (prix très faibles).
+- Le script ne fait pas encore de filtre outliers explicite (IQR/quantiles/seuil métier).
+
+Conclusion :
+
+- Le nettoyage est correct pour un MVP.
+- Pour un usage production, ajouter un filtre de valeurs aberrantes est recommandé.
+
 ## Objectif
 
 Ce pipeline produit un dataset propre et exploitable pour :

@@ -1,245 +1,146 @@
-# RealEstateAI - Plateforme de Prédiction du Marché Immobilier
+# RealStateAI
 
-[![Status](https://img.shields.io/badge/status-in%20development-blue)](./ROADMAP.md)
-[![Python 3.11+](https://img.shields.io/badge/python-3.11+-green)](https://www.python.org/)
-[![Streamlit](https://img.shields.io/badge/frontend-streamlit-red)](https://streamlit.io/)
+RealStateAI is a full-stack real estate estimation prototype based on French DVF open data.
 
-## 📖 Vue d'ensemble
+## Version
+- Prototype v0.2 (current)
 
-RealEstateAI est une plateforme web complète combinant **ingénierie des données**, **analyse décisionnelle** et **intelligence artificielle** pour estimer les prix de biens immobiliers et analyser les marchés locaux.
+## Versioning
+- Tag a release: `git tag -a v0.2 -m "Prototype v0.2"`
+- Push tags: `git push --tags`
 
-Ce projet est une **certification professionnelle RNCP Titre 7** couvrant 4 activités principales :
-1. **Stratégie d'innovation** - Veille technologique & business model
-2. **Innovation digitale UX** - Design centré utilisateur & prototypage
-3. **Gestion itérative** - Pipeline agile & amélioration continue
-4. **Management d'équipe** - Leadership & gouvernance projet
+## Current Scope
+- FastAPI backend for price estimation
+- React (Vite) frontend with interactive form
+- DVF data pipeline (cleaning + filtering for Ile-de-France)
+- Dockerized local deployment
 
----
+## Tech Stack
+- Backend: FastAPI, Pydantic, Pandas
+- Frontend: React + Vite + Tailwind
+- Data: DVF TXT files -> cleaned CSV
+- Infra: Docker, Docker Compose
 
-## 🎯 Fonctionnalités principales
-
-- **Page d'estimation** : Prédiction du prix via formulaire interactif
-- **Carte interactive** : Visualisation des prix au m² par zone géographique
-- **Analyse comparative** : Comparaison entre régions/quartiers
-- **Tableau de bord** : Tendances du marché immobilier
-- **Transparence IA** : Métriques du modèle et variables importantes
-- **Admin panel** : Qualité des données et santé du pipeline
-
----
-
-## 🏗️ Architecture technique
-
-```
-Frontend
-   └─ Streamlit (prototype rapide)
-      └─ Interface simple pour validation du POC
-      └─ React / Next.js prévu en phase suivante
-
-Backend
-   └─ FastAPI (Python 3.11)
-      └─ SQLAlchemy, Pydantic
-
-Data Pipeline
-   └─ Python, Pandas, dbt (optionnel)
-      └─ PostgreSQL, CSV/Parquet
-
-ML Model
-   └─ scikit-learn, XGBoost
-      └─ Feature engineering, validation
-
-Deployment
-   └─ Docker, Docker Compose
-      └─ Cloud Run (backend) / Vercel (frontend)
+## Project Structure
+```text
+RealStateAI/
+├── Backend/
+│   ├── main.py
+│   ├── utils/
+│   ├── tests/
+│   └── Data pipeline/
+│       ├── Data/
+│       ├── Traitement/
+│       └── outputs/
+├── Frontend/
+│   ├── src/
+│   └── index.html
+├── docs/
+│   ├── SETUP.md
+│   └── TECHNICAL_GUIDE.md
+├── docker-compose.yml
+└── requirements.txt
 ```
 
----
-
-## 🚀 Quick Start
-
-### Prérequis
-- Docker & Docker Compose
+## Prerequisites
 - Python 3.11+
-- Git
+- Docker + Docker Compose
+- `unzip`
 
-### Installation locale (5 min)
+## Installation and Run (Recommended)
 
+### 1) Clone and enter project
 ```bash
-# Cloner le repository
-git clone https://github.com/your-org/RealEstateAI.git
-cd RealEstateAI
+git clone <your-repo-url>
+cd RealStateAI
+```
 
-# Démarrer les services
-docker compose up --build -d
+### 2) Create Python environment (for pipeline and tests)
+```bash
+python3 -m venv data_env
+source data_env/bin/activate
+python3 -m pip install --upgrade pip
+python3 -m pip install -r requirements.txt
+```
 
-# Frontend (Streamlit, http://localhost:8501)
+### 3) Prepare DVF data (run 2024 recommended)
+```bash
+unzip -o "Backend/Data pipeline/Data/valeursfoncieres-2024.txt.zip" -d "Backend/Data pipeline/Data"
+unzip -o "Backend/Data pipeline/Data/valeursfoncieres-2023.txt.zip" -d "Backend/Data pipeline/Data"
+
+cd "Backend/Data pipeline/Traitement"
+python3 - <<'PY'
+from dvf_data_pipeline import pipeline_dvf
+pipeline_dvf('../Data/', 2024)
+PY
+cd ~/RealStateAI
+```
+
+### 4) Start application
+```bash
+sudo docker compose up --build -d
+```
+
+### 5) Validate services
+```bash
+curl http://localhost:8000/api/health
+```
+Expected in JSON:
+- `status: "healthy"`
+- `dvf_loaded: true`
+- `dvf_file` points to `DVF_clean_*.csv`
+
+Frontend URL:
+- http://localhost:8501
+
+## Local Run Without Docker (Optional)
+
+### Backend
+```bash
+source data_env/bin/activate
+cd Backend
+python3 -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+### Frontend (new terminal)
+```bash
+source data_env/bin/activate
 cd Frontend
-streamlit run app.py
-
-# Backend (http://localhost:8000)
-cd ../Backend
-pip install -r requirements.txt
-python -m uvicorn main:app --reload
+npm install
+VITE_API_URL=http://localhost:8000 npm run dev
 ```
 
-### Variables d'environnement
-Créer `.env` à la racine :
-```
-DATABASE_URL=postgresql://user:password@db:5432/realestate
-API_URL=http://localhost:8000
-ENVIRONMENT=development
-```
-Note: Streamlit est utilisé uniquement pour le prototype (plus rapide et plus simple). Une interface React/Next.js est prévue pour la version produit.
-
-
----
-
-## 📊 Données
-
-Structures de données supportées :
-- **Sources** : APIs immobilières, CSV, données open data
-- **Format** : Parquet, CSV, JSON
-- **Nettoyage** : Scripts Python/SQL dans `/data/scripts`
-
-Exemple schema :
-```sql
-CREATE TABLE properties (
-  id SERIAL PRIMARY KEY,
-  address VARCHAR,
-  price DECIMAL,
-  area_m2 DECIMAL,
-  rooms INT,
-  location_lat FLOAT,
-  location_lng FLOAT,
-  created_at TIMESTAMP
-);
-```
-
----
-
-## 🧠 Modèle IA
-
-**Approche** : Régression supervisée  
-**Modèle** : XGBoost (Random Forest alternative)  
-**Target** : Prix de vente (en €)
-
-**Métriques** :
-- MAE (Mean Absolute Error) : ±15% du prix moyen
-- RMSE (Root Mean Squared Error) : évaluer stabilité
-- Feature importance : visualiser impact variables
-
-**Entraînement** :
+## Testing
 ```bash
-cd backend/ml
-python train_model.py
-python evaluate_model.py
+source data_env/bin/activate
+python3 -m pytest -q
 ```
 
----
+## API Summary
+- `GET /api/health`: backend and DVF load status
+- `GET /api/metadata/communes`: list of available communes from dataset
+- `POST /api/predictions/estimate`: estimation endpoint
 
-## 📋 Livrables RNCP
-
-### ✅ À rendre :
-
-| Activité | Livrables | Deadline |
-|----------|-----------|----------|
-| **A1 - Stratégie** | Rapport de veille + Business plan + Recommandations | Semaine 2 |
-| **A2 - Innovation UX** | Prototype fonctionnel + Étude utilisateur | Semaine 4 |
-| **A3 - Gestion itérative** | 4 Sprint reviews + Rapports + Gestion incidents | Semaine 8 |
-| **A4 - Management** | Fiche de poste + Onboarding + Gouvernance | Semaine 8 |
-| **Optionnel 1** | Architecture + Qualité code (optionnel) | Semaine 9 |
-| **Optionnel 2** | Analytics + Recommandations DG (optionnel) | Semaine 9 |
-
-Plus de détails : [ROADMAP.md](./ROADMAP.md)
-
----
-
-## 🔄 Workflow de développement
-
-```bash
-# 1. Créer une branche feature
-git checkout -b feature/estimation-page
-
-# 2. Développer et committer
-git add .
-git commit -m "feat: add estimation form component"
-
-# 3. Push et créer Pull Request
-git push origin feature/estimation-page
-
-# 4. Code review et merge
-# Après approbation : merge to main
-
-# 5. Deploy auto en staging
-# GitHub Actions déclenche tests + déploiement
+Example payload:
+```json
+{
+  "area_m2": 65,
+  "rooms": 2,
+  "property_type": "apartment",
+  "commune": "PARIS 01",
+  "address": "10 Rue de Rivoli, 75001 Paris"
+}
 ```
 
----
+## Common Issues
+- Docker permission denied on `/var/run/docker.sock`: run with `sudo docker ...` or fix docker group rights.
+- `404 aucune transaction trouvée`: choose a commune from the frontend select list.
+- `dvf_loaded: false`: regenerate DVF clean output and restart backend.
 
-## 🧪 Tests
+## Documentation
+- Setup: [docs/SETUP.md](docs/SETUP.md)
+- Technical documentation: [docs/TECHNICAL_GUIDE.md](docs/TECHNICAL_GUIDE.md)
+- Architecture overview: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)
 
-```bash
-# Backend tests
-cd backend
-pytest tests/
-
-# Frontend tests
-cd ../Frontend
-python -m streamlit run app.py
-
-# Integration tests
-docker compose ps
-```
-
----
-
-## 📚 Documentation
-
-- `./docs/architecture.md` - Architecture technique détaillée
-- `./docs/api.md` - Documentation API (Swagger disponible à `/docs`)
-- `./docs/data-pipeline.md` - Processus ETL
-- `./docs/ml-model.md` - Détails du modèle IA
-- `./ROADMAP.md` - Roadmap complète RNCP
-
----
-
-## 🔐 Sécurité
-
-- ✅ JWT authentication
-- ✅ HTTPS en production
-- ✅ SQL injection prevention (SQLAlchemy ORM)
-- ✅ CORS configuré
-- ✅ Rate limiting sur API
-- ✅ Validation des inputs (Pydantic)
-
----
-
-## 📞 Support & Contribution
-
-**Questions ?** Créer une issue GitHub  
-**Bugs ?** Signaler avec reproduction steps  
-**Améliorations ?** Pull request bienvenue
-
----
-
-## 📄 License
-
-Apache 2.0 - voir [LICENSE.md](./LICENSE.md)
-
----
-
-## 👥 Équipe
-
-- **Chef de projet / Product Owner** : [Votre nom]
-- **Tech Lead Backend** : [Nom]
-- **Tech Lead Frontend** : [Nom]
-- **Data Engineer** : [Nom]
-- **QA / Devops** : [Nom]
-
----
-
-**Last updated** : Aujourd'hui  
-**Status** : 🔴 Phase 1 - Stratégie en cours  
-**Prochaines étapes** : Validation prototype semaine 4
-
-
-
+## License
+See [LICENSE](LICENSE).
