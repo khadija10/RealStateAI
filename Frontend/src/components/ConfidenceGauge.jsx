@@ -40,7 +40,7 @@ export default function ConfidenceGauge({ low, estimate, high }) {
         <line x1="24" y1="52" x2="376" y2="52" stroke="var(--color-limestone)" strokeWidth="3" strokeLinecap="round" opacity="0.5" />
 
         {/* Repère de l'estimation (trait de niveau) */}
-        <g className="transition-transform duration-700 ease-out" style={{ transform: `translateX(${markerX - 200}px)` }} transform="translate(200,0)">
+        <g className="transition-transform duration-700 ease-out" style={{ transform: `translateX(${markerX}px)` }}>
           <line x1="0" y1="18" x2="0" y2="52" stroke="var(--color-seine)" strokeWidth="2.5" />
           <circle cx="0" cy="18" r="5" fill="var(--color-seine)" />
         </g>
