@@ -240,31 +240,6 @@ class EstimationRequest(BaseModel):
     commune: Optional[str] = None
 
 
-def mock_estimate(surface, property_type):
-
-    base_price_per_m2 = 7000
-
-    multiplier = {
-        "studio": 1.2,
-        "apartment": 1.0,
-        "house": 0.9,
-    }.get(property_type, 1.0)
-
-    price = surface * base_price_per_m2 * multiplier
-    margin = price * 0.15
-
-    return {
-        "predicted_price": round(price, 2),
-        "price_per_m2": round(price / surface, 2),
-        "confidence_interval": {
-            "lower": round(price - margin, 2),
-            "upper": round(price + margin, 2),
-            "confidence": "85%",
-        },
-        "model": "mock",
-    }
-
-
 @app.post("/api/predictions/estimate")
 def estimate(req: EstimationRequest):
 
@@ -301,7 +276,7 @@ def estimate(req: EstimationRequest):
         }
 
     if DVF_DF is None:
-        return mock_estimate(surface, type_bien)
+        raise HTTPException(503, "DVF indisponible et aucun modèle chargé")
 
     if not commune_value:
         raise HTTPException(400, "commune requise pour DVF")
