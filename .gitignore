@@ -235,3 +235,14 @@ lerna-debug.log*
 *.njsproj
 *.sln
 *.sw?
+
+# ===== Data pipeline DVF (Skander) =====
+data/raw/*
+data/interim/*
+data/processed/*
+data/external/*
+*.parquet
+*.csv.gz
+!data/samples/**
+!data/**/.gitkeep
+data-pipeline/.venv/
