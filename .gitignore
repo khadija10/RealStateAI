@@ -214,7 +214,7 @@ Backend/Data pipeline/Data/*.zip
 Backend/Data pipeline/outputs/*.csv
 
 # Trained models
-Backend/models/
+Backend/models/*.pkl
 
 # Frontend (Node/Vite)
 node_modules/
@@ -246,3 +246,8 @@ data/external/*
 !data/samples/**
 !data/**/.gitkeep
 data-pipeline/.venv/
+
+# MLflow
+mlruns/
+
+# Modèles lourds (versionnés séparément si besoin)

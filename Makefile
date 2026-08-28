@@ -12,7 +12,7 @@ help:  ## Affiche les commandes disponibles
 		| awk 'BEGIN {FS = ":.*?## "}; {printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
 
 setup:  ## Crée l'environnement virtuel et installe les dépendances
-	python3.11 -m venv data-pipeline/.venv
+	python3 -m venv data-pipeline/.venv
 	$(PIP) install --upgrade pip
 	$(PIP) install -e "data-pipeline[dev]"
 	$(PY) -m nbstripout --install --attributes .gitattributes
