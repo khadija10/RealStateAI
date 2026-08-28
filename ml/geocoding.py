@@ -18,6 +18,7 @@ import duckdb
 
 BAN_URL = "https://api-adresse.data.gouv.fr/search/"
 GOLD_PATH = "data/processed/gold_transactions"
+MARKET_REF_PATH = "data/samples/market_reference.parquet"
 
 # Mois courant comme index (nb mois depuis jan 2000)
 def _mois_index_courant() -> int:
@@ -79,6 +80,7 @@ def recuperer_features_marche(
     code_departement: str,
     code_type_local: str,
     gold_path: str = GOLD_PATH,
+    market_ref_path: str = MARKET_REF_PATH,
 ) -> dict:
     """
     Récupère les features de marché DVF les plus récentes pour une commune.
@@ -94,9 +96,15 @@ def recuperer_features_marche(
           "trimestre": int,
         }
     """
+    # Utilise gold complet si dispo, sinon table de référence pré-calculée (37 KB)
     path = Path(gold_path)
     if not path.exists():
-        raise FileNotFoundError(f"Dataset gold introuvable : {path}")
+        path = Path(market_ref_path)
+        if not path.exists():
+            raise FileNotFoundError("Ni le dataset gold ni la table market_reference.parquet ne sont disponibles.")
+        parquet_query = f"read_parquet('{path}')"
+    else:
+        parquet_query = f"read_parquet('{path}/**/*.parquet', hive_partitioning=true)"
 
     mois_index = _mois_index_courant()
     mois = datetime.now().month
@@ -109,7 +117,7 @@ def recuperer_features_marche(
             nb_ventes_commune_12m,
             prix_m2_median_dept_12m,
             nb_ventes_dept_12m
-        FROM read_parquet('{path}/**/*.parquet', hive_partitioning=true)
+        FROM {parquet_query}
         WHERE code_commune = '{code_commune}'
           AND code_type_local = '{code_type_local}'
           AND prix_m2_reference_12m IS NOT NULL
@@ -125,7 +133,7 @@ def recuperer_features_marche(
                 0,
                 prix_m2_median_dept_12m,
                 nb_ventes_dept_12m
-            FROM read_parquet('{path}/**/*.parquet', hive_partitioning=true)
+            FROM {parquet_query}
             WHERE code_departement = '{code_departement}'
               AND code_type_local = '{code_type_local}'
               AND prix_m2_median_dept_12m IS NOT NULL

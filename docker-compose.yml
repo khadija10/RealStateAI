@@ -6,6 +6,11 @@ services:
     container_name: realestate_backend
     ports:
       - "8000:8000"
+    volumes:
+      # Modèle ML (généré par "make train" ou "make install")
+      - ./Backend/models:/app/models
+    environment:
+      - ENVIRONMENT=production
     restart: unless-stopped
 
   frontend:

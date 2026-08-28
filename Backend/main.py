@@ -1,4 +1,5 @@
 import os
+import sys
 from pathlib import Path
 from typing import Optional
 
@@ -21,6 +22,21 @@ except ImportError:
     from utils.address_parser import parse_address
     from utils.dvf_search import find_similar_properties, SearchConfig
     from utils.price_calculation import calculate_price
+
+# Chargement du module ML (LightGBM + BAN geocoding)
+ML_ESTIMATOR = None
+ML_ERROR: Optional[str] = None
+
+_ROOT = Path(__file__).resolve().parent.parent
+_ML_PATH = _ROOT / "ml"
+if str(_ML_PATH) not in sys.path:
+    sys.path.insert(0, str(_ML_PATH))
+
+try:
+    from estimator import estimer_prix as _estimer_prix
+    ML_ESTIMATOR = _estimer_prix
+except Exception as e:
+    ML_ERROR = str(e)
 
 app = FastAPI(title="RealEstateAI Backend")
 
@@ -237,6 +253,7 @@ class EstimationRequest(BaseModel):
     location_lng: Optional[float] = None
     property_type: str = "apartment"
     address: Optional[str] = None
+    postal_code: Optional[str] = None
     commune: Optional[str] = None
 
 
@@ -246,40 +263,33 @@ def estimate(req: EstimationRequest):
     surface = req.area_m2
     type_bien = req.property_type.lower()
 
+    # Priorité 1 : modèle LightGBM + géocodage BAN (meilleur)
+    if ML_ESTIMATOR is not None and req.address:
+        try:
+            result = ML_ESTIMATOR(
+                adresse=req.address,
+                code_postal=req.postal_code,
+                surface_m2=surface,
+                nb_pieces=float(req.rooms) if req.rooms else 3.0,
+                type_bien=type_bien,
+            )
+            return result
+        except ValueError as e:
+            raise HTTPException(400, f"Adresse introuvable : {e}")
+        except Exception as e:
+            raise HTTPException(503, f"Erreur modèle ML : {e}")
+
+    # Priorité 2 : fallback DVF statistique (si adresse non fournie)
     commune_value = req.commune
     if not commune_value and req.address:
         parsed = parse_address(req.address)
         commune_value = parsed.get("commune")
 
-    if MODEL is not None and commune_value:
-        commune_norm = str(commune_value).strip().lower()
-        payload = pd.DataFrame(
-            [
-                {
-                    "commune": commune_norm,
-                    "type_bien": type_bien,
-                    "surface_m2": surface,
-                }
-            ]
-        )
-        pred = float(MODEL.predict(payload)[0])
-        margin = pred * 0.15
-        return {
-            "predicted_price": round(pred, 2),
-            "price_per_m2": round(pred / surface, 2),
-            "confidence_interval": {
-                "lower": round(pred - margin, 2),
-                "upper": round(pred + margin, 2),
-                "confidence": "85%",
-            },
-            "model": "ml-simple",
-        }
-
     if DVF_DF is None:
-        raise HTTPException(503, "DVF indisponible et aucun modèle chargé")
+        raise HTTPException(503, "Fournissez une adresse pour utiliser le modèle ML, ou attendez le chargement DVF.")
 
     if not commune_value:
-        raise HTTPException(400, "commune requise pour DVF")
+        raise HTTPException(400, "Fournissez une adresse ou une commune.")
 
     commune = commune_value.lower()
 
