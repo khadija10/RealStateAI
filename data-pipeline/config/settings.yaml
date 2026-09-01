@@ -9,8 +9,10 @@ projet: RealStateAI
 perimetre:
   libelle: "Île-de-France (8 départements)"
   departements: ["75", "77", "78", "91", "92", "93", "94", "95"]
-  # À CONFIRMER à l'étape 1 : le script d'ingestion listera les millésimes
-  # réellement publiés sur files.data.gouv.fr avant de figer cette liste.
+  # Millésimes disponibles : de 2014 à l'avant-dernière année environ.
+  # La DGFiP publie en avril et octobre, avec un décalage : l'année en cours
+  # n'est jamais disponible. Un millésime absent est signalé et ignoré,
+  # le pipeline continue avec les autres.
   millesimes: [2021, 2022, 2023, 2024, 2025]
 
 chemins:
@@ -38,6 +40,19 @@ nettoyage:
     - "Vente en l'état futur d'achèvement"
   codes_type_local_gardes: [1, 2]     # 1 = Maison, 2 = Appartement
   surface_bati_min_m2: 9              # seuil de décence (loi Carrez / logement)
+  # Cohérence surface / pièces. En dessous de ce ratio, la source a recopié
+  # la surface dans le champ "nombre de pièces" : on neutralise le champ
+  # (NULL) sans supprimer la mutation, dont le prix reste valide.
+  m2_min_par_piece: 8
+  # Contrôle de cohérence géographique. Des coordonnées fausses sont publiées
+  # telles quelles par la source sur une poignée de communes : on vérifie que
+  # chaque point est à portée du centroïde de son propre département.
+  geo:
+    lat_min: 41.0                     # bornes de la France métropolitaine
+    lat_max: 51.5
+    lon_min: -5.5
+    lon_max: 9.8
+    tolerance_degres: 1.5             # ~165 km autour du centroïde départemental
   outliers:
     # Règle retenue après calibrage sur l'Île-de-France (cf. docs/cleaning_rules.md) :
     # le prix au m² doit rester dans une fourchette relative à la médiane de sa
@@ -48,6 +63,10 @@ nettoyage:
     prix_m2_plancher: 300             # garde-fou absolu : ventes à l'euro symbolique
     prix_m2_plafond: 30000            # garde-fou absolu : erreurs de saisie
 
+# --- Seuils du contrôle qualité : la commande `pipeline qualite` échoue ------
+# si l'un d'eux est franchi, et renvoie un code de sortie non nul (CI).
 qualite:
-  taux_nuls_max_prix_m2: 0.02         # au-delà, la CI échoue
+  taux_nuls_max_prix_m2: 0.02         # nuls tolérés sur prix_m2_reference_12m
   perte_lignes_max_nettoyage: 0.60    # alerte si le nettoyage retire > 60 %
+  prix_m2_median_min: 1000            # plausibilité : une médiane hors de cette
+  prix_m2_median_max: 20000           # plage signale une déduplication cassée
