@@ -9,23 +9,25 @@ description = "Pipeline d'ingestion, nettoyage et préparation des données DVF 
 requires-python = ">=3.11"
 
 dependencies = [
-    "pandas==2.2.3",          # manipulation finale, interface avec l'équipe ML
-    "duckdb==1.1.3",          # moteur out-of-core : agrégations sur > RAM
-    "pyarrow==18.1.0",        # lecture/écriture Parquet (couches silver et gold)
-    "requests==2.32.3",       # téléchargement DVF
-    "tqdm==4.67.1",           # barres de progression sur les téléchargements
-    "PyYAML==6.0.2",          # lecture de config/settings.yaml
-    "pandera==0.21.0",        # validation de schéma (étape 6)
-    "python-dotenv==1.0.1",   # lecture du .env
+    "pandas>=2.2,<3",         # manipulation finale, interface avec l'équipe ML
+    "duckdb>=1.1",            # moteur out-of-core : agrégations sur > RAM
+    "pyarrow>=18",            # lecture/écriture Parquet (couches silver et gold)
+    "requests>=2.32",         # téléchargement DVF
+    "tqdm>=4.66",             # barres de progression sur les téléchargements
+    "PyYAML>=6.0",            # lecture de config/settings.yaml
+    # pandera >= 0.24 obligatoire : les versions antérieures importent
+    # multimethod.overload, supprimé des versions récentes de multimethod.
+    "pandera>=0.24",          # validation de schéma du dataset gold
+    "python-dotenv>=1.0",     # lecture du .env
 ]
 
 [project.optional-dependencies]
 dev = [
-    "pytest==8.3.4",
-    "ruff==0.8.4",
-    "nbstripout==0.8.1",      # vide les sorties de notebooks avant commit
-    "jupyterlab==4.3.4",
-    "matplotlib==3.10.0",     # profiling visuel (étape 2)
+    "pytest>=8.0",
+    "ruff>=0.8",
+    "nbstripout>=0.8",        # vide les sorties de notebooks avant commit
+    "jupyterlab>=4.3",
+    "matplotlib>=3.9",        # profiling visuel et graphiques du mémoire
 ]
 
 [tool.setuptools.packages.find]

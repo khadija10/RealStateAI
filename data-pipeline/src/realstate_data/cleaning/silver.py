@@ -107,6 +107,23 @@ def construire_silver(
     con = ouvrir_connexion(settings)
     journal: list[dict] = []
 
+    # Sans ce contrôle, DuckDB renverrait une erreur "No files found" peu
+    # parlante. On préfère dire précisément ce qui manque et quoi faire.
+    fichiers = sorted(settings.chemins.raw.glob("dvf_*.csv.gz"))
+    if not fichiers and motif_fichiers is None:
+        raise FileNotFoundError(
+            f"Aucun fichier DVF dans {settings.chemins.raw}.\n"
+            f"Périmètre configuré : départements {', '.join(settings.departements)}, "
+            f"millésimes {', '.join(map(str, settings.millesimes))}.\n"
+            "Lance d'abord l'ingestion :\n"
+            "    python -m realstate_data.pipeline ingest\n"
+            "Si l'ingestion n'a rien téléchargé, les millésimes demandés ne sont "
+            "pas encore publiés par la DGFiP (diffusion en avril et octobre)."
+        )
+    if fichiers:
+        log.info("%d fichiers source trouvés dans %s",
+                 len(fichiers), settings.chemins.raw)
+
     # Le schéma DVF a légèrement évolué entre millésimes : on ne force le type
     # que des colonnes réellement présentes, sinon la lecture échoue sur une
     # colonne absente d'une seule année.
@@ -259,11 +276,76 @@ def construire_silver(
     # --- Étape 8 : géolocalisation présente --------------------------------
     # Sans coordonnées, aucune feature géographique n'est calculable.
     con.execute("""
-        CREATE OR REPLACE TABLE silver AS
+        CREATE OR REPLACE TABLE s8_geo AS
         SELECT * FROM s7_surface
         WHERE latitude IS NOT NULL AND longitude IS NOT NULL AND code_commune IS NOT NULL;
     """)
-    journal.append(_compter(con, "silver", "8. géolocalisation et commune présentes"))
+    journal.append(_compter(con, "s8_geo", "8. géolocalisation et commune présentes"))
+
+    # --- Étape 9 : cohérence géographique ----------------------------------
+    # Constat sur données réelles : une poignée de mutations porte des
+    # coordonnées fausses publiées telles quelles par la source (latitudes de
+    # 78° ou 83°, soit l'océan Arctique, sur des communes des Hauts-de-Seine).
+    #
+    # Un simple contrôle "dans les bornes de la France" ne suffit PAS : sur
+    # ces mêmes lignes, la longitude est également fausse (0,27 au lieu de
+    # 2,27 pour Issy-les-Moulineaux) tout en restant dans les bornes
+    # nationales. On vérifie donc que chaque point est cohérent avec le
+    # centroïde de SON département, calculé par médiane — donc insensible aux
+    # points aberrants qu'on cherche justement à détecter.
+    #
+    # La tolérance est large (1,5° ≈ 165 km) : elle n'écarte que l'impossible,
+    # jamais un bien réellement situé aux confins de son département.
+    geo = conf.get("geo", {})
+    lat_min, lat_max = geo.get("lat_min", 41.0), geo.get("lat_max", 51.5)
+    lon_min, lon_max = geo.get("lon_min", -5.5), geo.get("lon_max", 9.8)
+    tolerance = geo.get("tolerance_degres", 1.5)
+
+    con.execute("""
+        CREATE OR REPLACE TABLE centroides_departement AS
+        SELECT code_departement,
+               median(latitude)  AS lat_ref,
+               median(longitude) AS lon_ref
+        FROM s8_geo GROUP BY 1;
+    """)
+    con.execute(f"""
+        CREATE OR REPLACE TABLE silver AS
+        SELECT s.*
+        FROM s8_geo s
+        JOIN centroides_departement c USING (code_departement)
+        WHERE s.latitude  BETWEEN {lat_min} AND {lat_max}
+          AND s.longitude BETWEEN {lon_min} AND {lon_max}
+          AND abs(s.latitude  - c.lat_ref) <= {tolerance}
+          AND abs(s.longitude - c.lon_ref) <= {tolerance};
+    """)
+    journal.append(_compter(con, "silver", "9. cohérence géographique (centroïde du département)"))
+
+    # --- Étape 10 : cohérence surface / nombre de pièces -------------------
+    # Défaut systématique observé dans la source : sur certaines lignes, la
+    # VALEUR DE SURFACE a été recopiée dans le champ nombre_pieces_principales
+    # (28 pièces pour 28 m², 24 pour 24 m², etc.). Le nombre de pièces est
+    # alors absurde alors que surface, prix et localisation restent corrects.
+    #
+    # On NE SUPPRIME PAS ces mutations : ce serait perdre des observations de
+    # prix parfaitement valides pour le modèle. On neutralise uniquement le
+    # champ fautif en le passant à NULL, puisqu'il est déclaré nullable dans
+    # le contrat d'interface.
+    #
+    # Le seuil de 8 m² par pièce est volontairement bas : il préserve les
+    # biens d'exception réels (un hôtel particulier de 1 561 m² et 23 pièces
+    # affiche 68 m² par pièce) et n'attrape que l'impossible.
+    m2_min = conf.get("m2_min_par_piece", 8)
+    n_incoherents = con.execute(
+        f"SELECT count(*) FROM silver "
+        f"WHERE nb_pieces > 0 AND surface_bati / nb_pieces < {m2_min}"
+    ).fetchone()[0]
+    con.execute(
+        f"UPDATE silver SET nb_pieces = NULL "
+        f"WHERE nb_pieces > 0 AND surface_bati / nb_pieces < {m2_min}"
+    )
+    if n_incoherents:
+        log.info("Nombre de pièces neutralisé (mis à NULL) sur %d mutations "
+                 "sous %d m² par pièce — lignes conservées", n_incoherents, m2_min)
 
     # --- Contrôle de cohérence sur l'hypothèse de valeur constante ---------
     incoherentes = con.execute(
