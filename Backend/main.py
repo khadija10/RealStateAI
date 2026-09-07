@@ -63,9 +63,11 @@ API_PREFIX = "/api"
 
 # Vite tourne en 5173. "*" avec allow_credentials=True est refusé par le navigateur.
 DEFAULT_ORIGINS = [
-    "http://localhost:5173",
+    "http://localhost:5173",   # Vite dev
     "http://127.0.0.1:5173",
-    "http://localhost:4173",
+    "http://localhost:4173",   # Vite preview
+    "http://localhost:8501",   # frontend Docker
+    "http://127.0.0.1:8501",
 ]
 CORS_ORIGINS = json.loads(os.getenv("CORS_ORIGINS", json.dumps(DEFAULT_ORIGINS)))
 
