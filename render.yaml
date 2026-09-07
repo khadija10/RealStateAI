@@ -35,7 +35,6 @@ services:
     rootDir: Frontend
     buildCommand: npm ci && npm run build
     staticPublishPath: dist
-    plan: free
     envVars:
       - key: VITE_API_URL
         # Render génère une URL du type : https://realestateai-backend.onrender.com
