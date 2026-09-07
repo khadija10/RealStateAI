@@ -138,6 +138,22 @@ class EstimationRequest(BaseModel):
             self.rooms = None
         return self
 
+    @model_validator(mode="after")
+    def check_surface_rooms_ratio(self):
+        if self.area_m2 and self.rooms and self.rooms > 0:
+            ratio = self.area_m2 / self.rooms
+            if ratio > 200:
+                raise ValueError(
+                    f"Ratio surface/pièces irréaliste ({ratio:.0f} m²/pièce) — "
+                    "vérifiez la surface ou le nombre de pièces"
+                )
+            if ratio < 5:
+                raise ValueError(
+                    f"Ratio surface/pièces irréaliste ({ratio:.1f} m²/pièce) — "
+                    "minimum 5 m² par pièce"
+                )
+        return self
+
 
 class PriceRange(BaseModel):
     """Clés `low`/`high` et non `lower`/`upper` : c'est ce que lit
@@ -352,6 +368,15 @@ def _normalize_ml_result(raw: Any, surface: float) -> EstimationResponse:
         confidence = ci.get("confidence") or "85%"
         reliability = float(raw.get("reliability") or 0.8)
         model_name = str(raw.get("model") or "ml")
+
+        notes: list[str] = ["estimation fournie par le modèle ML"]
+        if surface < 30:
+            # Peu de transactions DVF pour les très petites surfaces → fourchette élargie
+            low = estimated * 0.80
+            high = estimated * 1.20
+            reliability = min(reliability, 0.65)
+            notes.append("petite surface (< 30 m²) — fourchette élargie, segment sous-représenté dans les données")
+
         payload = EstimationResponse(
             estimated_price=estimated,
             price_per_m2=per_m2,
@@ -372,7 +397,7 @@ def _normalize_ml_result(raw: Any, surface: float) -> EstimationResponse:
                 property_type_used="ml",
                 fallback_level=0,
                 n_transactions=0,
-                notes=["estimation fournie par le modèle ML"],
+                notes=notes,
             ),
         )
         return payload
@@ -476,6 +501,7 @@ def estimate(
                 "surface_m2": surface,
                 "nb_pieces": float(req.rooms) if req.rooms is not None else 3.0,
                 "type_bien": type_bien,
+                "a_terrain": type_bien == "house",
             }
             if req.commune and not req.address:
                 payload["adresse"] = req.commune
