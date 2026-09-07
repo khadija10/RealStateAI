@@ -182,6 +182,8 @@ class HealthResponse(BaseModel):
     n_rows: int = 0
     n_communes: int = 0
     error: str | None = None
+    model_loaded: bool = False
+    model_error: str | None = None
 
 
 # ==========================================================================
@@ -305,8 +307,13 @@ def _load_ml_estimator() -> tuple[Any | None, str | None]:
             p = str(candidate)
             if candidate.exists() and p not in seen:
                 seen.add(p)
-                if str(candidate) not in sys.path:
-                    sys.path.insert(0, str(candidate))
+                # Add ml/ itself (for bare imports: "from geocoding import ...")
+                if p not in sys.path:
+                    sys.path.insert(0, p)
+                # Add parent of ml/ (for package imports: "from ml.estimator import ...")
+                parent = str(candidate.parent)
+                if parent not in sys.path:
+                    sys.path.insert(0, parent)
 
     candidates = [
         "estimator",
@@ -390,6 +397,8 @@ def health(request: Request) -> HealthResponse:
         n_rows=int(len(df)) if loaded else 0,
         n_communes=len(request.app.state.communes),
         error=request.app.state.dvf_error,
+        model_loaded=ML_ESTIMATOR is not None,
+        model_error=ML_ERROR,
     )
 
 

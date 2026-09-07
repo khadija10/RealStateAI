@@ -10,11 +10,24 @@ _MODEL = None
 _CATEGORIES = None
 
 
+def _trouver_modele(defaut: str = "Backend/models/price_model.pkl") -> Path:
+    candidates = [
+        Path(defaut),                                                       # local dev (CWD = racine projet)
+        Path(__file__).parent.parent / "Backend" / "models" / "price_model.pkl",  # local (ml/../Backend/models/)
+        Path(__file__).parent.parent / "models" / "price_model.pkl",       # Docker (/app/models/)
+    ]
+    for p in candidates:
+        if p.exists():
+            return p
+    return Path(defaut)
+
+
 def charger_modele(chemin: str = "Backend/models/price_model.pkl"):
     global _MODEL, _CATEGORIES
     if _MODEL is None:
-        _MODEL = joblib.load(chemin)
-        cat_path = Path(chemin).parent / "categories.json"
+        path = _trouver_modele(chemin)
+        _MODEL = joblib.load(path)
+        cat_path = path.parent / "categories.json"
         _CATEGORIES = json.loads(cat_path.read_text()) if cat_path.exists() else {}
     return _MODEL
 
@@ -36,7 +49,7 @@ def predire(
     a_terrain: bool = False,
     model_path: str = "Backend/models/price_model.pkl",
 ) -> dict:
-    model = charger_modele(model_path)
+    model = charger_modele(model_path)  # _trouver_modele() résout le bon chemin
 
     surface_moyenne_piece = surface_m2 / nb_pieces if nb_pieces else None
 
