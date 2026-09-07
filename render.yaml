@@ -17,7 +17,7 @@ services:
     runtime: image
     # Remplace par ton image Docker Hub : docker.io/<username>/realestateai-backend:v1.2
     image:
-      url: docker.io/REMPLACER/realestateai-backend:v1.2
+      url: docker.io/khdj0/realestateai-backend:v1.2
     plan: free
     envVars:
       - key: ENVIRONMENT
