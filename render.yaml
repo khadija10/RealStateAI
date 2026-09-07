@@ -1,0 +1,47 @@
+# Render.com — Infrastructure as Code
+# Doc : https://render.com/docs/blueprint-spec
+#
+# AVANT de déployer :
+#   1. Construire l'image backend localement (voir README ci-dessous)
+#   2. La pousser sur Docker Hub
+#   3. Remplacer DOCKER_IMAGE ci-dessous par ton image Docker Hub
+#
+# Déploiement :
+#   - Connecte ton repo GitHub sur https://dashboard.render.com
+#   - Render détecte ce fichier et crée les deux services automatiquement
+
+services:
+  # ── Backend FastAPI ───────────────────────────────────────────────────────
+  - type: web
+    name: realestateai-backend
+    runtime: image
+    # Remplace par ton image Docker Hub : docker.io/<username>/realestateai-backend:v1.2
+    image:
+      url: docker.io/REMPLACER/realestateai-backend:v1.2
+    plan: free
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: ALLOW_MOCK_FALLBACK
+        value: "true"
+      - key: LOG_LEVEL
+        value: WARNING
+    healthCheckPath: /api/health
+
+  # ── Frontend React (build depuis GitHub) ─────────────────────────────────
+  - type: web
+    name: realestateai-frontend
+    runtime: static
+    rootDir: Frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    plan: free
+    envVars:
+      - key: VITE_API_URL
+        # Render génère une URL du type : https://realestateai-backend.onrender.com
+        # Remplace par l'URL exacte affichée sur le dashboard Render
+        value: https://realestateai-backend.onrender.com
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html

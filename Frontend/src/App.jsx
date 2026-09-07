@@ -61,7 +61,7 @@ export default function App() {
 
   useEffect(() => {
     getHealth()
-      .then((h) => setBackendStatus(h.dvf_loaded ? 'ready' : 'error'))
+      .then((h) => setBackendStatus((h.dvf_loaded || h.model_loaded) ? 'ready' : 'error'))
       .catch(() => setBackendStatus('error'))
 
     getCommunes()

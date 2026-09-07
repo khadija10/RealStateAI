@@ -17,12 +17,16 @@ COPY requirements.txt /tmp/requirements.txt
 RUN pip install --no-cache-dir -r /tmp/requirements.txt \
     lightgbm duckdb pyarrow pyyaml
 
-# Code backend + module ML + table de référence marché
+# Code backend + module ML + données de référence
 COPY Backend/ /app/
 COPY ml/ /app/ml/
 COPY data/samples/ /app/data/samples/
+# Gold parquet — features de marché pour LightGBM (28 Mo)
+COPY data/processed/gold_transactions/ /app/data/processed/gold_transactions/
 
-ENV DVF_OUTPUTS_DIR="/app/Data pipeline/outputs"
+# Le modèle est bakė dans l'image en prod.
+# En local, docker-compose le monte en volume (chemin identique /app/models/).
+# DVF_OUTPUTS_DIR non défini : le backend démarre sans DVF, ML prend le relais.
 
 RUN useradd --create-home --uid 1000 appuser && chown -R appuser:appuser /app
 USER appuser
