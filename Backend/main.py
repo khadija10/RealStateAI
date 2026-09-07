@@ -114,8 +114,8 @@ PropertyType = Literal["apartment", "house", "studio", "other"]
 
 
 class EstimationRequest(BaseModel):
-    area_m2: float = Field(..., gt=5, le=2000, description="Surface habitable en m²")
-    property_type: PropertyType = "apartment"
+    area_m2: float | None = Field(default=None, gt=5, le=2000, description="Surface habitable en m²")
+    property_type: PropertyType | None = None
     rooms: int | None = Field(default=None, ge=0, le=30)
     commune: str | None = None
     address: str | None = None
@@ -465,7 +465,8 @@ def estimate(
     req: EstimationRequest,
     df: pd.DataFrame | None = Depends(get_dvf),
 ) -> EstimationResponse:
-    surface = req.area_m2
+    surface = req.area_m2 or 50.0
+    type_bien = req.property_type or "apartment"
 
     if ML_ESTIMATOR is not None and (req.address or req.commune or req.postal_code):
         try:
@@ -474,7 +475,7 @@ def estimate(
                 "code_postal": req.postal_code,
                 "surface_m2": surface,
                 "nb_pieces": float(req.rooms) if req.rooms is not None else 3.0,
-                "type_bien": req.property_type,
+                "type_bien": type_bien,
             }
             if req.commune and not req.address:
                 payload["adresse"] = req.commune
@@ -489,7 +490,7 @@ def estimate(
         if not ALLOW_MOCK_FALLBACK:
             raise HTTPException(503, "Le service d'estimation est momentanément indisponible.")
         logger.warning("Dataset indisponible : réponse mock renvoyée")
-        return _mock_estimate(surface, req.property_type)
+        return _mock_estimate(surface, type_bien)
 
     # Localisation : commune explicite en priorité, sinon parsing de l'adresse.
     dep: str | None = None
@@ -508,7 +509,7 @@ def estimate(
     outcome = search_comparables(
         df=df,
         commune_norm=commune_norm,
-        type_bien=req.property_type,
+        type_bien=type_bien,
         surface_m2=surface,
         rooms=req.rooms,
         dep=dep,

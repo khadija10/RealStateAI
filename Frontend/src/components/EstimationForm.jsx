@@ -31,7 +31,7 @@ export default function EstimationForm({ values, onChange, onSubmit, communes, l
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label htmlFor={`${formId}-area`} className="block text-xs font-medium text-ink-muted mb-1.5">
-            Surface (m²) <span className="text-ink-muted/50 font-normal">défaut 50</span>
+            Surface (m²)
           </label>
           <input
             id={`${formId}-area`}
@@ -39,13 +39,13 @@ export default function EstimationForm({ values, onChange, onSubmit, communes, l
             min="1"
             value={values.area_m2}
             onChange={set('area_m2')}
-            placeholder="50"
+            placeholder="ex. 65"
             className="w-full rounded-lg border border-stone-100 bg-stone-50/50 px-3 py-2.5 text-sm text-ink focus:border-seine focus:bg-white outline-none transition-colors"
           />
         </div>
         <div>
           <label htmlFor={`${formId}-rooms`} className="block text-xs font-medium text-ink-muted mb-1.5">
-            Pièces <span className="text-ink-muted/50 font-normal">défaut 3</span>
+            Pièces
           </label>
           <input
             id={`${formId}-rooms`}
@@ -53,14 +53,14 @@ export default function EstimationForm({ values, onChange, onSubmit, communes, l
             min="1"
             value={values.rooms}
             onChange={set('rooms')}
-            placeholder="3"
+            placeholder="ex. 3"
             className="w-full rounded-lg border border-stone-100 bg-stone-50/50 px-3 py-2.5 text-sm text-ink focus:border-seine focus:bg-white outline-none transition-colors"
           />
         </div>
       </div>
 
       <div>
-        <label htmlFor={`${formId}-type`} className="block text-xs font-medium text-ink-muted mb-1.5">
+        <label className="block text-xs font-medium text-ink-muted mb-1.5">
           Type de bien
         </label>
         <div className="grid grid-cols-3 gap-2">
@@ -68,7 +68,10 @@ export default function EstimationForm({ values, onChange, onSubmit, communes, l
             <button
               type="button"
               key={t.value}
-              onClick={() => onChange({ ...values, property_type: t.value })}
+              onClick={() => onChange({
+                ...values,
+                property_type: values.property_type === t.value ? '' : t.value,
+              })}
               className={`rounded-lg border px-3 py-2.5 text-sm transition-colors ${
                 values.property_type === t.value
                   ? 'border-seine bg-seine/5 text-seine font-medium'
@@ -79,6 +82,9 @@ export default function EstimationForm({ values, onChange, onSubmit, communes, l
             </button>
           ))}
         </div>
+        {!values.property_type && (
+          <p className="text-[11px] text-ink-muted mt-1.5">Aucun type sélectionné — le backend utilisera « appartement » par défaut.</p>
+        )}
       </div>
 
       {/* Adresse — section principale */}

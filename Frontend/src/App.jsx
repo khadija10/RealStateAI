@@ -10,7 +10,7 @@ import { getHealth, getCommunes, estimatePrice, ApiError } from './api/client'
 const EMPTY_FORM = {
   area_m2: '',
   rooms: '',
-  property_type: 'apartment',
+  property_type: '',
   commune: '',
   address: '',
   postal_code: '',
@@ -75,9 +75,9 @@ export default function App() {
     setError('')
     try {
       const payload = {
-        area_m2: form.area_m2 ? Number(form.area_m2) : 50,
-        rooms: form.rooms ? Number(form.rooms) : undefined,
-        property_type: form.property_type,
+        ...(form.area_m2 ? { area_m2: Number(form.area_m2) } : {}),
+        ...(form.rooms ? { rooms: Number(form.rooms) } : {}),
+        ...(form.property_type ? { property_type: form.property_type } : {}),
         ...(form.commune ? { commune: form.commune } : {}),
         ...(form.address ? { address: form.address } : {}),
         ...(form.postal_code ? { postal_code: form.postal_code } : {}),
