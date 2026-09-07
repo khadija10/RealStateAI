@@ -15,28 +15,37 @@ export default function EstimationForm({ values, onChange, onSubmit, communes, l
 
   const hasAddress = values.address && values.address.trim().length > 0
 
+  function handleSubmit(e) {
+    e.preventDefault()
+    if (!values.property_type) {
+      // force le navigateur à signaler le champ manquant via l'input caché
+      document.getElementById(`${formId}-type-required`)?.reportValidity()
+      return
+    }
+    onSubmit()
+  }
+
   return (
-    <form
-      onSubmit={(e) => {
-        e.preventDefault()
-        onSubmit()
-      }}
-      className="bg-white rounded-2xl border border-stone-100 shadow-[var(--shadow-card)] p-6 sm:p-8 space-y-5"
-    >
+    <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-stone-100 shadow-[var(--shadow-card)] p-6 sm:p-8 space-y-5">
       <div>
         <h2 className="font-[var(--font-display)] text-[1.6rem] text-ink leading-tight">Le bien</h2>
-        <p className="text-sm text-ink-muted mt-1">Renseignez ses caractéristiques pour obtenir une estimation.</p>
+        <p className="text-sm text-ink-muted mt-1">
+          Les champs marqués <span className="text-seine font-semibold">*</span> sont obligatoires.
+        </p>
       </div>
 
+      {/* Surface + Pièces */}
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label htmlFor={`${formId}-area`} className="block text-xs font-medium text-ink-muted mb-1.5">
-            Surface (m²)
+            Surface (m²) <span className="text-seine font-semibold">*</span>
           </label>
           <input
             id={`${formId}-area`}
             type="number"
-            min="1"
+            min="6"
+            max="2000"
+            required
             value={values.area_m2}
             onChange={set('area_m2')}
             placeholder="ex. 65"
@@ -45,12 +54,14 @@ export default function EstimationForm({ values, onChange, onSubmit, communes, l
         </div>
         <div>
           <label htmlFor={`${formId}-rooms`} className="block text-xs font-medium text-ink-muted mb-1.5">
-            Pièces
+            Pièces <span className="text-seine font-semibold">*</span>
           </label>
           <input
             id={`${formId}-rooms`}
             type="number"
             min="1"
+            max="30"
+            required
             value={values.rooms}
             onChange={set('rooms')}
             placeholder="ex. 3"
@@ -59,9 +70,10 @@ export default function EstimationForm({ values, onChange, onSubmit, communes, l
         </div>
       </div>
 
+      {/* Type de bien */}
       <div>
         <label className="block text-xs font-medium text-ink-muted mb-1.5">
-          Type de bien
+          Type de bien <span className="text-seine font-semibold">*</span>
         </label>
         <div className="grid grid-cols-3 gap-2">
           {PROPERTY_TYPES.map((t) => (
@@ -82,12 +94,24 @@ export default function EstimationForm({ values, onChange, onSubmit, communes, l
             </button>
           ))}
         </div>
+        {/* Input caché pour déclencher la validation native si type manquant */}
+        <input
+          id={`${formId}-type-required`}
+          type="text"
+          required
+          value={values.property_type}
+          onChange={() => {}}
+          tabIndex={-1}
+          aria-hidden="true"
+          className="sr-only"
+          style={{ position: 'absolute', opacity: 0, height: 0 }}
+        />
         {!values.property_type && (
-          <p className="text-[11px] text-ink-muted mt-1.5">Aucun type sélectionné — le backend utilisera « appartement » par défaut.</p>
+          <p className="text-[11px] text-stone-400 mt-1.5">Sélectionnez un type de bien.</p>
         )}
       </div>
 
-      {/* Adresse — section principale */}
+      {/* Localisation */}
       <div className="space-y-3">
         <div className="flex items-center gap-2">
           <div className="h-px flex-1 bg-stone-100" />
@@ -99,7 +123,7 @@ export default function EstimationForm({ values, onChange, onSubmit, communes, l
           <label htmlFor={`${formId}-address`} className="block text-xs font-medium text-ink-muted mb-1.5">
             Adresse{' '}
             <span className="text-seine font-medium text-[10px] uppercase tracking-wide ml-1">
-              ↑ meilleure précision
+              ↑ active le modèle ML
             </span>
           </label>
           <input
@@ -107,7 +131,7 @@ export default function EstimationForm({ values, onChange, onSubmit, communes, l
             type="text"
             value={values.address}
             onChange={set('address')}
-            placeholder="21 rue de Rivoli"
+            placeholder="ex. 21 rue de Rivoli"
             className="w-full rounded-lg border border-stone-100 bg-stone-50/50 px-3 py-2.5 text-sm text-ink focus:border-seine focus:bg-white outline-none transition-colors"
           />
         </div>
@@ -123,7 +147,7 @@ export default function EstimationForm({ values, onChange, onSubmit, communes, l
               maxLength={5}
               value={values.postal_code}
               onChange={set('postal_code')}
-              placeholder="75004"
+              placeholder="ex. 75004"
               className="w-full rounded-lg border border-stone-100 bg-stone-50/50 px-3 py-2.5 text-sm text-ink focus:border-seine focus:bg-white outline-none transition-colors"
             />
           </div>
@@ -140,7 +164,7 @@ export default function EstimationForm({ values, onChange, onSubmit, communes, l
               required={!hasAddress}
               value={values.commune}
               onChange={set('commune')}
-              placeholder={communesLoading ? 'Chargement…' : 'PARIS 04'}
+              placeholder={communesLoading ? 'Chargement…' : 'ex. PARIS 04'}
               className="w-full rounded-lg border border-stone-100 bg-stone-50/50 px-3 py-2.5 text-sm text-ink focus:border-seine focus:bg-white outline-none transition-colors"
             />
             <datalist id={`${formId}-communes-list`}>
@@ -153,8 +177,8 @@ export default function EstimationForm({ values, onChange, onSubmit, communes, l
 
         <p className="text-[11px] text-ink-muted">
           {hasAddress
-            ? 'Adresse détectée — le modèle ML sera utilisé via géolocalisation BAN.'
-            : <><span className="text-seine font-medium">*</span> Commune requise. Ajoutez une adresse pour activer le modèle ML.</>}
+            ? 'Adresse détectée — géolocalisation BAN activée.'
+            : <><span className="text-seine font-medium">*</span> Commune requise sans adresse.</>}
         </p>
       </div>
 

@@ -114,8 +114,8 @@ PropertyType = Literal["apartment", "house", "studio", "other"]
 
 
 class EstimationRequest(BaseModel):
-    area_m2: float | None = Field(default=None, gt=5, le=2000, description="Surface habitable en m²")
-    property_type: PropertyType | None = None
+    area_m2: float = Field(..., gt=5, le=2000, description="Surface habitable en m²")
+    property_type: PropertyType = "apartment"
     rooms: int | None = Field(default=None, ge=0, le=30)
     commune: str | None = None
     address: str | None = None
@@ -465,8 +465,8 @@ def estimate(
     req: EstimationRequest,
     df: pd.DataFrame | None = Depends(get_dvf),
 ) -> EstimationResponse:
-    surface = req.area_m2 or 50.0
-    type_bien = req.property_type or "apartment"
+    surface = req.area_m2
+    type_bien = req.property_type
 
     if ML_ESTIMATOR is not None and (req.address or req.commune or req.postal_code):
         try:
