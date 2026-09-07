@@ -10,7 +10,7 @@ import { getHealth, getCommunes, estimatePrice, ApiError } from './api/client'
 const EMPTY_FORM = {
   area_m2: '',
   rooms: '',
-  property_type: '',
+  property_type: 'apartment',
   commune: '',
   address: '',
   postal_code: '',
