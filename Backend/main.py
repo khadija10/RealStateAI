@@ -556,5 +556,36 @@ def estimate(
     )
 
 
+# ==========================================================================
+#  ENDPOINTS MARCHÉ
+# ==========================================================================
+
+_SAMPLES_DIR = next(
+    (p for p in [BASE_DIR / "data" / "samples", BASE_DIR.parent / "data" / "samples"] if p.is_dir()),
+    BASE_DIR / "data" / "samples",
+)
+_COMMUNE_STATS_PATH = _SAMPLES_DIR / "commune_stats.json"
+_MARKET_TRENDS_PATH = _SAMPLES_DIR / "market_trends.json"
+
+
+@app.get(f"{API_PREFIX}/market/map", tags=["marché"])
+def market_map():
+    """Statistiques prix/m² par commune pour la carte interactive."""
+    if not _COMMUNE_STATS_PATH.exists():
+        raise HTTPException(503, "Données cartographiques non disponibles.")
+    return json.loads(_COMMUNE_STATS_PATH.read_text())
+
+
+@app.get(f"{API_PREFIX}/market/trends", tags=["marché"])
+def market_trends(dep: str | None = Query(default=None, description="Code département (75, 92…)")):
+    """Tendances mensuelles du prix/m² par département."""
+    if not _MARKET_TRENDS_PATH.exists():
+        raise HTTPException(503, "Données de tendances non disponibles.")
+    data = json.loads(_MARKET_TRENDS_PATH.read_text())
+    if dep:
+        data = [row for row in data if str(row.get("code_departement")) == dep]
+    return data
+
+
 if __name__ == "__main__":
     uvicorn.run("main:app", host="0.0.0.0", port=8000, reload=True)

@@ -13,6 +13,8 @@ export default function EstimationForm({ values, onChange, onSubmit, communes, l
     return (e) => onChange({ ...values, [field]: e.target.value })
   }
 
+  const hasAddress = values.address && values.address.trim().length > 0
+
   return (
     <form
       onSubmit={(e) => {
@@ -81,39 +83,72 @@ export default function EstimationForm({ values, onChange, onSubmit, communes, l
         </div>
       </div>
 
-      <div>
-        <label htmlFor={`${formId}-commune`} className="block text-xs font-medium text-ink-muted mb-1.5">
-          Commune
-        </label>
-        <input
-          id={`${formId}-commune`}
-          list={`${formId}-communes-list`}
-          required
-          value={values.commune}
-          onChange={set('commune')}
-          placeholder={communesLoading ? 'Chargement des communes…' : 'PARIS 01'}
-          className="w-full rounded-lg border border-stone-100 bg-stone-50/50 px-3 py-2.5 text-sm text-ink focus:border-seine focus:bg-white outline-none transition-colors"
-        />
-        <datalist id={`${formId}-communes-list`}>
-          {communes.map((c) => (
-            <option key={c} value={c} />
-          ))}
-        </datalist>
-        <p className="text-[11px] text-ink-muted mt-1.5">Choisissez une commune de la liste pour garantir une estimation.</p>
-      </div>
+      {/* Adresse — section principale */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <div className="h-px flex-1 bg-stone-100" />
+          <p className="text-[11px] uppercase tracking-[0.12em] text-ink-muted">Localisation</p>
+          <div className="h-px flex-1 bg-stone-100" />
+        </div>
 
-      <div>
-        <label htmlFor={`${formId}-address`} className="block text-xs font-medium text-ink-muted mb-1.5">
-          Adresse <span className="text-ink-muted/70">(optionnel)</span>
-        </label>
-        <input
-          id={`${formId}-address`}
-          type="text"
-          value={values.address}
-          onChange={set('address')}
-          placeholder="10 Rue de Rivoli, 75001 Paris"
-          className="w-full rounded-lg border border-stone-100 bg-stone-50/50 px-3 py-2.5 text-sm text-ink focus:border-seine focus:bg-white outline-none transition-colors"
-        />
+        <div>
+          <label htmlFor={`${formId}-address`} className="block text-xs font-medium text-ink-muted mb-1.5">
+            Adresse{' '}
+            <span className="text-seine font-medium text-[10px] uppercase tracking-wide ml-1">
+              ↑ meilleure précision
+            </span>
+          </label>
+          <input
+            id={`${formId}-address`}
+            type="text"
+            value={values.address}
+            onChange={set('address')}
+            placeholder="21 rue de Rivoli"
+            className="w-full rounded-lg border border-stone-100 bg-stone-50/50 px-3 py-2.5 text-sm text-ink focus:border-seine focus:bg-white outline-none transition-colors"
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-3">
+          <div>
+            <label htmlFor={`${formId}-postal`} className="block text-xs font-medium text-ink-muted mb-1.5">
+              Code postal
+            </label>
+            <input
+              id={`${formId}-postal`}
+              type="text"
+              maxLength={5}
+              value={values.postal_code}
+              onChange={set('postal_code')}
+              placeholder="75004"
+              className="w-full rounded-lg border border-stone-100 bg-stone-50/50 px-3 py-2.5 text-sm text-ink focus:border-seine focus:bg-white outline-none transition-colors"
+            />
+          </div>
+          <div>
+            <label htmlFor={`${formId}-commune`} className="block text-xs font-medium text-ink-muted mb-1.5">
+              Commune{hasAddress ? <span className="text-ink-muted/50 ml-1">(optionnel)</span> : <span className="text-red-400 ml-1">*</span>}
+            </label>
+            <input
+              id={`${formId}-commune`}
+              list={`${formId}-communes-list`}
+              required={!hasAddress}
+              value={values.commune}
+              onChange={set('commune')}
+              placeholder={communesLoading ? 'Chargement…' : 'PARIS 04'}
+              className="w-full rounded-lg border border-stone-100 bg-stone-50/50 px-3 py-2.5 text-sm text-ink focus:border-seine focus:bg-white outline-none transition-colors"
+            />
+            <datalist id={`${formId}-communes-list`}>
+              {communes.map((c) => (
+                <option key={c} value={c} />
+              ))}
+            </datalist>
+          </div>
+        </div>
+
+        {!hasAddress && (
+          <p className="text-[11px] text-ink-muted">
+            Sans adresse, l&apos;estimation utilise les données DVF de la commune. Ajoutez une adresse pour activer le modèle ML.
+          </p>
+        )}
       </div>
 
       <button

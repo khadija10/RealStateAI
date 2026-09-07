@@ -54,4 +54,12 @@ export function estimatePrice(payload) {
   })
 }
 
+export function getMarketMap() {
+  return request('/api/market/map')
+}
+
+export function getMarketTrends(dep) {
+  return request(dep ? `/api/market/trends?dep=${dep}` : '/api/market/trends')
+}
+
 export { ApiError }
