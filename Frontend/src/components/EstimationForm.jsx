@@ -31,28 +31,26 @@ export default function EstimationForm({ values, onChange, onSubmit, communes, l
       <div className="grid grid-cols-2 gap-4">
         <div>
           <label htmlFor={`${formId}-area`} className="block text-xs font-medium text-ink-muted mb-1.5">
-            Surface (m²)
+            Surface (m²) <span className="text-ink-muted/50 font-normal">défaut 50</span>
           </label>
           <input
             id={`${formId}-area`}
             type="number"
             min="1"
-            required
             value={values.area_m2}
             onChange={set('area_m2')}
-            placeholder="65"
+            placeholder="50"
             className="w-full rounded-lg border border-stone-100 bg-stone-50/50 px-3 py-2.5 text-sm text-ink focus:border-seine focus:bg-white outline-none transition-colors"
           />
         </div>
         <div>
           <label htmlFor={`${formId}-rooms`} className="block text-xs font-medium text-ink-muted mb-1.5">
-            Nombre de pièces
+            Pièces <span className="text-ink-muted/50 font-normal">défaut 3</span>
           </label>
           <input
             id={`${formId}-rooms`}
             type="number"
             min="1"
-            required
             value={values.rooms}
             onChange={set('rooms')}
             placeholder="3"
@@ -125,7 +123,10 @@ export default function EstimationForm({ values, onChange, onSubmit, communes, l
           </div>
           <div>
             <label htmlFor={`${formId}-commune`} className="block text-xs font-medium text-ink-muted mb-1.5">
-              Commune{hasAddress ? <span className="text-ink-muted/50 ml-1">(optionnel)</span> : <span className="text-red-400 ml-1">*</span>}
+              Commune{' '}
+              {hasAddress
+                ? <span className="text-ink-muted/50 font-normal">optionnel</span>
+                : <span className="text-seine font-semibold">*</span>}
             </label>
             <input
               id={`${formId}-commune`}
@@ -144,11 +145,11 @@ export default function EstimationForm({ values, onChange, onSubmit, communes, l
           </div>
         </div>
 
-        {!hasAddress && (
-          <p className="text-[11px] text-ink-muted">
-            Sans adresse, l&apos;estimation utilise les données DVF de la commune. Ajoutez une adresse pour activer le modèle ML.
-          </p>
-        )}
+        <p className="text-[11px] text-ink-muted">
+          {hasAddress
+            ? 'Adresse détectée — le modèle ML sera utilisé via géolocalisation BAN.'
+            : <><span className="text-seine font-medium">*</span> Commune requise. Ajoutez une adresse pour activer le modèle ML.</>}
+        </p>
       </div>
 
       <button

@@ -75,7 +75,7 @@ export default function App() {
     setError('')
     try {
       const payload = {
-        area_m2: Number(form.area_m2),
+        area_m2: form.area_m2 ? Number(form.area_m2) : 50,
         rooms: form.rooms ? Number(form.rooms) : undefined,
         property_type: form.property_type,
         ...(form.commune ? { commune: form.commune } : {}),
