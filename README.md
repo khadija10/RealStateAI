@@ -3,10 +3,10 @@
 RealStateAI is a full-stack real estate estimation prototype based on French DVF open data.
 
 ## Version
-- Prototype v0.2 (current)
+- Prototype v1.0 (current)
 
 ## Versioning
-- Tag a release: `git tag -a v0.2 -m "Prototype v0.2"`
+- Tag a release: `git tag -a v1.0 -m "Prototype v1.0"`
 - Push tags: `git push --tags`
 
 ## Current Scope

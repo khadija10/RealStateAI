@@ -28,11 +28,13 @@ export default function EstimationResult({ estimation }: EstimationResultProps) 
     100;
 
   const propertyTypeLabels: { [key: string]: string } = {
-    'apartment': 'App.',
-    'house': 'Maison',
-    'studio': 'Studio',
-    'duplex': 'Duplex',
+    apartment: 'Appartement',
+    house: 'Maison',
   };
+
+  const propertyTypeLabel =
+    propertyTypeLabels[estimation.property_type] ||
+    estimation.property_type.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
   return (
     <div className="bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-2xl p-8 shadow-2xl text-white animate-fade-in">
@@ -44,7 +46,7 @@ export default function EstimationResult({ estimation }: EstimationResultProps) 
           € {estimation.predicted_price.toLocaleString('fr-FR')}
         </h2>
         <p className="text-gray-400 text-sm">
-          {propertyTypeLabels[estimation.property_type]} · {estimation.surface} m² · {estimation.rooms} pièces
+          {propertyTypeLabel} · {estimation.surface} m² · {estimation.rooms} pièces
         </p>
       </div>
 
@@ -64,7 +66,7 @@ export default function EstimationResult({ estimation }: EstimationResultProps) 
           <p className="text-xs text-gray-400 mt-1">SURFACE</p>
         </div>
         <div className="bg-white/5 backdrop-blur-sm rounded-lg p-4 border border-white/10">
-          <p className="text-2xl font-bold">{propertyTypeLabels[estimation.property_type]}</p>
+          <p className="text-2xl font-bold">{propertyTypeLabel}</p>
           <p className="text-xs text-gray-400 mt-1">TYPE</p>
         </div>
       </div>

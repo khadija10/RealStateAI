@@ -213,6 +213,9 @@ Backend/Data pipeline/Data/*.txt
 Backend/Data pipeline/Data/*.zip
 Backend/Data pipeline/outputs/*.csv
 
+# Trained models
+Backend/models/*.pkl
+
 # Frontend (Node/Vite)
 node_modules/
 Frontend/node_modules/
@@ -232,3 +235,19 @@ lerna-debug.log*
 *.njsproj
 *.sln
 *.sw?
+
+# ===== Data pipeline DVF (Skander) =====
+data/raw/*
+data/interim/*
+data/processed/*
+data/external/*
+*.parquet
+*.csv.gz
+!data/samples/**
+!data/**/.gitkeep
+data-pipeline/.venv/
+
+# MLflow
+mlruns/
+
+# Modèles lourds (versionnés séparément si besoin)

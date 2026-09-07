@@ -20,7 +20,7 @@ export default function Header() {
           </div>
           <div className="flex items-center gap-1">
             <span className="text-xs text-orange-600 bg-orange-50 px-2 py-1 rounded">
-              Prototype v0.2
+              Prototype v1.0
             </span>
             <span className="text-xs text-gray-500 ml-2">10 March 2026</span>
           </div>

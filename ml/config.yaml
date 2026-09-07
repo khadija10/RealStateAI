@@ -1,0 +1,45 @@
+data:
+  gold_path: "data/processed/gold_transactions"
+  model_output: "Backend/models/price_model.pkl"
+  mlflow_uri: "sqlite:///mlruns/mlflow.db"
+
+split:
+  train_years: [2021, 2022, 2023, 2024]
+  test_years: [2025]
+
+features:
+  numeric:
+    - surface_bati
+    - nb_pieces
+    - surface_moyenne_piece
+    - prix_m2_reference_12m
+    - nb_ventes_commune_12m
+    - prix_m2_median_dept_12m
+    - nb_ventes_dept_12m
+    - latitude
+    - longitude
+    - mois_index
+    - mois
+    - trimestre
+  categorical:
+    - code_type_local
+    - code_departement
+  boolean:
+    - a_terrain
+
+target: prix_m2
+
+lightgbm:
+  n_estimators: 2000
+  learning_rate: 0.05
+  num_leaves: 127
+  max_depth: -1
+  min_child_samples: 20
+  subsample: 0.8
+  colsample_bytree: 0.8
+  reg_alpha: 0.1
+  reg_lambda: 1.0
+  n_jobs: -1
+  random_state: 42
+  early_stopping_rounds: 50
+  verbose: -1
