@@ -132,12 +132,7 @@ export default function PriceMap() {
   }, [activeDep, allData])
 
   return (
-    <section className="mt-16">
-      <div className="mb-6">
-        <h2 className="font-[var(--font-display)] text-3xl text-ink">Carte des prix par commune</h2>
-        <p className="text-sm text-ink-muted mt-1">Prix médian au m² — transactions 2022-2024, Île-de-France.</p>
-      </div>
-
+    <section>
       {/* Filtre département */}
       <div className="flex flex-wrap gap-2 mb-4">
         <button

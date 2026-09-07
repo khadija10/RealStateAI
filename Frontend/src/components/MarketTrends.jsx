@@ -107,12 +107,7 @@ export default function MarketTrends() {
   }))
 
   return (
-    <section className="mt-16 mb-16">
-      <div className="mb-6">
-        <h2 className="font-[var(--font-display)] text-3xl text-ink">Référence du marché</h2>
-        <p className="text-sm text-ink-muted mt-1">Évolution mensuelle du prix médian au m² par département, 2021-2025.</p>
-      </div>
-
+    <section className="mb-16">
       {/* Prix actuels */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
         {currentPrices.map(({ code, label, current, prev, color }) => {

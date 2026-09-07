@@ -16,6 +16,12 @@ const EMPTY_FORM = {
   postal_code: '',
 }
 
+const TABS = [
+  { id: 'estimation', label: 'Estimation' },
+  { id: 'carte', label: 'Carte des prix' },
+  { id: 'marche', label: 'Référence du marché' },
+]
+
 function normalizeCommunes(raw) {
   if (!Array.isArray(raw)) return []
   return raw.map((c) => (typeof c === 'string' ? c : c.commune || c.name || c.label || '')).filter(Boolean)
@@ -35,6 +41,9 @@ function normalizeResult(raw) {
     high: high ?? price * 1.1,
     model: raw.model ?? 'dvf',
     adresseNormalisee: raw.adresse_normalisee ?? raw.adresseNormalisee ?? null,
+    reliability: raw.reliability ?? null,
+    meta: raw.meta ?? null,
+    confidenceLabel: raw.confidence_interval?.confidence ?? '85%',
   }
 }
 
@@ -42,6 +51,7 @@ export default function App() {
   const [backendStatus, setBackendStatus] = useState('loading')
   const [communes, setCommunes] = useState([])
   const [communesLoading, setCommunesLoading] = useState(true)
+  const [activeTab, setActiveTab] = useState('estimation')
 
   const [form, setForm] = useState(EMPTY_FORM)
   const [status, setStatus] = useState('idle')
@@ -86,35 +96,88 @@ export default function App() {
     <div className="min-h-screen flex flex-col">
       <Header datasetStatus={backendStatus} />
 
-      <main className="flex-1 max-w-5xl w-full mx-auto px-6 py-12">
-        {/* Hero */}
-        <div className="max-w-xl mb-10">
-          <h1 className="font-[var(--font-display)] text-4xl sm:text-5xl text-ink leading-[1.05]">
-            Estimez la valeur de votre bien en quelques secondes
-          </h1>
-          <p className="text-ink-muted mt-4 leading-relaxed">
-            Modèle LightGBM entraîné sur 700 000 transactions DVF en Île-de-France. Géolocalisation via l&apos;API BAN.
-          </p>
+      {/* Barre de navigation onglets */}
+      <nav className="border-b border-stone-100 bg-white sticky top-0 z-20">
+        <div className="max-w-5xl mx-auto px-6">
+          <div className="flex gap-0">
+            {TABS.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`px-5 py-4 text-sm font-medium border-b-2 transition-colors ${
+                  activeTab === tab.id
+                    ? 'border-seine text-seine'
+                    : 'border-transparent text-ink-muted hover:text-ink hover:border-stone-100'
+                }`}
+              >
+                {tab.label}
+                {tab.id === 'estimation' && status === 'success' && (
+                  <span className="ml-2 h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block align-middle" />
+                )}
+              </button>
+            ))}
+          </div>
         </div>
+      </nav>
 
-        {/* Estimateur */}
-        <div className="grid md:grid-cols-2 gap-6 items-start">
-          <EstimationForm
-            values={form}
-            onChange={setForm}
-            onSubmit={handleSubmit}
-            communes={communes}
-            communesLoading={communesLoading}
-            loading={status === 'loading'}
-          />
-          <ResultPanel status={status} error={error} result={result} query={submittedQuery} />
-        </div>
+      <main className="flex-1 max-w-5xl w-full mx-auto px-6 py-10">
 
-        {/* Carte des prix */}
-        <PriceMap />
+        {/* ONGLET ESTIMATION */}
+        {activeTab === 'estimation' && (
+          <>
+            <div className="max-w-xl mb-10">
+              <h1 className="font-[var(--font-display)] text-4xl sm:text-5xl text-ink leading-[1.05]">
+                Estimez la valeur de votre bien
+              </h1>
+              <p className="text-ink-muted mt-4 leading-relaxed">
+                Modèle LightGBM entraîné sur 700 000 transactions DVF · Île-de-France · Géolocalisation BAN
+              </p>
+            </div>
 
-        {/* Référence du marché */}
-        <MarketTrends />
+            <div className="grid md:grid-cols-2 gap-6 items-start">
+              <EstimationForm
+                values={form}
+                onChange={setForm}
+                onSubmit={handleSubmit}
+                communes={communes}
+                communesLoading={communesLoading}
+                loading={status === 'loading'}
+              />
+              <ResultPanel status={status} error={error} result={result} query={submittedQuery} />
+            </div>
+          </>
+        )}
+
+        {/* ONGLET CARTE */}
+        {activeTab === 'carte' && (
+          <>
+            <div className="max-w-xl mb-8">
+              <h1 className="font-[var(--font-display)] text-4xl sm:text-5xl text-ink leading-[1.05]">
+                Carte des prix par commune
+              </h1>
+              <p className="text-ink-muted mt-4 leading-relaxed">
+                Prix médian au m² — 1 193 communes d&apos;Île-de-France · transactions 2022-2024
+              </p>
+            </div>
+            <PriceMap />
+          </>
+        )}
+
+        {/* ONGLET RÉFÉRENCE */}
+        {activeTab === 'marche' && (
+          <>
+            <div className="max-w-xl mb-8">
+              <h1 className="font-[var(--font-display)] text-4xl sm:text-5xl text-ink leading-[1.05]">
+                Référence du marché
+              </h1>
+              <p className="text-ink-muted mt-4 leading-relaxed">
+                Évolution mensuelle du prix médian au m² par département, 2021-2025.
+              </p>
+            </div>
+            <MarketTrends />
+          </>
+        )}
+
       </main>
 
       <Footer />
