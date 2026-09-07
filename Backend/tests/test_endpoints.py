@@ -22,6 +22,7 @@ from utils.address_parser import city_root, normalize_commune, parse_address
 from utils.dvf_search import (
     SearchConfig,
     commune_display_names,
+    load_dvf,
     prepare_index,
     search_comparables,
 )
@@ -195,6 +196,30 @@ def test_search_commune_inconnue(fake_dvf):
 
 def test_search_dataframe_vide():
     assert search_comparables(pd.DataFrame(), "paris 15", "apartment", 60).is_empty
+
+
+def test_load_dvf_gold_pipeline_partitionne(tmp_path):
+    gold_dir = tmp_path / "gold_transactions" / "annee=2025"
+    gold_dir.mkdir(parents=True)
+    pd.DataFrame(
+        {
+            "nom_commune": ["VERSAILLES"],
+            "type_local": ["Appartement"],
+            "surface_bati": [60.0],
+            "valeur_fonciere": [360_000.0],
+            "prix_m2": [6_000.0],
+            "code_departement": ["78"],
+            "nb_pieces": [3.0],
+        }
+    ).to_parquet(gold_dir / "data.parquet")
+
+    loaded = load_dvf(tmp_path / "gold_transactions")
+
+    assert loaded.loc[0, "commune_norm"] == "versailles"
+    assert loaded.loc[0, "type_bien_norm"] == "apartment"
+    assert loaded.loc[0, "dep"] == "78"
+    assert loaded.loc[0, "surface_m2"] == 60.0
+    assert loaded.loc[0, "prix_au_m2"] == 6_000.0
 
 
 # ==========================================================================

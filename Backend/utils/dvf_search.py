@@ -34,15 +34,34 @@ RENAME_MAP = {
     "Code postal": "code_postal",
     "Date mutation": "date_mutation",
     "Nombre pieces principales": "nb_pieces",
+    "nom_commune": "commune",
+    "type_local": "type_bien",
+    "surface_bati": "surface_m2",
+    "valeur_fonciere": "prix_vente",
+    "prix_m2": "prix_au_m2",
+    "code_departement": "dep",
 }
 
 REQUIRED_COLUMNS = ["commune", "type_bien", "surface_m2", "prix_vente", "prix_au_m2"]
+
+TYPE_BIEN_MAP = {
+    "1": "house",
+    "maison": "house",
+    "2": "apartment",
+    "appartement": "apartment",
+    "studio": "studio",
+}
 
 
 def load_dvf(path: str | Path) -> pd.DataFrame:
     """Lit le dataset (.parquet de préférence, .csv accepté) et l'indexe."""
     path = Path(path)
-    if path.suffix == ".parquet":
+    if path.is_dir():
+        files = sorted(path.rglob("*.parquet"))
+        if not files:
+            raise ValueError(f"Aucun fichier Parquet trouvé dans {path}")
+        df = pd.concat((pd.read_parquet(file) for file in files), ignore_index=True)
+    elif path.suffix == ".parquet":
         df = pd.read_parquet(path)
     else:
         df = pd.read_csv(path, low_memory=False)
@@ -73,7 +92,13 @@ def prepare_index(df: pd.DataFrame) -> pd.DataFrame:
 
     df["commune_norm"] = df["commune"].astype(str).map(normalize_commune)
     df["ville_norm"] = df["commune_norm"].map(city_root)
-    df["type_bien_norm"] = df["type_bien"].astype(str).str.strip().str.lower()
+    df["type_bien_norm"] = (
+        df["type_bien"]
+        .astype(str)
+        .str.strip()
+        .str.lower()
+        .map(lambda value: TYPE_BIEN_MAP.get(value, value))
+    )
 
     if "dep" not in df.columns:
         if "code_postal" in df.columns:

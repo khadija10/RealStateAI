@@ -23,9 +23,10 @@ from __future__ import annotations
 import json
 import logging
 import os
+import sys
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
 import pandas as pd
 import uvicorn
@@ -33,7 +34,7 @@ from fastapi import Depends, FastAPI, HTTPException, Query, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from utils.address_parser import normalize_commune, parse_address
 from utils.dvf_search import (
@@ -53,6 +54,9 @@ BASE_DIR = Path(__file__).resolve().parent
 # Chemins : jamais de séparateur en dur. Un chemin Windows codé "en dur"
 # casse dans Docker, et un chemin relatif dépend du dossier de lancement.
 DVF_OUTPUTS_DIR = Path(os.getenv("DVF_OUTPUTS_DIR", BASE_DIR / "Data pipeline" / "outputs"))
+DVF_GOLD_DIR = Path(
+    os.getenv("DVF_GOLD_DIR", BASE_DIR.parent / "data" / "processed" / "gold_transactions")
+)
 DVF_CLEAN_PATH = os.getenv("DVF_CLEAN_PATH")  # surcharge explicite, optionnelle
 
 API_PREFIX = "/api"
@@ -78,6 +82,8 @@ logger = logging.getLogger("realestateai")
 def resolve_dvf_path() -> Path | None:
     """Trouve le dataset à charger.
 
+    La pipeline data produit un dossier Parquet partitionné
+    `data/processed/gold_transactions/annee=...`, chargé en priorité.
     Le pipeline produit `DVF_clean_2025.parquet` ou `DVF_clean_2024_2025.parquet`
     selon les années traitées : on prend le plus récent plutôt que d'exiger un
     nom figé (c'est ce décalage de nom qui empêchait l'API de charger le DVF).
@@ -85,6 +91,9 @@ def resolve_dvf_path() -> Path | None:
     if DVF_CLEAN_PATH:
         candidate = Path(DVF_CLEAN_PATH)
         return candidate if candidate.exists() else None
+
+    if DVF_GOLD_DIR.is_dir() and any(DVF_GOLD_DIR.rglob("*.parquet")):
+        return DVF_GOLD_DIR
 
     for pattern in ("DVF_clean_*.parquet", "DVF_clean_*.csv"):
         found = list(DVF_OUTPUTS_DIR.glob(pattern))
@@ -108,6 +117,9 @@ class EstimationRequest(BaseModel):
     rooms: int | None = Field(default=None, ge=0, le=30)
     commune: str | None = None
     address: str | None = None
+    postal_code: str | None = None
+    location_lat: float | None = Field(default=None, ge=-90, le=90)
+    location_lng: float | None = Field(default=None, ge=-180, le=180)
 
     @model_validator(mode="after")
     def require_location(self):
@@ -151,12 +163,16 @@ class EstimationMeta(BaseModel):
 
 
 class EstimationResponse(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
     estimated_price: float
     price_per_m2: float
     price_range: PriceRange
     reliability: float = Field(..., ge=0, le=1)
-    model: Literal["dvf", "mock"]
+    model: Literal["dvf", "mock", "ml"]
     meta: EstimationMeta | None = None
+    predicted_price: float | None = None
+    confidence_interval: dict[str, Any] | None = None
 
 
 class HealthResponse(BaseModel):
@@ -189,7 +205,7 @@ async def lifespan(app: FastAPI):
     path = resolve_dvf_path()
     if path is None:
         app.state.dvf_error = (
-            f"Aucun dataset DVF trouvé dans {DVF_OUTPUTS_DIR}. "
+            f"Aucun dataset DVF trouvé dans {DVF_GOLD_DIR} ou {DVF_OUTPUTS_DIR}. "
             "Lancez d'abord le pipeline de données."
         )
         logger.warning(app.state.dvf_error)
@@ -272,6 +288,92 @@ def get_dvf(request: Request) -> pd.DataFrame | None:
     return request.app.state.dvf
 
 
+def _load_ml_estimator() -> tuple[Any | None, str | None]:
+    """Charge un module ML s’il existe dans le dépôt.
+
+    Le backend doit rester compatible même si le modèle est développé dans une
+    autre partie du projet ou pas encore disponible dans cette branche.
+    """
+    roots: list[Path] = [
+        Path(__file__).resolve().parent.parent,
+        Path(__file__).resolve().parent,
+        Path(__file__).resolve().parent.parent / "Backend",
+    ]
+    seen: set[str] = set()
+    for root in roots:
+        for candidate in (root / "ml", root / "Backend" / "ml"):
+            p = str(candidate)
+            if candidate.exists() and p not in seen:
+                seen.add(p)
+                if str(candidate) not in sys.path:
+                    sys.path.insert(0, str(candidate))
+
+    candidates = [
+        "estimator",
+        "ml.estimator",
+        "ml.model",
+        "app.ml.estimator",
+    ]
+    for module_name in candidates:
+        try:
+            module = __import__(module_name, fromlist=["estimer_prix"])
+            if hasattr(module, "estimer_prix"):
+                return module.estimer_prix, None
+        except Exception as exc:  # pragma: no cover - dépend de la structure du repo
+            logger.debug("ML module %s indisponible : %s", module_name, exc)
+    return None, "module ML introuvable"
+
+
+ML_ESTIMATOR, ML_ERROR = _load_ml_estimator()
+
+
+def _normalize_ml_result(raw: Any, surface: float) -> EstimationResponse:
+    """Normalise une réponse brute ML vers le contrat du backend."""
+    if isinstance(raw, dict):
+        estimated = float(
+            raw.get("estimated_price")
+            or raw.get("predicted_price")
+            or raw.get("price")
+            or 0.0
+        )
+        per_m2 = float(raw.get("price_per_m2") or (estimated / surface if surface > 0 else 0.0))
+        ci = raw.get("confidence_interval") or {}
+        low = float(ci.get("lower") or estimated * 0.85)
+        high = float(ci.get("upper") or estimated * 1.15)
+        confidence = ci.get("confidence") or "85%"
+        reliability = float(raw.get("reliability") or 0.8)
+        model_name = str(raw.get("model") or "ml")
+        payload = EstimationResponse(
+            estimated_price=estimated,
+            price_per_m2=per_m2,
+            price_range=PriceRange(
+                low=low,
+                high=high,
+                low_per_m2=low / surface if surface > 0 else low,
+                high_per_m2=high / surface if surface > 0 else high,
+                basis="ml",
+            ),
+            reliability=min(1.0, max(0.0, reliability)),
+            model=model_name if model_name in {"dvf", "mock", "ml"} else "ml",
+            predicted_price=estimated,
+            confidence_interval={"lower": low, "upper": high, "confidence": confidence},
+            meta=EstimationMeta(
+                scope="ml",
+                scope_value="ml",
+                property_type_used="ml",
+                fallback_level=0,
+                n_transactions=0,
+                notes=["estimation fournie par le modèle ML"],
+            ),
+        )
+        return payload
+
+    if hasattr(raw, "model_dump"):
+        return _normalize_ml_result(raw.model_dump(), surface)
+
+    raise TypeError("Réponse ML non reconnue")
+
+
 # ==========================================================================
 #  ENDPOINTS
 # ==========================================================================
@@ -334,6 +436,12 @@ def _mock_estimate(surface: float, property_type: str) -> EstimationResponse:
         ),
         reliability=0.1,
         model="mock",
+        predicted_price=round(price, 2),
+        confidence_interval={
+            "lower": round(price * (1 - margin), 2),
+            "upper": round(price * (1 + margin), 2),
+            "confidence": "85%",
+        },
     )
 
 
@@ -347,6 +455,24 @@ def estimate(
     df: pd.DataFrame | None = Depends(get_dvf),
 ) -> EstimationResponse:
     surface = req.area_m2
+
+    if ML_ESTIMATOR is not None and (req.address or req.commune or req.postal_code):
+        try:
+            payload: dict[str, Any] = {
+                "adresse": req.address,
+                "code_postal": req.postal_code,
+                "surface_m2": surface,
+                "nb_pieces": float(req.rooms) if req.rooms is not None else 3.0,
+                "type_bien": req.property_type,
+            }
+            if req.commune and not req.address:
+                payload["adresse"] = req.commune
+            ml_result = ML_ESTIMATOR(**{k: v for k, v in payload.items() if v is not None})
+            if ml_result is not None:
+                logger.info("Réponse renvoyée par le modèle ML")
+                return _normalize_ml_result(ml_result, surface)
+        except Exception as exc:  # pragma: no cover - dépend du module ML réel
+            logger.warning("Erreur modèle ML, fallback vers DVF : %s", exc)
 
     if df is None:
         if not ALLOW_MOCK_FALLBACK:
@@ -401,6 +527,12 @@ def estimate(
         ),
         reliability=result.reliability,
         model="dvf",
+        predicted_price=result.estimated_price,
+        confidence_interval={
+            "lower": result.range_low,
+            "upper": result.range_high,
+            "confidence": "85%",
+        },
         meta=EstimationMeta(
             scope=outcome.scope,
             scope_value=outcome.scope_value,
