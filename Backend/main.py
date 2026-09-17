@@ -68,6 +68,7 @@ DEFAULT_ORIGINS = [
     "http://localhost:4173",   # Vite preview
     "http://localhost:8501",   # frontend Docker
     "http://127.0.0.1:8501",
+    "https://realestateai-frontend.onrender.com",  # prod Render
 ]
 CORS_ORIGINS = json.loads(os.getenv("CORS_ORIGINS", json.dumps(DEFAULT_ORIGINS)))
 
