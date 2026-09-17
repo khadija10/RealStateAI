@@ -532,6 +532,29 @@ def estimate(
     if not commune_norm:
         raise HTTPException(422, "Impossible de déterminer la commune à partir de la saisie.")
 
+    # Filtre géographique Île-de-France
+    _IDF_DEPS = {"75", "77", "78", "91", "92", "93", "94", "95"}
+    # Noms de communes hors IDF couramment saisis par erreur
+    _HORS_IDF_COMMUNES = {
+        "lyon", "marseille", "bordeaux", "lille", "toulouse", "nantes",
+        "strasbourg", "montpellier", "rennes", "grenoble", "nice", "toulon",
+        "saint etienne", "tours", "dijon", "angers", "nimes", "clermont ferrand",
+        "le mans", "aix en provence", "brest", "limoges", "amiens",
+    }
+    if dep and dep not in _IDF_DEPS:
+        raise HTTPException(
+            422,
+            f"RealEstateAI couvre uniquement l'Île-de-France (départements 75–95). "
+            f"La localisation saisie semble être dans le département {dep}. "
+            f"Vérifiez votre adresse ou votre code postal.",
+        )
+    if not dep and commune_norm.split()[0] in _HORS_IDF_COMMUNES:
+        raise HTTPException(
+            422,
+            f"RealEstateAI couvre uniquement l'Île-de-France. "
+            f"« {req.commune or commune_norm} » ne fait pas partie du périmètre couvert.",
+        )
+
     outcome = search_comparables(
         df=df,
         commune_norm=commune_norm,
