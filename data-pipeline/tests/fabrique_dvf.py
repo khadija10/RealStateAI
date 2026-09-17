@@ -39,9 +39,17 @@ def _ligne(**kwargs) -> str:
     return ",".join(str(kwargs.get(c, "")) for c in COLONNES)
 
 
-def generer(destination: Path, n_mutations: int = 1200, graine: int = 42) -> Path:
-    """Écrit un fichier .csv.gz au format DVF géolocalisées."""
+def generer(destination: Path, n_mutations: int = 1200, graine: int = 42,
+            prefixe: str | None = None) -> Path:
+    """
+    Écrit un fichier .csv.gz au format DVF géolocalisées.
+
+    `prefixe` rend les id_mutation uniques entre fichiers, comme dans la vraie
+    donnée. Sans lui, deux fichiers généreraient les mêmes identifiants et
+    l'agrégation les fusionnerait à tort en mutations multi-biens.
+    """
     rng = random.Random(graine)
+    prefixe = prefixe or destination.stem.split(".")[0]
     destination.parent.mkdir(parents=True, exist_ok=True)
     lignes = [",".join(COLONNES)]
     debut = date(2021, 1, 1)
@@ -50,7 +58,7 @@ def generer(destination: Path, n_mutations: int = 1200, graine: int = 42) -> Pat
         code_commune = rng.choice(list(COMMUNES))
         nom, dep, cp, prix_ref, lon, lat = COMMUNES[code_commune]
         jour = debut + timedelta(days=rng.randint(0, 4 * 365))
-        id_mut = f"2021-{i:06d}"
+        id_mut = f"{prefixe}-{i:06d}"
 
         # 8 % de natures de mutation hors périmètre (échange, adjudication...)
         nature = rng.choices(

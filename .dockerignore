@@ -1,0 +1,30 @@
+# Données brutes DVF — 1.9 Go, inutiles dans l'image
+Backend/Data pipeline/Data/
+# CSV nettoyé — le modèle ML ne s'en sert pas en prod
+Backend/Data pipeline/outputs/
+
+# Environnements Python virtuels
+data_env/
+data-pipeline/.venv/
+.venv/
+
+# Dépendances JS
+Frontend/node_modules/
+Frontend/dist/
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Cache Python
+**/__pycache__/
+**/*.pyc
+**/*.pyo
+**/.pytest_cache/
+
+# Fichiers de dev
+*.md
+docs/
+*.log
+.env*

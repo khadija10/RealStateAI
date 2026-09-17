@@ -44,7 +44,7 @@ df = duckdb.sql("""
 | `code_commune` | string | non | Code INSEE sur 5 caractères. **Pour Paris, Lyon et Marseille, DVF descend à l'arrondissement** (`75112` = Paris 12e), pas au code global de la ville. Les features de marché sont donc calculées par arrondissement. Clé de jointure avec les référentiels INSEE. **Différent du code postal.** |
 | `nom_commune` | string | non | Libellé, pour l'affichage uniquement — ne jamais l'utiliser comme clé |
 | `code_postal` | string | oui | Code postal |
-| `latitude`, `longitude` | float | non | WGS84. Géocodage à la parcelle. |
+| `latitude`, `longitude` | float | non | WGS84, géocodage à la parcelle. Contrôlées : chaque point est à moins de 1,5° du centroïde de son département. La source publie quelques coordonnées fausses, elles sont écartées. |
 
 ### Caractéristiques du bien
 
@@ -53,7 +53,7 @@ df = duckdb.sql("""
 | `type_local` | string | non | `Maison` \| `Appartement` | Libellé |
 | `code_type_local` | string | non | `1` = Maison, `2` = Appartement | Version encodée, à préférer pour le ML |
 | `surface_bati` | float | non | m², ≥ 9 | Surface réelle bâtie |
-| `nb_pieces` | float | oui | pièces | Nombre de pièces principales |
+| `nb_pieces` | float | oui | pièces | Nombre de pièces principales. **`NULL` sur 0,06 % des lignes** où la source avait recopié la surface dans ce champ : la mutation est conservée, seul le champ est neutralisé. |
 | `surface_terrain` | float | oui | m² | Somme des parcelles de la mutation. `NULL` = pas de terrain associé, ce qui est la norme en appartement. |
 | `nb_parcelles` | int | non | ≥ 1 | Nombre de parcelles cadastrales |
 | `a_terrain` | bool | non | | Indicateur dérivé, pratique pour l'imputation |

@@ -90,6 +90,63 @@ perte à cette étape.
 
 ---
 
+## 6 bis. Cohérence géographique — coût 0,02 %
+
+**Constat.** Le contrôle qualité automatisé a détecté 120 mutations portant
+des latitudes hors de France : 78° et 83°, soit l'océan Arctique, sur des
+communes des Hauts-de-Seine. Remontée à la source : les 334 lignes brutes
+correspondantes contiennent déjà ces valeurs. **L'anomalie provient de la
+donnée publiée, pas du pipeline.**
+
+Elle est concentrée sur cinq communes — Vaucresson, Malakoff,
+Issy-les-Moulineaux, Châtenay-Malabry, Garches — et n'affecte que le
+géocodage : commune, surface et valeur foncière restent plausibles sur ces
+lignes. Il ne s'agit donc pas d'un décalage de colonnes.
+
+**Pourquoi un contrôle par bornes nationales est insuffisant.** Sur ces mêmes
+enregistrements, la longitude est également fausse tout en restant dans les
+limites de la France : 0,27 au lieu de 2,27 pour Issy-les-Moulineaux, 1,26 au
+lieu de 2,30 pour Malakoff. Un test « le point est-il en France ? » les
+laisserait passer.
+
+**Règle retenue.** Chaque coordonnée doit être à moins de 1,5° (environ
+165 km) du centroïde de son propre département. Le centroïde est calculé par
+**médiane**, donc insensible aux points aberrants que l'on cherche justement
+à détecter. La tolérance est volontairement large : elle n'écarte que
+l'impossible, jamais un bien réellement situé aux confins de son département.
+
+**Portée.** La règle ne dépend d'aucun référentiel externe et fonctionne pour
+n'importe quel département français, sans paramétrage supplémentaire.
+
+---
+
+## 6 ter. Cohérence surface / nombre de pièces — coût 0 ligne
+
+**Constat.** Le contrôle qualité a signalé des logements à 50, 62 ou 80 pièces
+principales. L'inspection révèle un mécanisme précis : sur ces lignes, le
+nombre de pièces est **rigoureusement égal à la surface** — 28 pièces pour
+28 m², 24 pour 24 m², 12 pour 12 m². La valeur de surface a été recopiée dans
+le champ `nombre_pieces_principales` à la saisie. C'est un défaut systématique
+de la source, pas une variation aléatoire.
+
+**Ampleur.** 430 mutations sur 721 675, soit 0,06 %.
+
+**Règle retenue.** En dessous de 8 m² par pièce, le champ `nb_pieces` est
+neutralisé (`NULL`).
+
+**Pourquoi neutraliser plutôt que supprimer.** Sur ces lignes, la surface, le
+prix et la localisation sont corrects : seul le nombre de pièces est faux.
+Supprimer la mutation ferait perdre 430 observations de prix parfaitement
+exploitables. On invalide donc le champ fautif, pas l'enregistrement entier.
+La colonne est déclarée nullable dans le contrat d'interface, l'équipe ML sait
+la traiter.
+
+**Validation du seuil.** À 8 m² par pièce, la règle préserve les biens
+d'exception réels — un hôtel particulier parisien de 1 561 m² et 23 pièces
+affiche 68 m² par pièce — tout en écartant l'impossible.
+
+---
+
 ## 7. Valeurs aberrantes — coût 3,1 %
 
 ### Garde-fous absolus : 300 et 30 000 €/m²

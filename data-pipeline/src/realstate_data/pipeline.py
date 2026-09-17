@@ -5,6 +5,7 @@ Usage :
     python -m realstate_data.pipeline ingest      # téléchargement DVF
     python -m realstate_data.pipeline silver      # nettoyage + déduplication
     python -m realstate_data.pipeline gold        # features ML-ready
+    python -m realstate_data.pipeline qualite     # contrôles qualité (schéma + seuils)
     python -m realstate_data.pipeline run         # les trois d'affilée
     python -m realstate_data.pipeline rapport     # journal de perte lisible
 """
@@ -19,6 +20,7 @@ from realstate_data.cleaning.silver import construire_silver
 from realstate_data.config import charger_settings
 from realstate_data.features.gold import construire_gold
 from realstate_data.ingestion.dvf_downloader import ingerer
+from realstate_data.quality.validators import afficher, valider
 from realstate_data.logging_conf import configurer_logging
 
 log = configurer_logging()
@@ -51,7 +53,7 @@ def main(argv: list[str] | None = None) -> int:
     parseur = argparse.ArgumentParser(description="Pipeline data DVF — RealStateAI")
     parseur.add_argument(
         "commande",
-        choices=["ingest", "silver", "gold", "run", "rapport"],
+        choices=["ingest", "silver", "gold", "qualite", "run", "rapport"],
         help="étape à exécuter",
     )
     args = parseur.parse_args(argv)
@@ -70,6 +72,12 @@ def main(argv: list[str] | None = None) -> int:
         log.info("Dataset gold : %d lignes", rapport["lignes_gold"])
     if args.commande in ("rapport", "run"):
         afficher_rapport(settings)
+    if args.commande in ("qualite", "run"):
+        rapport = valider(settings)
+        afficher(rapport)
+        # Code de sortie non nul : la CI échoue si la qualité se dégrade.
+        if not rapport.succes:
+            return 1
 
     return 0
 
