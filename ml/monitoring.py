@@ -32,11 +32,14 @@ DEFAULT_MODEL   = ROOT / "Backend" / "models" / "price_model.pkl"
 DEFAULT_GOLD    = ROOT / "data" / "processed" / "gold_transactions"
 DEFAULT_SAMPLE  = ROOT / "data" / "samples" / "market_reference.parquet"
 FEATURES_ORDER  = [
-    "surface_bati", "nb_pieces", "latitude", "longitude",
-    "prix_m2_reference_12m", "nb_ventes_commune_12m", "nb_ventes_dept_12m",
-    "mois", "trimestre", "code_departement", "type_bien", "a_terrain",
+    "surface_bati", "nb_pieces", "surface_moyenne_piece",
+    "prix_m2_reference_12m", "nb_ventes_commune_12m",
+    "prix_m2_median_dept_12m", "nb_ventes_dept_12m",
+    "latitude", "longitude", "mois_index", "mois", "trimestre",
+    "code_type_local", "code_departement", "a_terrain",
 ]
-CAT_FEATURES = ["code_departement", "type_bien"]
+TARGET_COL   = "prix_m2"
+CAT_FEATURES = ["code_type_local", "code_departement"]
 
 
 def charger_modele(model_path: Path):
@@ -99,12 +102,12 @@ def surveiller(
         idf = {"75", "77", "78", "91", "92", "93", "94", "95"}
         df = df[df["code_departement"].astype(str).isin(idf)]
 
-    if "prix_au_m2" not in df.columns or len(df) < 50:
+    if TARGET_COL not in df.columns or len(df) < 50:
         print("[ERREUR] Données insuffisantes pour le monitoring.", file=sys.stderr)
         sys.exit(2)
 
     X = preparer_features(df)
-    y_true = df["prix_au_m2"].values
+    y_true = df[TARGET_COL].values
     y_pred = model.predict(X)
 
     mape = calculer_mape(y_true, y_pred)
