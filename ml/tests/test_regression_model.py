@@ -16,6 +16,8 @@ import os
 import sys
 from pathlib import Path
 
+import pytest
+
 import joblib
 import numpy as np
 import pandas as pd
@@ -97,7 +99,7 @@ def charger_modele() -> object:
         ROOT / "Backend" / "models" / "price_model.pkl",
     ]
     for p in candidates:
-        if p and p.exists():
+        if p and p.is_file():
             return joblib.load(p)
     print("[SKIP] Modèle introuvable — tests de référence ignorés (normal en CI sans artefact).")
     return None
@@ -125,17 +127,15 @@ def test_seuils_sur_sample():
     """Vérifie MAPE / R² / dans_20pct sur le sample statique."""
     sample_path = ROOT / "data" / "samples" / "market_reference.parquet"
     if not sample_path.exists():
-        print("[SKIP] Sample de référence introuvable.")
-        return True
+        pytest.skip("Sample de référence introuvable.")
 
     model = charger_modele()
     if model is None:
-        return True
+        pytest.skip("Modèle introuvable.")
 
     df = pd.read_parquet(sample_path)
     if "prix_au_m2" not in df.columns or len(df) < 50:
-        print("[SKIP] Sample insuffisant pour évaluation.")
-        return True
+        pytest.skip("Sample insuffisant pour évaluation.")
 
     categories = charger_categories()
     features_cols = [c for c in [
@@ -179,14 +179,14 @@ def test_seuils_sur_sample():
     if ok:
         print("  ✅ Tous les seuils respectés")
 
-    return ok
+    assert ok, "Régression détectée — seuils non respectés"
 
 
 def test_cas_reference():
     """Vérifie les cas de référence (smoke test ±35%)."""
     model = charger_modele()
     if model is None:
-        return True
+        pytest.skip("Modèle introuvable.")
 
     categories = charger_categories()
     ok = True
@@ -207,7 +207,7 @@ def test_cas_reference():
         if ecart > tolerance:
             ok = False
 
-    return ok
+    assert ok, "Cas de référence hors tolérance ±35%"
 
 
 if __name__ == "__main__":
