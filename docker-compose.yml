@@ -1,4 +1,22 @@
 services:
+  db:
+    image: postgres:15-alpine
+    container_name: realestate_db
+    environment:
+      POSTGRES_USER: realestate_user
+      POSTGRES_PASSWORD: secure_password_dev
+      POSTGRES_DB: realestate_ai
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./Backend/db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U realestate_user -d realestate_ai"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: .
@@ -10,21 +28,31 @@ services:
       # Modèle ML (généré par "make train" ou "make install")
       - ./Backend/models:/app/models
     environment:
-      - ENVIRONMENT=production
+      DATABASE_URL: postgresql://realestate_user:secure_password_dev@db:5432/realestate_ai
+      ENVIRONMENT: production
+      LOG_LEVEL: info
+    depends_on:
+      db:
+        condition: service_healthy
     restart: unless-stopped
 
   frontend:
     build:
-      context: ./Frontend
-      dockerfile: Dockerfile
+      context: .
+      dockerfile: Frontend/Dockerfile
       args:
         VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
     container_name: realestate_frontend
     environment:
       - VITE_API_URL=${VITE_API_URL:-http://localhost:8000}
     ports:
-      - "8501:80"
+      - "80:80"
+    volumes:
+      - ./Frontend:/app
     depends_on:
       backend:
         condition: service_healthy
     restart: unless-stopped
+
+volumes:
+  postgres_data:

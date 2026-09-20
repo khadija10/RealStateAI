@@ -36,6 +36,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from database import SearchHistoryService
+from financing_api import router as financing_router
 from utils.address_parser import normalize_commune, parse_address
 from utils.dvf_search import (
     SearchConfig,
@@ -222,6 +224,8 @@ async def lifespan(app: FastAPI):
     app.state.dvf_error = None
     app.state.dvf_path = None
     app.state.communes = []
+    app.state.search_history = SearchHistoryService()
+    app.state.search_history.init_db()
 
     path = resolve_dvf_path()
     if path is None:
@@ -257,6 +261,7 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
+app.include_router(financing_router)
 
 
 # ---------------------------------------------------- erreurs lisibles
@@ -451,6 +456,19 @@ def list_communes(
     return communes
 
 
+@app.get(
+    f"{API_PREFIX}/search-history",
+    response_model=list[dict[str, Any]],
+    tags=["historique"],
+)
+def list_search_history(
+    request: Request,
+    limit: int = Query(default=10, ge=1, le=50),
+) -> list[dict[str, Any]]:
+    service: SearchHistoryService = request.app.state.search_history
+    return service.list_recent(limit=limit)
+
+
 def _mock_estimate(surface: float, property_type: str) -> EstimationResponse:
     """Estimation de repli quand le dataset est absent (démo, CI).
 
@@ -489,6 +507,7 @@ def _mock_estimate(surface: float, property_type: str) -> EstimationResponse:
 )
 def estimate(
     req: EstimationRequest,
+    request: Request,
     df: pd.DataFrame | None = Depends(get_dvf),
 ) -> EstimationResponse:
     surface = req.area_m2
@@ -509,7 +528,18 @@ def estimate(
             ml_result = ML_ESTIMATOR(**{k: v for k, v in payload.items() if v is not None})
             if ml_result is not None:
                 logger.info("Réponse renvoyée par le modèle ML")
-                return _normalize_ml_result(ml_result, surface)
+                normalized = _normalize_ml_result(ml_result, surface)
+                try:
+                    request.app.state.search_history.add_search(
+                        query=req.commune or req.address or "",
+                        commune=req.commune,
+                        property_type=req.property_type,
+                        area_m2=surface,
+                        estimated_price=normalized.estimated_price,
+                    )
+                except Exception as exc:  # pragma: no cover - la persistance ne doit pas casser la réponse
+                    logger.warning("Historique de recherche non inscrit : %s", exc)
+                return normalized
         except Exception as exc:  # pragma: no cover - dépend du module ML réel
             logger.warning("Erreur modèle ML, fallback vers DVF : %s", exc)
 
@@ -517,7 +547,18 @@ def estimate(
         if not ALLOW_MOCK_FALLBACK:
             raise HTTPException(503, "Le service d'estimation est momentanément indisponible.")
         logger.warning("Dataset indisponible : réponse mock renvoyée")
-        return _mock_estimate(surface, type_bien)
+        result = _mock_estimate(surface, req.property_type)
+        try:
+            request.app.state.search_history.add_search(
+                query=req.commune or req.address or "",
+                commune=req.commune,
+                property_type=req.property_type,
+                area_m2=surface,
+                estimated_price=result.estimated_price,
+            )
+        except Exception as exc:  # pragma: no cover - la persistance ne doit pas casser la réponse
+            logger.warning("Historique de recherche non inscrit : %s", exc)
+        return result
 
     # Localisation : commune explicite en priorité, sinon parsing de l'adresse.
     dep: str | None = None
@@ -578,7 +619,7 @@ def estimate(
     except NoComparableError as exc:
         raise HTTPException(404, str(exc)) from exc
 
-    return EstimationResponse(
+    response = EstimationResponse(
         estimated_price=result.estimated_price,
         price_per_m2=result.price_per_m2,
         price_range=PriceRange(
@@ -607,6 +648,19 @@ def estimate(
             notes=outcome.notes,
         ),
     )
+
+    try:
+        request.app.state.search_history.add_search(
+            query=req.commune or req.address or "",
+            commune=req.commune,
+            property_type=req.property_type,
+            area_m2=surface,
+            estimated_price=response.estimated_price,
+        )
+    except Exception as exc:  # pragma: no cover - la persistance ne doit pas casser l'estimation
+        logger.warning("Historique de recherche non inscrit : %s", exc)
+
+    return response
 
 
 # ==========================================================================

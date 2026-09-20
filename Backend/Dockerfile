@@ -23,6 +23,9 @@ COPY ml/ /app/ml/
 COPY data/samples/ /app/data/samples/
 # Gold parquet — features de marché pour LightGBM (28 Mo)
 COPY data/processed/gold_transactions/ /app/data/processed/gold_transactions/
+# Module financement — agent HCSF et génération de dossier
+COPY financement/ /opt/financement/
+RUN pip install --no-cache-dir -e "/opt/financement[agent]"
 
 # Le modèle est bakė dans l'image en prod.
 # En local, docker-compose le monte en volume (chemin identique /app/models/).
