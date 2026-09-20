@@ -38,6 +38,117 @@ dossier = generer_dossier(profil, projet, charges_logement_previsionnelles=250)
 `dossier` est un dictionnaire directement sérialisable en JSON. C'est le
 livrable de la fonctionnalité.
 
+---
+
+# Pour essayer le module — sans rien intégrer
+
+Cette partie s'adresse à quiconque veut simplement voir ce que fait le module.
+
+## 1. Installation
+
+```bash
+git clone <le-depot> && cd RealStateAI
+python -m venv .venv
+```
+
+Activation de l'environnement :
+
+```bash
+.venv\Scripts\activate          # Windows
+source .venv/bin/activate        # macOS, Linux
+```
+
+```bash
+pip install -e "financement[dev,agent]"
+pytest financement/tests -q
+```
+
+73 tests doivent passer. À ce stade, **aucune clé API n'est nécessaire.**
+
+## 2. Ce qui marche sans clé
+
+Le moteur de calcul est entièrement déterministe : il tourne hors ligne.
+
+```bash
+cd financement
+python demo.py             # capacité, budget maximum, analyse d'un projet
+python demo_outils.py      # simule les appels du modèle aux outils
+python verif_dossier.py    # génère un dossier complet + dossier_exemple.json
+```
+
+`verif_dossier.py` est le plus parlant : il affiche le plan de financement,
+la conformité réglementaire, le score, les leviers chiffrés et les pièces à
+réunir, puis écrit le JSON sur disque.
+
+Pour changer le profil testé, éditer les variables `profil` et `projet` en
+tête du fichier.
+
+## 3. Ce qui demande une clé
+
+Seul l'agent conversationnel appelle un modèle de langage. Il faut donc une
+clé, et il en existe des gratuites.
+
+**Mistral** — offre gratuite généreuse. Créer un compte sur
+`console.mistral.ai`, vérifier son numéro de téléphone, puis « API Keys » →
+« Create new key ». Le plan gratuit implique que les données servent à
+l'entraînement : à savoir, sans conséquence pour un projet d'école.
+
+**Groq** — gratuit, sans carte bancaire ni vérification. Compte sur
+`console.groq.com`, puis « API Keys ».
+
+Attention à ne pas confondre **Groq** (gratuit) et **Grok / xAI** (payant).
+
+## 4. Configurer la clé
+
+```bash
+cp financement/.env.example financement/.env      # copy sous Windows
+```
+
+Puis éditer `financement/.env` :
+
+```
+LLM_API_KEY=votre_cle
+LLM_BASE_URL=https://api.mistral.ai/v1
+LLM_MODEL=mistral-small-latest
+```
+
+Vérifier que la clé donne accès au modèle :
+
+```bash
+python lister_modeles.py
+```
+
+Si le modèle configuré n'apparaît pas dans la liste, en choisir un autre parmi
+ceux affichés. Les catalogues changent souvent.
+
+**Ne jamais mettre la clé dans `.env.example`** : ce fichier est versionné.
+Le `.env`, lui, est ignoré par Git.
+
+## 5. Lancer l'agent
+
+```bash
+python chat.py --trace
+```
+
+Exemple de première phrase :
+
+> on gagne 4200 net à deux, 45 000 d'apport, on vise un T3 dans le 94
+
+L'option `--trace` affiche chaque appel d'outil :
+
+```
+  [outil] calculer_budget_maximum({"revenus_nets_mensuels": 4200, ...})
+```
+
+**C'est le contrôle à faire** : un montant qui apparaît sans ligne `[outil]`
+juste avant a été inventé par le modèle. Cela arrive avec les petits modèles ;
+si le cas se présente, prendre un modèle plus capable.
+
+Commandes pendant la conversation : `/outils` liste les appels effectués,
+`/reset` repart de zéro, `/quitter` termine.
+
+---
+
 ## Arborescence
 
 ```
