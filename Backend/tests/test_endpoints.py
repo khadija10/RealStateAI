@@ -419,3 +419,39 @@ def test_mock_si_dataset_absent(client_without_dvf):
     ).json()
     assert body["model"] == "mock"
     assert body["price_range"]["low"] < body["estimated_price"] < body["price_range"]["high"]
+
+
+def test_search_history_persists_in_sqlite(tmp_path, monkeypatch):
+    db_url = f"sqlite:///{tmp_path / 'search_history.db'}"
+    monkeypatch.setenv("DATABASE_URL", db_url)
+
+    from database import SearchHistoryService
+
+    service = SearchHistoryService()
+    service.init_db()
+    service.add_search(
+        query="Paris 15",
+        commune="PARIS 15",
+        property_type="apartment",
+        area_m2=60.0,
+        estimated_price=500000.0,
+    )
+
+    entries = service.list_recent(limit=5)
+    assert len(entries) == 1
+    assert entries[0]["commune"] == "PARIS 15"
+    assert entries[0]["estimated_price"] == 500000.0
+
+
+def test_history_endpoint_returns_recent_searches(client):
+    client.post(
+        "/api/predictions/estimate",
+        json={"area_m2": 60, "rooms": 3, "property_type": "apartment", "commune": "PARIS 15"},
+    )
+
+    response = client.get("/api/search-history")
+    assert response.status_code == 200
+    payload = response.json()
+    assert isinstance(payload, list)
+    assert payload
+    assert payload[0]["commune"] == "PARIS 15"

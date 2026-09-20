@@ -48,8 +48,8 @@ ML Model
       └─ Feature engineering, validation
 
 Deployment
-   └─ Docker, Docker Compose
-      └─ Cloud Run (backend) / Vercel (frontend)
+   └─ Docker, Docker Compose, Render
+      └─ Render web services pour backend + frontend
 ```
 
 ---
@@ -70,6 +70,11 @@ cd RealEstateAI
 
 # Démarrer les services
 docker compose up --build -d
+
+# Déploiement Render
+# 1. Connecter le repo sur Render
+# 2. Utiliser render.yaml à la racine
+# 3. Créer une base PostgreSQL et laisser Render injecter DATABASE_URL
 
 # Frontend (Streamlit, http://localhost:8501)
 cd Frontend
