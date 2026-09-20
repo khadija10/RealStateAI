@@ -549,7 +549,7 @@ def estimate(
             f"La localisation saisie semble être dans le département {dep}. "
             f"Vérifiez votre adresse ou votre code postal.",
         )
-    if not dep and commune_norm.split()[0] in _HORS_IDF_COMMUNES:
+    if not dep and commune_norm in _HORS_IDF_COMMUNES:
         raise HTTPException(
             422,
             f"RealEstateAI couvre uniquement l'Île-de-France. "
