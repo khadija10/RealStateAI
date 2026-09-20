@@ -62,4 +62,15 @@ export function getMarketTrends(dep) {
   return request(dep ? `/api/market/trends?dep=${dep}` : '/api/market/trends')
 }
 
+export function getSearchHistory(limit = 20) {
+  return request(`/api/search-history?limit=${limit}`)
+}
+
+export function getFinancingDossier(payload) {
+  return request('/api/financing/dossier', {
+    method: 'POST',
+    body: JSON.stringify(payload),
+  })
+}
+
 export { ApiError }

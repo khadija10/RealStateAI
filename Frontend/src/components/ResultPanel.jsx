@@ -1,5 +1,51 @@
 import ConfidenceGauge, { formatEUR } from './ConfidenceGauge'
 
+function exportPDF(result, query) {
+  const date = new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long', timeStyle: 'short' }).format(new Date())
+  const lieu = query?.address
+    ? `${query.address}${query.postal_code ? ' ' + query.postal_code : ''}`
+    : query?.commune ?? '—'
+  const typeLabel = { apartment: 'Appartement', house: 'Maison', studio: 'Studio', other: 'Autre' }
+  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">
+<title>Estimation RealEstateAI</title>
+<style>
+  body { font-family: Georgia, serif; max-width: 680px; margin: 40px auto; color: #1F1F1F; padding: 0 20px; }
+  h1 { font-size: 2rem; margin-bottom: 4px; }
+  .sub { color: #6B6558; font-size: 0.9rem; margin-bottom: 32px; }
+  .price { font-size: 3rem; font-weight: 600; color: #1F1F1F; margin: 16px 0 4px; }
+  .per-m2 { color: #6B6558; font-size: 0.95rem; margin-bottom: 24px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 24px; }
+  td { padding: 10px 0; border-bottom: 1px solid #E6E1DA; font-size: 0.9rem; }
+  td:last-child { text-align: right; font-weight: 500; }
+  .range { display: flex; gap: 24px; margin: 16px 0; }
+  .range-item { flex: 1; background: #F2EFEA; padding: 12px 16px; border-radius: 8px; }
+  .range-label { font-size: 0.75rem; color: #6B6558; text-transform: uppercase; letter-spacing: 0.08em; }
+  .range-val { font-size: 1.1rem; font-weight: 600; margin-top: 4px; }
+  .footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #E6E1DA; font-size: 0.75rem; color: #8A8171; }
+</style></head><body>
+<h1>Fiche d'estimation</h1>
+<p class="sub">RealEstateAI · ${date}</p>
+<table>
+  <tr><td>Bien</td><td>${lieu}</td></tr>
+  <tr><td>Type</td><td>${typeLabel[query?.property_type] ?? '—'}</td></tr>
+  <tr><td>Surface</td><td>${query?.area_m2 ? query.area_m2 + ' m²' : '—'}</td></tr>
+  <tr><td>Méthode</td><td>${result.model === 'ml' ? 'LightGBM (géolocalisé)' : 'Médiane DVF'}</td></tr>
+</table>
+<p class="price">${formatEUR(result.price)}</p>
+<p class="per-m2">soit ${formatEUR(result.pricePerM2)} / m²</p>
+<div class="range">
+  <div class="range-item"><p class="range-label">Fourchette basse</p><p class="range-val">${formatEUR(result.low)}</p></div>
+  <div class="range-item"><p class="range-label">Fourchette haute</p><p class="range-val">${formatEUR(result.high)}</p></div>
+</div>
+<p class="footer">Estimation fournie à titre indicatif, sans valeur contractuelle. Modèle entraîné sur 700 000 transactions DVF Île-de-France 2021–2024. Erreur médiane : 19,6 %.</p>
+</body></html>`
+  const w = window.open('', '_blank')
+  w.document.write(html)
+  w.document.close()
+  w.focus()
+  setTimeout(() => w.print(), 400)
+}
+
 const MODEL_CONFIG = {
   ml: {
     label: 'LightGBM · Modèle ML',
@@ -53,7 +99,7 @@ function MetaRow({ label, value }) {
   )
 }
 
-export default function ResultPanel({ status, error, result, query }) {
+export default function ResultPanel({ status, error, result, query, onOpenFinancement }) {
   const cfg = result?.model ? MODEL_CONFIG[result.model] ?? MODEL_CONFIG.dvf : null
   const meta = result?.meta ?? null
 
@@ -138,6 +184,27 @@ export default function ResultPanel({ status, error, result, query }) {
               Fourchette {result.confidenceLabel}
             </p>
             <ConfidenceGauge low={result.low} estimate={result.price} high={result.high} />
+          </div>
+
+          {/* Actions */}
+          <div className="flex gap-2 flex-wrap">
+            <button
+              onClick={() => exportPDF(result, query)}
+              className="flex items-center gap-1.5 text-xs font-medium text-ink-muted border border-stone-200 rounded-lg px-3 py-1.5 hover:border-stone-400 hover:text-ink transition-colors"
+            >
+              <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
+                <path d="M2 9v2h9V9M6.5 1v7M4 6l2.5 2.5L9 6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Exporter PDF
+            </button>
+            {onOpenFinancement && (
+              <button
+                onClick={() => onOpenFinancement(result.price)}
+                className="flex items-center gap-1.5 text-xs font-medium text-seine border border-seine/20 rounded-lg px-3 py-1.5 hover:bg-seine/5 transition-colors"
+              >
+                Simuler mon financement →
+              </button>
+            )}
           </div>
 
           {/* Confiance du modèle */}

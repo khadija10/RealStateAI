@@ -5,6 +5,8 @@ import EstimationForm from './components/EstimationForm'
 import ResultPanel from './components/ResultPanel'
 import PriceMap from './components/PriceMap'
 import MarketTrends from './components/MarketTrends'
+import History from './components/History'
+import FinancingPanel from './components/FinancingPanel'
 import { getHealth, getCommunes, estimatePrice, ApiError } from './api/client'
 
 const EMPTY_FORM = {
@@ -18,8 +20,10 @@ const EMPTY_FORM = {
 
 const TABS = [
   { id: 'estimation', label: 'Estimation' },
+  { id: 'financement', label: 'Financement' },
   { id: 'carte', label: 'Carte des prix' },
   { id: 'marche', label: 'Référence du marché' },
+  { id: 'historique', label: 'Historique' },
 ]
 
 function normalizeCommunes(raw) {
@@ -58,6 +62,7 @@ export default function App() {
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
   const [submittedQuery, setSubmittedQuery] = useState(EMPTY_FORM)
+  const [financingDefaultPrix, setFinancingDefaultPrix] = useState(null)
 
   useEffect(() => {
     getHealth()
@@ -143,8 +148,29 @@ export default function App() {
                 communesLoading={communesLoading}
                 loading={status === 'loading'}
               />
-              <ResultPanel status={status} error={error} result={result} query={submittedQuery} />
+              <ResultPanel
+                status={status}
+                error={error}
+                result={result}
+                query={submittedQuery}
+                onOpenFinancement={(prix) => { setFinancingDefaultPrix(prix); setActiveTab('financement') }}
+              />
             </div>
+          </>
+        )}
+
+        {/* ONGLET FINANCEMENT */}
+        {activeTab === 'financement' && (
+          <>
+            <div className="max-w-xl mb-10">
+              <h1 className="font-[var(--font-display)] text-4xl sm:text-5xl text-ink leading-[1.05]">
+                Simulez votre financement
+              </h1>
+              <p className="text-ink-muted mt-4 leading-relaxed">
+                Calcul basé sur les normes HCSF en vigueur · Taux d'effort, mensualité, score dossier.
+              </p>
+            </div>
+            <FinancingPanel defaultPrix={financingDefaultPrix} />
           </>
         )}
 
@@ -179,6 +205,23 @@ export default function App() {
         )}
 
       </main>
+
+        {/* ONGLET HISTORIQUE */}
+        {activeTab === 'historique' && (
+          <>
+            <div className="max-w-xl mb-8">
+              <h1 className="font-[var(--font-display)] text-4xl sm:text-5xl text-ink leading-[1.05]">
+                Historique
+              </h1>
+              <p className="text-ink-muted mt-4 leading-relaxed">
+                Vos 20 dernières estimations enregistrées.
+              </p>
+            </div>
+            <div className="max-w-2xl">
+              <History />
+            </div>
+          </>
+        )}
 
       <Footer />
     </div>
