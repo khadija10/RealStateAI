@@ -207,3 +207,47 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
+
+# Project data artifacts (large local files)
+Backend/Data pipeline/Data/*.txt
+Backend/Data pipeline/Data/*.zip
+Backend/Data pipeline/outputs/*.csv
+
+# Trained models
+Backend/models/*.pkl
+
+# Frontend (Node/Vite)
+node_modules/
+Frontend/node_modules/
+Frontend/dist/
+Frontend/dist-ssr/
+*.local
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+lerna-debug.log*
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# ===== Data pipeline DVF (Skander) =====
+data/raw/*
+data/interim/*
+data/processed/*
+data/external/*
+*.parquet
+*.csv.gz
+!data/samples/**
+!data/**/.gitkeep
+data-pipeline/.venv/
+
+# MLflow
+mlruns/
+
+# Modèles lourds (versionnés séparément si besoin)

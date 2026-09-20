@@ -1,0 +1,170 @@
+# =============================================================================
+# Barème réglementaire du moteur de financement — millésime 2026
+#
+# RÈGLE : aucune valeur chiffrée n'est codée en dur dans le moteur. Tout ce qui
+# peut être contesté ou devenir périmé est ici, avec sa source.
+#
+# À REVÉRIFIER : les taux marqués (*) évoluent. Les DMTO sont révisables par
+# délibération départementale, les normes HCSF sont réexaminées chaque année.
+# =============================================================================
+
+millesime: 2026
+derniere_verification: "2026-09-01"
+
+# --- Normes HCSF -------------------------------------------------------------
+# Contraignantes depuis le 1er janvier 2022, confirmées sans assouplissement
+# par le Haut Conseil de stabilité financière en mars 2026.
+# Source : HCSF / ACPR.
+hcsf:
+  taux_endettement_max: 0.35        # assurance emprunteur comprise
+  duree_max_annees: 25
+  duree_max_annees_derogatoire: 27  # VEFA, ou travaux >= 10 % de l'opération
+  seuil_travaux_derogation: 0.10
+  marge_flexibilite: 0.20           # part des dossiers hors normes tolérée
+                                    # par banque et par trimestre
+
+# --- Reste à vivre -----------------------------------------------------------
+# AUCUN texte réglementaire ne fixe ces montants : ce sont des usages bancaires
+# courants, et ils varient d'un établissement à l'autre. Hypothèses de travail
+# assumées, à présenter comme telles.
+reste_a_vivre_minimum:
+  premiere_personne: 900            # € par mois
+  personne_supplementaire: 400
+  par_enfant: 300
+
+# --- Droits de mutation (DMTO) ----------------------------------------------
+# (*) Structure 2026 dans l'ancien : taxe départementale (4,50 % ou 5,00 %
+# depuis la loi de finances 2025), taxe communale 1,20 %, frais d'assiette de
+# l'État égaux à 2,37 % du droit départemental.
+# 89 départements appliquent le taux plein, 11 restent à 4,50 %, l'Indre à 3,80 %.
+# Les primo-accédants ne sont pas concernés par la hausse : 4,50 % maximum.
+# Source : loi de finances 2025, tableau DGFiP.
+droits_mutation:
+  ancien:
+    taux_departemental_plein: 0.0500
+    taux_departemental_reduit: 0.0450   # primo-accédants et départements non votants
+    taxe_communale: 0.0120
+    frais_assiette_sur_droit_departemental: 0.0237
+  neuf:
+    # VEFA ou achèvement de moins de 5 ans : taxe de publicité foncière
+    # réduite, identique dans tous les départements.
+    taxe_publicite_fonciere: 0.00715
+
+  # Départements n'ayant PAS voté la hausse à 5 %. Liste à compléter et à
+  # vérifier auprès du conseil départemental concerné.
+  departements_taux_reduit: ["36"]
+
+# --- Émoluments du notaire ---------------------------------------------------
+# Barème dégressif fixé par arrêté, appliqué par tranches sur le prix de vente.
+# Taux hors taxes, TVA à 20 % ajoutée ensuite.
+emoluments_notaire:
+  tva: 0.20
+  tranches:
+    - plafond: 6500
+      taux: 0.03870
+    - plafond: 17000
+      taux: 0.01596
+    - plafond: 60000
+      taux: 0.01064
+    - plafond: null                 # au-delà de 60 000 €
+      taux: 0.00799
+
+# --- Autres frais d'acquisition ---------------------------------------------
+autres_frais:
+  contribution_securite_immobiliere: 0.0010   # 0,10 % du prix
+  debours_forfaitaires: 1200                  # documents, cadastre, état civil
+
+# --- Frais liés au crédit ----------------------------------------------------
+# Ordres de grandeur du marché, à ajuster : ils se négocient.
+frais_credit:
+  frais_dossier_taux: 0.010
+  frais_dossier_plancher: 500
+  frais_dossier_plafond: 1500
+  garantie_caution_taux: 0.0120     # organisme de cautionnement type Crédit Logement
+  garantie_hypotheque_taux: 0.0150  # inscription en hypothèque, plus coûteuse
+
+# --- Hypothèses de marché ----------------------------------------------------
+# (*) NE SONT PAS des taux réels de banques : ce sont des hypothèses
+# paramétrables servant de base aux simulations. Aucun établissement ne publie
+# ses grilles. À présenter explicitement comme des paramètres, jamais comme
+# des offres.
+hypotheses_marche:
+  taux_nominal_par_duree:
+    15: 0.0295
+    20: 0.0310
+    25: 0.0330
+  taux_assurance_emprunteur: 0.0034   # taux annuel sur capital initial
+  apport_recommande: 0.10             # couvre les frais d'acquisition
+
+# --- Scoring du dossier ------------------------------------------------------
+# On note la SOLIDITÉ DU DOSSIER, pas les banques : aucune donnée publique ne
+# permet de scorer un établissement. Pondérations assumées et documentées.
+scoring:
+  poids:
+    taux_endettement: 30
+    apport: 25
+    reste_a_vivre: 20
+    stabilite_professionnelle: 15
+    saut_de_charge: 10
+  bareme_stabilite:
+    CDI: 1.00
+    fonctionnaire: 1.00
+    CDD: 0.45
+    independant: 0.60
+    interim: 0.30
+    chomage: 0.00
+  seuils_appreciation:
+    excellent: 80
+    solide: 65
+    acceptable: 50
+
+# --- Accompagnement budgétaire ----------------------------------------------
+# Coefficients budgétaires INSEE : part de chaque poste dans la dépense totale
+# des ménages. Ils DIFFÈRENT selon le niveau de vie — les ménages modestes
+# consacrent davantage au logement et à l'alimentation, les plus aisés
+# davantage aux transports et aux loisirs.
+# Source : INSEE, enquête Budget de famille et comptes nationaux.
+# Ce sont des MOYENNES OBSERVÉES, jamais des prescriptions.
+budget:
+  seuils_niveau_de_vie:              # revenu mensuel par unité de consommation
+    modeste: 1500
+    aise: 2800
+
+  coefficients_par_niveau:
+    modeste:
+      logement_energie: 0.31
+      alimentation: 0.18
+      transports: 0.12
+      sante: 0.04
+      communications: 0.03
+      habillement: 0.04
+      equipement_logement: 0.04
+      loisirs_culture: 0.06
+      divers_assurances_services: 0.18
+    median:
+      logement_energie: 0.265
+      alimentation: 0.150
+      transports: 0.132
+      sante: 0.042
+      communications: 0.026
+      habillement: 0.039
+      equipement_logement: 0.050
+      loisirs_culture: 0.084
+      divers_assurances_services: 0.212
+    aise:
+      logement_energie: 0.22
+      alimentation: 0.13
+      transports: 0.16
+      sante: 0.04
+      communications: 0.02
+      habillement: 0.04
+      equipement_logement: 0.06
+      loisirs_culture: 0.11
+      divers_assurances_services: 0.22
+
+  # Repère d'alerte sur le disponible mensuel, par unité de consommation.
+  # Hypothèse de travail, pas une norme réglementaire.
+  reste_a_vivre_alerte_par_uc: 700
+
+  # Épargne de précaution : nombre de mois d'engagements à conserver.
+  epargne_precaution_mois: 3

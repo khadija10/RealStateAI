@@ -1,0 +1,76 @@
+name: Monitoring drift modèle (hebdomadaire)
+
+on:
+  schedule:
+    # Tous les lundis à 7h00 UTC
+    - cron: "0 7 * * 1"
+  workflow_dispatch:
+    inputs:
+      alert_threshold:
+        description: "Seuil MAPE d'alerte (%)"
+        default: "25"
+        required: false
+
+jobs:
+  monitoring:
+    name: Calcul MAPE production
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Installer les dépendances
+        run: pip install -r requirements.txt
+
+      - name: Lancer le monitoring
+        id: monitoring
+        run: |
+          THRESHOLD="${{ github.event.inputs.alert_threshold || '25' }}"
+          python ml/monitoring.py \
+            --alert-threshold "$THRESHOLD" \
+            --output monitoring_report.json
+          echo "exit_code=$?" >> "$GITHUB_OUTPUT"
+        continue-on-error: true
+
+      - name: Uploader le rapport
+        uses: actions/upload-artifact@v4
+        with:
+          name: monitoring-report
+          path: monitoring_report.json
+
+      - name: Ouvrir une issue GitHub si drift détecté
+        if: steps.monitoring.outcome == 'failure'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('monitoring_report.json', 'utf8'));
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: `🚨 Drift modèle détecté — MAPE ${report.mape_pct}% (seuil ${report.seuil_alerte_pct}%)`,
+              body: [
+                '## Monitoring hebdomadaire — Drift détecté',
+                '',
+                `**Date :** ${report.timestamp}`,
+                `**MAPE actuel :** ${report.mape_pct}% (seuil : ${report.seuil_alerte_pct}%)`,
+                `**MAE :** ${report.mae_eur_m2} €/m²`,
+                `**R² :** ${report.r2}`,
+                `**Prédictions dans ±20% :** ${report.dans_20pct}%`,
+                `**N transactions évaluées :** ${report.n_transactions}`,
+                '',
+                '## Actions recommandées',
+                '1. Vérifier la distribution des données récentes vs données d\'entraînement',
+                '2. Lancer `python ml/monitoring.py` en local pour reproduire',
+                '3. Si drift confirmé : déclencher le workflow de réentraînement (`retrain.yml`)',
+                '',
+                '> Ce ticket a été créé automatiquement par le monitoring hebdomadaire.',
+              ].join('\n'),
+              labels: ['drift', 'monitoring', 'ml'],
+            });

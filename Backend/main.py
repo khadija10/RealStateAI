@@ -37,6 +37,7 @@ from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from database import SearchHistoryService
+from financing_api import router as financing_router
 from utils.address_parser import normalize_commune, parse_address
 from utils.dvf_search import (
     SearchConfig,
@@ -64,9 +65,12 @@ API_PREFIX = "/api"
 
 # Vite tourne en 5173. "*" avec allow_credentials=True est refusé par le navigateur.
 DEFAULT_ORIGINS = [
-    "http://localhost:5173",
+    "http://localhost:5173",   # Vite dev
     "http://127.0.0.1:5173",
-    "http://localhost:4173",
+    "http://localhost:4173",   # Vite preview
+    "http://localhost:8501",   # frontend Docker
+    "http://127.0.0.1:8501",
+    "https://realestateai-frontend.onrender.com",  # prod Render
 ]
 CORS_ORIGINS = json.loads(os.getenv("CORS_ORIGINS", json.dumps(DEFAULT_ORIGINS)))
 
@@ -137,6 +141,22 @@ class EstimationRequest(BaseModel):
             self.rooms = None
         return self
 
+    @model_validator(mode="after")
+    def check_surface_rooms_ratio(self):
+        if self.area_m2 and self.rooms and self.rooms > 0:
+            ratio = self.area_m2 / self.rooms
+            if ratio > 200:
+                raise ValueError(
+                    f"Ratio surface/pièces irréaliste ({ratio:.0f} m²/pièce) — "
+                    "vérifiez la surface ou le nombre de pièces"
+                )
+            if ratio < 5:
+                raise ValueError(
+                    f"Ratio surface/pièces irréaliste ({ratio:.1f} m²/pièce) — "
+                    "minimum 5 m² par pièce"
+                )
+        return self
+
 
 class PriceRange(BaseModel):
     """Clés `low`/`high` et non `lower`/`upper` : c'est ce que lit
@@ -183,6 +203,8 @@ class HealthResponse(BaseModel):
     n_rows: int = 0
     n_communes: int = 0
     error: str | None = None
+    model_loaded: bool = False
+    model_error: str | None = None
 
 
 # ==========================================================================
@@ -239,6 +261,7 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
+app.include_router(financing_router)
 
 
 # ---------------------------------------------------- erreurs lisibles
@@ -308,8 +331,13 @@ def _load_ml_estimator() -> tuple[Any | None, str | None]:
             p = str(candidate)
             if candidate.exists() and p not in seen:
                 seen.add(p)
-                if str(candidate) not in sys.path:
-                    sys.path.insert(0, str(candidate))
+                # Add ml/ itself (for bare imports: "from geocoding import ...")
+                if p not in sys.path:
+                    sys.path.insert(0, p)
+                # Add parent of ml/ (for package imports: "from ml.estimator import ...")
+                parent = str(candidate.parent)
+                if parent not in sys.path:
+                    sys.path.insert(0, parent)
 
     candidates = [
         "estimator",
@@ -346,6 +374,15 @@ def _normalize_ml_result(raw: Any, surface: float) -> EstimationResponse:
         confidence = ci.get("confidence") or "85%"
         reliability = float(raw.get("reliability") or 0.8)
         model_name = str(raw.get("model") or "ml")
+
+        notes: list[str] = ["estimation fournie par le modèle ML"]
+        if surface < 30:
+            # Peu de transactions DVF pour les très petites surfaces → fourchette élargie
+            low = estimated * 0.80
+            high = estimated * 1.20
+            reliability = min(reliability, 0.65)
+            notes.append("petite surface (< 30 m²) — fourchette élargie, segment sous-représenté dans les données")
+
         payload = EstimationResponse(
             estimated_price=estimated,
             price_per_m2=per_m2,
@@ -366,7 +403,7 @@ def _normalize_ml_result(raw: Any, surface: float) -> EstimationResponse:
                 property_type_used="ml",
                 fallback_level=0,
                 n_transactions=0,
-                notes=["estimation fournie par le modèle ML"],
+                notes=notes,
             ),
         )
         return payload
@@ -393,6 +430,8 @@ def health(request: Request) -> HealthResponse:
         n_rows=int(len(df)) if loaded else 0,
         n_communes=len(request.app.state.communes),
         error=request.app.state.dvf_error,
+        model_loaded=ML_ESTIMATOR is not None,
+        model_error=ML_ERROR,
     )
 
 
@@ -472,6 +511,7 @@ def estimate(
     df: pd.DataFrame | None = Depends(get_dvf),
 ) -> EstimationResponse:
     surface = req.area_m2
+    type_bien = req.property_type
 
     if ML_ESTIMATOR is not None and (req.address or req.commune or req.postal_code):
         try:
@@ -480,7 +520,8 @@ def estimate(
                 "code_postal": req.postal_code,
                 "surface_m2": surface,
                 "nb_pieces": float(req.rooms) if req.rooms is not None else 3.0,
-                "type_bien": req.property_type,
+                "type_bien": type_bien,
+                "a_terrain": type_bien == "house",
             }
             if req.commune and not req.address:
                 payload["adresse"] = req.commune
@@ -533,10 +574,33 @@ def estimate(
     if not commune_norm:
         raise HTTPException(422, "Impossible de déterminer la commune à partir de la saisie.")
 
+    # Filtre géographique Île-de-France
+    _IDF_DEPS = {"75", "77", "78", "91", "92", "93", "94", "95"}
+    # Noms de communes hors IDF couramment saisis par erreur
+    _HORS_IDF_COMMUNES = {
+        "lyon", "marseille", "bordeaux", "lille", "toulouse", "nantes",
+        "strasbourg", "montpellier", "rennes", "grenoble", "nice", "toulon",
+        "saint etienne", "tours", "dijon", "angers", "nimes", "clermont ferrand",
+        "le mans", "aix en provence", "brest", "limoges", "amiens",
+    }
+    if dep and dep not in _IDF_DEPS:
+        raise HTTPException(
+            422,
+            f"RealEstateAI couvre uniquement l'Île-de-France (départements 75–95). "
+            f"La localisation saisie semble être dans le département {dep}. "
+            f"Vérifiez votre adresse ou votre code postal.",
+        )
+    if not dep and commune_norm.split()[0] in _HORS_IDF_COMMUNES:
+        raise HTTPException(
+            422,
+            f"RealEstateAI couvre uniquement l'Île-de-France. "
+            f"« {req.commune or commune_norm} » ne fait pas partie du périmètre couvert.",
+        )
+
     outcome = search_comparables(
         df=df,
         commune_norm=commune_norm,
-        type_bien=req.property_type,
+        type_bien=type_bien,
         surface_m2=surface,
         rooms=req.rooms,
         dep=dep,
@@ -597,6 +661,37 @@ def estimate(
         logger.warning("Historique de recherche non inscrit : %s", exc)
 
     return response
+
+
+# ==========================================================================
+#  ENDPOINTS MARCHÉ
+# ==========================================================================
+
+_SAMPLES_DIR = next(
+    (p for p in [BASE_DIR / "data" / "samples", BASE_DIR.parent / "data" / "samples"] if p.is_dir()),
+    BASE_DIR / "data" / "samples",
+)
+_COMMUNE_STATS_PATH = _SAMPLES_DIR / "commune_stats.json"
+_MARKET_TRENDS_PATH = _SAMPLES_DIR / "market_trends.json"
+
+
+@app.get(f"{API_PREFIX}/market/map", tags=["marché"])
+def market_map():
+    """Statistiques prix/m² par commune pour la carte interactive."""
+    if not _COMMUNE_STATS_PATH.exists():
+        raise HTTPException(503, "Données cartographiques non disponibles.")
+    return json.loads(_COMMUNE_STATS_PATH.read_text())
+
+
+@app.get(f"{API_PREFIX}/market/trends", tags=["marché"])
+def market_trends(dep: str | None = Query(default=None, description="Code département (75, 92…)")):
+    """Tendances mensuelles du prix/m² par département."""
+    if not _MARKET_TRENDS_PATH.exists():
+        raise HTTPException(503, "Données de tendances non disponibles.")
+    data = json.loads(_MARKET_TRENDS_PATH.read_text())
+    if dep:
+        data = [row for row in data if str(row.get("code_departement")) == dep]
+    return data
 
 
 if __name__ == "__main__":

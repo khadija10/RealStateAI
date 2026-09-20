@@ -455,3 +455,28 @@ def test_history_endpoint_returns_recent_searches(client):
     assert isinstance(payload, list)
     assert payload
     assert payload[0]["commune"] == "PARIS 15"
+
+
+def test_financing_dossier_endpoint_uses_deterministic_module(client):
+    response = client.post(
+        "/api/financing/dossier",
+        json={
+            "profil": {
+                "revenus_nets_mensuels": 4200,
+                "apport": 45000,
+                "charges_credits_mensuelles": 250,
+                "nb_adultes": 2,
+                "nb_enfants": 1,
+                "loyer_actuel": 1100,
+                "primo_accedant": True,
+            },
+            "projet": {"prix_bien": 250000, "departement": "94"},
+            "charges_logement_previsionnelles": 250,
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["plan_financement"]["prix_bien"] == 250000
+    assert "conformite_hcsf" in body
+    assert "pieces_justificatives" in body

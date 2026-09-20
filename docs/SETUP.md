@@ -1,131 +1,111 @@
-# SETUP - RealEstateAI
+# Setup Guide - RealStateAI
 
-## Objectif
-Ce guide explique comment lancer le prototype RealEstateAI, le vérifier rapidement, puis diagnostiquer les problèmes courants.
+## Goal
+Start the project locally with real DVF data and validate end-to-end behavior.
 
-## Prérequis
-- Docker Desktop (avec Docker Compose)
-- Git
-- Ports libres: `5432`, `8000`, `8501`, `5050`
+## Prerequisites
+- Docker + Docker Compose
+- Python 3.11+
+- `unzip`
 
-## 1) Démarrage recommandé (Docker)
-Depuis la racine du projet:
-
+## 1) Python environment
 ```bash
-docker compose up --build -d
+cd ~/RealStateAI
+python3 -m venv data_env
+source data_env/bin/activate
+python3 -m pip install --upgrade pip
+python3 -m pip install -r requirements.txt
 ```
 
-## 2) Vérification rapide
-
-### Vérifier les conteneurs
+## 2) Prepare DVF dataset (2024 run recommended)
 ```bash
-docker compose ps
+cd ~/RealStateAI
+unzip -o "Backend/Data pipeline/Data/valeursfoncieres-2024.txt.zip" -d "Backend/Data pipeline/Data"
+unzip -o "Backend/Data pipeline/Data/valeursfoncieres-2023.txt.zip" -d "Backend/Data pipeline/Data"
+
+cd "Backend/Data pipeline/Traitement"
+python3 - <<'PY'
+from dvf_data_pipeline import pipeline_dvf
+pipeline_dvf('../Data/', 2024)
+PY
 ```
 
-### Vérifier les logs
+## 3) Start application with Docker
 ```bash
-docker compose logs -f backend
-docker compose logs -f frontend
-docker compose logs -f db
+cd ~/RealStateAI
+sudo docker compose up --build -d
 ```
 
-### Vérifier les endpoints
-- Backend health: `http://localhost:8000/api/health`
-- Frontend Streamlit: `http://localhost:8501`
-- pgAdmin (optionnel): `http://localhost:5050`
+## 4) Verify startup
 
-## 3) Arrêt / redémarrage
-
-### Arrêter
+### Containers
 ```bash
-docker compose down
+sudo docker compose ps
 ```
 
-### Arrêter + supprimer volumes DB
+### Logs
 ```bash
-docker compose down -v
+sudo docker compose logs -f backend
+sudo docker compose logs -f frontend
 ```
 
-### Rebuild complet
-```bash
-docker compose up --build -d
-```
-
-## 4) Démarrage local (sans Docker, optionnel)
-
-### Backend
-```bash
-cd Backend
-pip install -r ../requirements.txt
-python -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
-```
-
-### Frontend
-Dans un autre terminal:
-```bash
-cd Frontend
-$env:API_URL="http://localhost:8000"
-streamlit run app.py
-```
-
-## 5) Commandes utiles
-
-### Voir les images
-```bash
-docker images
-```
-
-### Ouvrir un shell dans le backend
-```bash
-docker compose exec backend sh
-```
-
-### Tester l’API depuis terminal
+### Health endpoint
 ```bash
 curl http://localhost:8000/api/health
 ```
 
-## 6) Troubleshooting
+Expected:
+- `status = "healthy"`
+- `dvf_loaded = true`
+- `dvf_file` set to `DVF_clean_*.csv`
 
-### Erreur: `port is already allocated`
-Un autre processus utilise le port (ex: `8000` ou `8501`).
-- Stopper le processus en conflit ou
-- Changer le port dans `docker-compose.yml`, puis relancer:
+### Frontend
+- Open: `http://localhost:8501`
+
+## 5) Optional local run (without Docker)
+
+### Backend
 ```bash
-docker compose up --build -d
+source data_env/bin/activate
+cd ~/RealStateAI/Backend
+python3 -m uvicorn main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
-### Erreur frontend: impossible de joindre l’API
-- Vérifier que `backend` est `Up`:
+### Frontend (Vite)
 ```bash
-docker compose ps
-```
-- Vérifier la santé API: `http://localhost:8000/api/health`
-- Vérifier la variable `API_URL` côté frontend (`http://backend:8000` en Docker).
-
-### Erreur backend: connexion DB refusée
-- Vérifier que `db` est `healthy`:
-```bash
-docker compose ps
-docker compose logs db
-```
-- Vérifier `DATABASE_URL` dans `docker-compose.yml`.
-
-### Changements de dépendances non pris en compte
-Si `requirements.txt` a changé:
-```bash
-docker compose up --build -d
+source data_env/bin/activate
+cd ~/RealStateAI/Frontend
+npm install
+VITE_API_URL=http://localhost:8000 npm run dev
 ```
 
-### Base de données dans un état incohérent
-Réinitialiser complètement:
+## 6) Tests
 ```bash
-docker compose down -v
-docker compose up --build -d
+cd ~/RealStateAI
+source data_env/bin/activate
+python3 -m pytest -q
 ```
 
-## 7) Critères de validation (Rôle 4)
-- `backend`, `frontend`, `db` démarrent sans erreur.
-- `GET /api/health` répond `200`.
-- L’estimation fonctionne depuis l’UI Streamlit.
-- Les logs ne montrent pas d’erreurs bloquantes.
+## 7) Troubleshooting
+
+### Docker permission denied (`/var/run/docker.sock`)
+Use:
+```bash
+sudo docker compose up --build -d
+```
+
+### Backend returns `dvf_loaded: false`
+Regenerate DVF clean output and restart backend.
+
+### API `404 aucune transaction trouvée`
+Use the commune dropdown in frontend (`/api/metadata/communes` source).
+
+### Rebuild after dependency changes
+```bash
+sudo docker compose up --build -d
+```
+
+## 8) Stop services
+```bash
+sudo docker compose down
+```
