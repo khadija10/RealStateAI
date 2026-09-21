@@ -188,6 +188,27 @@ def construire_gold(settings: Settings | None = None) -> dict:
             b.date_mutation,
             b.annee, b.mois, b.trimestre, b.mois_index,
             b.code_departement, b.code_commune, b.nom_commune, b.code_postal,
+            -- Paris, Lyon et Marseille sont découpés en arrondissements dans
+            -- DVF : le code INSEE n'est pas celui de la ville (75056) mais
+            -- celui de l'arrondissement (75101 à 75120). Les agrégats de
+            -- marché sont donc déjà calculés à cette maille fine.
+            -- On expose le numéro d'arrondissement en clair : sans cette
+            -- colonne, l'information reste noyée dans le code commune et
+            -- l'équipe ML ne peut pas s'en servir directement.
+            CASE
+                WHEN b.code_commune BETWEEN '75101' AND '75120'
+                    THEN CAST(substr(b.code_commune, 4, 2) AS INTEGER)
+                WHEN b.code_commune BETWEEN '69381' AND '69389'
+                    THEN CAST(substr(b.code_commune, 4, 2) AS INTEGER) - 80
+                WHEN b.code_commune BETWEEN '13201' AND '13216'
+                    THEN CAST(substr(b.code_commune, 4, 2) AS INTEGER)
+            END AS arrondissement,
+            CASE
+                WHEN b.code_commune BETWEEN '75101' AND '75120' THEN 'Paris'
+                WHEN b.code_commune BETWEEN '69381' AND '69389' THEN 'Lyon'
+                WHEN b.code_commune BETWEEN '13201' AND '13216' THEN 'Marseille'
+                ELSE b.nom_commune
+            END AS ville,
             b.latitude, b.longitude,
             b.type_local, b.code_type_local,
             b.surface_bati, b.nb_pieces, b.surface_terrain, b.nb_parcelles,
@@ -236,7 +257,59 @@ def construire_gold(settings: Settings | None = None) -> dict:
         "part_sans_reference": round(sans_ref / n_final, 4) if n_final else None,
         "chemin": str(sortie),
     }
+    _ecrire_empreinte(con, settings, rapport)
     log.info("Gold écrit : %s (%d lignes, %d sans référence de marché)",
              sortie, n_final, sans_ref)
     con.close()
     return rapport
+
+
+def _ecrire_empreinte(con, settings: Settings, rapport: dict) -> None:
+    """
+    Écrit la carte d'identité du dataset produit.
+
+    POURQUOI : l'équipe régénère le dataset plutôt que de se le transmettre.
+    Sans empreinte, rien ne garantit que le data scientist a entraîné son
+    modèle sur exactement la même donnée que celle présentée au jury — une
+    ligne modifiée dans settings.yaml, ou une nouvelle publication DVF entre
+    deux exécutions, suffisent à créer un écart invisible.
+
+    L'empreinte capture la configuration, les volumétries et des statistiques
+    de contrôle. La commande `pipeline empreinte` la compare ensuite à la
+    version de référence versionnée dans docs/dataset_reference.json.
+    """
+    import hashlib
+    import json
+    from datetime import datetime, timezone
+
+    stats = con.execute("""
+        SELECT code_departement,
+               count(*)                AS n,
+               round(median(prix_m2))  AS prix_m2_median
+        FROM gold GROUP BY 1 ORDER BY 1
+    """).df()
+
+    config_signature = json.dumps({
+        "departements": list(settings.departements),
+        "millesimes": list(settings.millesimes),
+        "nettoyage": settings.nettoyage,
+    }, sort_keys=True, ensure_ascii=False)
+
+    empreinte = {
+        "genere_le": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "config_sha256": hashlib.sha256(config_signature.encode()).hexdigest()[:16],
+        "departements": list(settings.departements),
+        "millesimes": list(settings.millesimes),
+        "lignes_gold": rapport["lignes_gold"],
+        "sans_reference_marche": rapport["sans_reference_marche"],
+        "par_departement": {
+            str(r.code_departement): {"n": int(r.n),
+                                      "prix_m2_median": float(r.prix_m2_median)}
+            for r in stats.itertuples()
+        },
+    }
+    chemin = settings.chemins.processed / "_dataset_version.json"
+    chemin.write_text(json.dumps(empreinte, indent=2, ensure_ascii=False),
+                      encoding="utf-8")
+    log.info("Empreinte écrite : %s (config %s)",
+             chemin.name, empreinte["config_sha256"])

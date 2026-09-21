@@ -43,6 +43,8 @@ df = duckdb.sql("""
 | `code_departement` | string | non | Code sur 2 caractères. **Toujours string** (le `0` initial est signifiant hors IDF). |
 | `code_commune` | string | non | Code INSEE sur 5 caractères. **Pour Paris, Lyon et Marseille, DVF descend à l'arrondissement** (`75112` = Paris 12e), pas au code global de la ville. Les features de marché sont donc calculées par arrondissement. Clé de jointure avec les référentiels INSEE. **Différent du code postal.** |
 | `nom_commune` | string | non | Libellé, pour l'affichage uniquement — ne jamais l'utiliser comme clé |
+| `ville` | string | non | `Paris`, `Lyon`, `Marseille` pour les villes à arrondissements, sinon le nom de la commune. Permet de regrouper les arrondissements d'une même ville. |
+| `arrondissement` | int | oui | Numéro d'arrondissement (1 à 20 pour Paris, 1 à 9 pour Lyon, 1 à 16 pour Marseille). `NULL` ailleurs. **Les features de marché sont calculées à cette maille**, pas au niveau de la ville. |
 | `code_postal` | string | oui | Code postal |
 | `latitude`, `longitude` | float | non | WGS84, géocodage à la parcelle. Contrôlées : chaque point est à moins de 1,5° du centroïde de son département. La source publie quelques coordonnées fausses, elles sont écartées. |
 
