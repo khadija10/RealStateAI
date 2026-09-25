@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import ConfidenceGauge, { formatEUR } from './ConfidenceGauge'
 import ValuationProjection from './ValuationProjection'
 
@@ -98,6 +99,7 @@ function MetaRow({ label, value }) {
 }
 
 export default function ResultPanel({ status, error, result, query, modelInfo, user, onOpenAuth, onOpenFinancement }) {
+  const [detailsOpen, setDetailsOpen] = useState(false)
   const cfg = result?.model ? MODEL_CONFIG[result.model] ?? MODEL_CONFIG.dvf : null
   const meta = result?.meta ?? null
 
@@ -110,6 +112,7 @@ export default function ResultPanel({ status, error, result, query, modelInfo, u
     : null
 
   const nTransactions = meta?.n_transactions > 0 ? meta.n_transactions : null
+  const reliabilityPct = result?.reliability != null ? Math.round(result.reliability * 100) : null
 
   return (
     <div className="bg-white rounded-2xl border border-stone-100 shadow-[var(--shadow-card)] p-6 sm:p-8 flex flex-col">
@@ -143,36 +146,44 @@ export default function ResultPanel({ status, error, result, query, modelInfo, u
       )}
 
       {status === 'success' && result && (
-        <div className="flex-1 flex flex-col gap-6 animate-[fadeIn_0.4s_ease-out]">
+        <div className="flex-1 flex flex-col gap-5 animate-[fadeIn_0.4s_ease-out]">
 
-          {/* Prix principal */}
+          {/* ── ESSENTIEL ── */}
+
+          {/* Localisation */}
+          <p className="text-xs uppercase tracking-[0.12em] text-ink-muted mt-1">
+            {query.address
+              ? `${query.address}${query.postal_code ? ' ' + query.postal_code : ''}`
+              : query.commune}
+          </p>
+
+          {/* Prix */}
           <div>
-            <p className="text-xs uppercase tracking-[0.12em] text-ink-muted mt-1">
-              {query.address
-                ? `${query.address}${query.postal_code ? ' ' + query.postal_code : ''}`
-                : query.commune}
-            </p>
-            <p className="font-[var(--font-display)] text-5xl text-ink mt-2 tabular-nums">
+            <p className="font-[var(--font-display)] text-5xl text-ink tabular-nums leading-none">
               {formatEUR(result.price)}
             </p>
-            <p className="text-sm text-ink-muted mt-1">
+            <p className="text-sm text-ink-muted mt-1.5">
               soit {formatEUR(result.pricePerM2)} / m²
             </p>
+          </div>
 
-            {/* Badge modèle */}
+          {/* Badge modèle + fiabilité */}
+          <div className="flex items-center gap-3 flex-wrap">
             {cfg && (
-              <div className="flex items-center gap-2 mt-3">
+              <div className="flex items-center gap-1.5">
                 <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
                 <span className={`text-[11px] font-medium px-2 py-0.5 rounded border ${cfg.color}`}>
                   {cfg.label}
                 </span>
               </div>
             )}
-
-            {result.adresseNormalisee && (
-              <p className="text-[11px] text-ink-muted mt-2">
-                Adresse BAN : {result.adresseNormalisee}
-              </p>
+            {reliabilityPct != null && (
+              <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
+                reliabilityPct >= 80 ? 'bg-emerald-50 text-emerald-700' :
+                reliabilityPct >= 60 ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-600'
+              }`}>
+                Fiabilité {reliabilityPct} %
+              </span>
             )}
           </div>
 
@@ -183,6 +194,15 @@ export default function ResultPanel({ status, error, result, query, modelInfo, u
             </p>
             <ConfidenceGauge low={result.low} estimate={result.price} high={result.high} />
           </div>
+
+          {/* Avertissement mock */}
+          {result.model === 'mock' && (
+            <div className="bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+              <p className="text-[11px] text-amber-700">
+                Le backend est hors ligne. Ces chiffres sont générés localement et n&apos;ont aucune valeur de marché.
+              </p>
+            </div>
+          )}
 
           {/* Actions */}
           <div className="flex gap-2 flex-wrap">
@@ -208,102 +228,98 @@ export default function ResultPanel({ status, error, result, query, modelInfo, u
                 onClick={onOpenAuth}
                 className="flex items-center gap-1.5 text-xs font-medium text-ink-muted border border-stone-200 rounded-lg px-3 py-1.5 hover:border-stone-400 hover:text-ink transition-colors"
               >
-                🔒 Connectez-vous pour simuler le financement
+                Connexion pour simuler le financement
               </button>
             )}
           </div>
 
-          {/* Confiance du modèle */}
-          <div className="border-t border-stone-100 pt-5 space-y-4">
-            <p className="text-xs font-semibold uppercase tracking-[0.1em] text-ink-muted">
-              Confiance du modèle
-            </p>
+          {/* ── DÉTAILS TECHNIQUES (accordéon) ── */}
+          <div className="border-t border-stone-100 pt-4">
+            <button
+              onClick={() => setDetailsOpen((o) => !o)}
+              className="flex items-center justify-between w-full text-left group"
+            >
+              <span className="text-xs font-medium text-ink-muted group-hover:text-ink transition-colors">
+                Détails du modèle
+              </span>
+              <svg
+                width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"
+                className={`text-ink-muted transition-transform duration-200 ${detailsOpen ? 'rotate-180' : ''}`}
+              >
+                <path d="M3 5l4 4 4-4" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </button>
 
-            {result.reliability !== null && (
-              <div className="space-y-1.5">
-                <p className="text-xs text-ink-muted">{cfg?.reliabilityLabel}</p>
-                <ReliabilityBar value={result.reliability} />
-              </div>
-            )}
-
-            <div className="space-y-2">
-              {cfg?.description && <MetaRow label="Méthode" value={cfg.description} />}
-              {result.model === 'ml' && result.localMape != null && (
-                <MetaRow
-                  label={`Erreur médiane locale${result.localMapeN != null ? ` (${result.localMapeN} ventes)` : ''}`}
-                  value={`${result.localMape} %`}
-                />
-              )}
-              {result.model === 'ml' && result.localMape == null && modelInfo?.mape != null && (
-                <MetaRow label="Erreur médiane (modèle global)" value={`${modelInfo.mape} %`} />
-              )}
-              {result.model === 'ml' && (
-                <MetaRow label="Fourchette" value="Modèle quantile (q7.5–q92.5)" />
-              )}
-              {result.model === 'ml' && modelInfo?.r2 != null && (
-                <MetaRow label="R² (test 2025)" value={modelInfo.r2.toFixed(4)} />
-              )}
-              {result.model === 'ml' && modelInfo?.nFeatures != null && (
-                <MetaRow label="Features" value={`${modelInfo.nFeatures} variables`} />
-              )}
-              {result.model === 'ml' && modelInfo?.trainedAt && (
-                <MetaRow label="Entraîné le" value={new Date(modelInfo.trainedAt).toLocaleDateString('fr-FR')} />
-              )}
-              {scopeLabel && <MetaRow label="Périmètre" value={scopeLabel} />}
-              {nTransactions && (
-                <MetaRow
-                  label="Transactions utilisées"
-                  value={`${nTransactions.toLocaleString('fr-FR')} ventes`}
-                />
-              )}
-              {meta?.dispersion > 0 && (
-                <MetaRow
-                  label="Dispersion des prix"
-                  value={`${Math.round(meta.dispersion * 100)} %`}
-                />
-              )}
-              {result.model === 'ml' && modelInfo?.nTransactions != null && (
-                <MetaRow label="Entraîné sur" value={`${modelInfo.nTransactions.toLocaleString('fr-FR')} transactions DVF 2021–2024`} />
-              )}
-            </div>
-
-            {/* Notes */}
-            {meta?.notes?.length > 0 && result.model !== 'ml' && (
-              <div className="bg-stone-50 rounded-lg px-3 py-2">
-                {meta.notes.map((n, i) => (
-                  <p key={i} className="text-[11px] text-ink-muted">{n}</p>
-                ))}
-              </div>
-            )}
-
-            {/* Avertissement mock */}
-            {result.model === 'mock' && (
-              <div className="bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
-                <p className="text-[11px] text-amber-700">
-                  Le backend est hors ligne. Ces chiffres sont générés localement et n&apos;ont aucune valeur de marché.
-                </p>
+            {detailsOpen && (
+              <div className="mt-4 space-y-3">
+                {result.reliability !== null && (
+                  <div className="space-y-1.5">
+                    <p className="text-xs text-ink-muted">{cfg?.reliabilityLabel}</p>
+                    <ReliabilityBar value={result.reliability} />
+                  </div>
+                )}
+                <div className="space-y-2">
+                  {cfg?.description && <MetaRow label="Méthode" value={cfg.description} />}
+                  {result.adresseNormalisee && <MetaRow label="Adresse BAN" value={result.adresseNormalisee} />}
+                  {result.model === 'ml' && result.localMape != null && (
+                    <MetaRow
+                      label={`Erreur médiane locale${result.localMapeN != null ? ` (${result.localMapeN} ventes)` : ''}`}
+                      value={`${result.localMape} %`}
+                    />
+                  )}
+                  {result.model === 'ml' && result.localMape == null && modelInfo?.mape != null && (
+                    <MetaRow label="Erreur médiane (modèle global)" value={`${modelInfo.mape} %`} />
+                  )}
+                  {result.model === 'ml' && (
+                    <MetaRow label="Fourchette" value="Modèle quantile (q7.5–q92.5)" />
+                  )}
+                  {result.model === 'ml' && modelInfo?.r2 != null && (
+                    <MetaRow label="R² (test 2025)" value={modelInfo.r2.toFixed(4)} />
+                  )}
+                  {result.model === 'ml' && modelInfo?.nFeatures != null && (
+                    <MetaRow label="Features" value={`${modelInfo.nFeatures} variables`} />
+                  )}
+                  {result.model === 'ml' && modelInfo?.trainedAt && (
+                    <MetaRow label="Entraîné le" value={new Date(modelInfo.trainedAt).toLocaleDateString('fr-FR')} />
+                  )}
+                  {scopeLabel && <MetaRow label="Périmètre" value={scopeLabel} />}
+                  {nTransactions && (
+                    <MetaRow label="Transactions utilisées" value={`${nTransactions.toLocaleString('fr-FR')} ventes`} />
+                  )}
+                  {meta?.dispersion > 0 && (
+                    <MetaRow label="Dispersion des prix" value={`${Math.round(meta.dispersion * 100)} %`} />
+                  )}
+                  {result.model === 'ml' && modelInfo?.nTransactions != null && (
+                    <MetaRow label="Entraîné sur" value={`${modelInfo.nTransactions.toLocaleString('fr-FR')} transactions DVF 2021–2024`} />
+                  )}
+                </div>
+                {meta?.notes?.length > 0 && result.model !== 'ml' && (
+                  <div className="bg-stone-50 rounded-lg px-3 py-2">
+                    {meta.notes.map((n, i) => (
+                      <p key={i} className="text-[11px] text-ink-muted">{n}</p>
+                    ))}
+                  </div>
+                )}
               </div>
             )}
           </div>
 
-          {/* Valorisation à terme */}
+          {/* ── VALORISATION À TERME ── */}
           {result.model !== 'mock' && user && (
             <ValuationProjection basePrice={result.price} query={query} />
           )}
           {result.model !== 'mock' && !user && (
-            <div className="border-t border-stone-100 pt-5">
-              <button
-                onClick={onOpenAuth}
-                className="w-full text-left px-4 py-3 rounded-xl border border-stone-200 hover:border-seine/30 hover:bg-seine/5 transition-colors group"
-              >
-                <p className="text-xs font-semibold text-ink-muted group-hover:text-seine transition-colors">
-                  🔒 Valorisation à terme
-                </p>
-                <p className="text-xs text-ink-muted mt-0.5">
-                  Connectez-vous pour voir la projection à 1, 2, 3, 5 et 10 ans.
-                </p>
-              </button>
-            </div>
+            <button
+              onClick={onOpenAuth}
+              className="w-full text-left px-4 py-3 rounded-xl border border-stone-200 hover:border-seine/30 hover:bg-seine/5 transition-colors group"
+            >
+              <p className="text-xs font-semibold text-ink-muted group-hover:text-seine transition-colors">
+                Valorisation à terme
+              </p>
+              <p className="text-xs text-ink-muted mt-0.5">
+                Connectez-vous pour voir la projection à 1, 2, 3, 5 et 10 ans.
+              </p>
+            </button>
           )}
 
         </div>
