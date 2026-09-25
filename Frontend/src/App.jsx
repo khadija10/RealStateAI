@@ -98,18 +98,19 @@ export default function App() {
   }
 
   function handleReEstimate(item) {
-    setForm({
+    const newForm = {
       area_m2: item.area_m2 ?? '',
       rooms: '',
       property_type: item.property_type ?? 'apartment',
       commune: item.commune || item.query || '',
       address: '',
       postal_code: '',
-    })
+    }
+    setForm(newForm)
     setResult(null)
-    setStatus('idle')
     setError('')
     setActiveTab('estimation')
+    doSubmit(newForm)
   }
 
   function handleLogout() {
@@ -147,21 +148,22 @@ export default function App() {
       .finally(() => setCommunesLoading(false))
   }, [])
 
-  async function doSubmit() {
+  async function doSubmit(formValues) {
+    const f = formValues ?? form
     setStatus('loading')
     setError('')
     try {
       const payload = {
-        area_m2: Number(form.area_m2),
-        rooms: Number(form.rooms),
-        property_type: form.property_type,
-        ...(form.commune ? { commune: form.commune } : {}),
-        ...(form.address ? { address: form.address } : {}),
-        ...(form.postal_code ? { postal_code: form.postal_code } : {}),
+        area_m2: Number(f.area_m2),
+        rooms: Number(f.rooms),
+        property_type: f.property_type,
+        ...(f.commune ? { commune: f.commune } : {}),
+        ...(f.address ? { address: f.address } : {}),
+        ...(f.postal_code ? { postal_code: f.postal_code } : {}),
       }
       const raw = await estimatePrice(payload)
       setResult(normalizeResult({ ...raw, area_m2: payload.area_m2 }))
-      setSubmittedQuery(form)
+      setSubmittedQuery(f)
       setStatus('success')
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Une erreur inattendue est survenue.")
