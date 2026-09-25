@@ -118,14 +118,42 @@ PropertyType = Literal["apartment", "house", "studio", "other"]
 
 
 class EstimationRequest(BaseModel):
+    model_config = ConfigDict(json_schema_extra={
+        "examples": [
+            {
+                "summary": "Appartement Paris 15e (adresse complète)",
+                "value": {
+                    "area_m2": 65,
+                    "rooms": 3,
+                    "property_type": "apartment",
+                    "address": "12 rue de la Convention",
+                    "postal_code": "75015",
+                    "commune": "Paris 15e",
+                },
+            },
+            {
+                "summary": "Maison à Versailles (commune seule)",
+                "value": {
+                    "area_m2": 120,
+                    "rooms": 5,
+                    "property_type": "house",
+                    "commune": "Versailles",
+                },
+            },
+        ],
+    })
+
     area_m2: float = Field(..., gt=5, le=2000, description="Surface habitable en m²")
-    property_type: PropertyType = "apartment"
-    rooms: int | None = Field(default=None, ge=0, le=30)
-    commune: str | None = None
-    address: str | None = None
-    postal_code: str | None = None
-    location_lat: float | None = Field(default=None, ge=-90, le=90)
-    location_lng: float | None = Field(default=None, ge=-180, le=180)
+    property_type: PropertyType = Field(
+        default="apartment",
+        description="Type de bien : `apartment`, `house`, `studio` ou `other`",
+    )
+    rooms: int | None = Field(default=None, ge=0, le=30, description="Nombre de pièces (optionnel)")
+    commune: str | None = Field(default=None, description="Nom de commune IDF (ex : `PARIS 15`, `Versailles`)")
+    address: str | None = Field(default=None, description="Rue et numéro (ex : `12 rue de la Paix`)")
+    postal_code: str | None = Field(default=None, description="Code postal à 5 chiffres (ex : `75015`)")
+    location_lat: float | None = Field(default=None, ge=-90, le=90, description="Latitude WGS84 (optionnel)")
+    location_lng: float | None = Field(default=None, ge=-180, le=180, description="Longitude WGS84 (optionnel)")
 
     @model_validator(mode="after")
     def require_location(self):
@@ -298,10 +326,79 @@ async def lifespan(app: FastAPI):
     app.state.dvf = None
 
 
+_OPENAPI_TAGS = [
+    {
+        "name": "estimation",
+        "description": (
+            "Estimation du prix d'un bien immobilier en Île-de-France. "
+            "Utilise un modèle LightGBM entraîné sur les données DVF 2021–2025 "
+            "avec géolocalisation BAN. Repli automatique sur les statistiques DVF "
+            "communales si le modèle ML n'est pas disponible."
+        ),
+    },
+    {
+        "name": "auth",
+        "description": (
+            "Authentification JWT. Les tokens ont une durée de vie de 7 jours. "
+            "Passer le token dans le header : `Authorization: Bearer <token>`."
+        ),
+    },
+    {
+        "name": "historique",
+        "description": (
+            "Historique des estimations. Sans token → estimations anonymes. "
+            "Avec token → estimations liées au compte, invisibles pour les autres utilisateurs."
+        ),
+    },
+    {
+        "name": "marché",
+        "description": "Statistiques de marché par commune et évolution mensuelle par département.",
+    },
+    {
+        "name": "métadonnées",
+        "description": "Communes disponibles pour l'autocomplétion du formulaire.",
+    },
+    {
+        "name": "système",
+        "description": "Santé de l'API, état du dataset DVF et du modèle ML.",
+    },
+]
+
 app = FastAPI(
-    title="RealEstateAI Backend",
-    description="Estimation de prix immobiliers à partir des données DVF (Île-de-France).",
-    version="1.0.0",
+    title="RealEstateAI API",
+    description="""
+## Estimation immobilière Île-de-France
+
+API REST d'estimation de prix au m² basée sur les **données DVF** (Demandes de Valeurs Foncières)
+et un modèle **LightGBM** géolocalisé via l'API BAN (Base Adresse Nationale).
+
+### Périmètre
+- 8 départements : 75, 77, 78, 91, 92, 93, 94, 95
+- ~630 000 transactions DVF 2021–2025
+- Erreur médiane (MAPE) : ~14 %
+
+### Authentification
+Les routes protégées requièrent un token JWT dans le header :
+```
+Authorization: Bearer <token>
+```
+Obtenir un token via `POST /api/auth/login` ou `POST /api/auth/register`.
+
+### Flux typique
+1. `GET /api/health` — vérifier que le modèle est chargé
+2. `POST /api/auth/login` — s'authentifier
+3. `POST /api/predictions/estimate` — estimer un bien
+4. `GET /api/search-history` — consulter ses estimations
+""",
+    version="1.4.0",
+    contact={
+        "name": "RealEstateAI",
+        "url": "https://github.com/kalioudiallo/RealStateAI",
+    },
+    license_info={
+        "name": "MIT",
+    },
+    openapi_tags=_OPENAPI_TAGS,
     lifespan=lifespan,
 )
 
@@ -401,8 +498,19 @@ class AuthResponse(BaseModel):
 #  AUTH ENDPOINTS
 # ==========================================================================
 
-@app.post(f"{API_PREFIX}/auth/register", response_model=AuthResponse, tags=["auth"])
+@app.post(
+    f"{API_PREFIX}/auth/register",
+    response_model=AuthResponse,
+    tags=["auth"],
+    summary="Créer un compte",
+    responses={409: {"description": "Email déjà utilisé"}},
+)
 def register(body: RegisterRequest, request: Request) -> AuthResponse:
+    """Crée un nouveau compte et retourne un token JWT valable 7 jours.
+
+    - **email** : adresse email unique (3–254 caractères)
+    - **password** : mot de passe en clair, haché côté serveur (min 6 caractères)
+    """
     service: SearchHistoryService = request.app.state.search_history
     existing = service.get_user_by_email(body.email)
     if existing:
@@ -416,8 +524,15 @@ def register(body: RegisterRequest, request: Request) -> AuthResponse:
     return AuthResponse(token=token, user={"id": user["id"], "email": user["email"]})
 
 
-@app.post(f"{API_PREFIX}/auth/login", response_model=AuthResponse, tags=["auth"])
+@app.post(
+    f"{API_PREFIX}/auth/login",
+    response_model=AuthResponse,
+    tags=["auth"],
+    summary="Se connecter",
+    responses={401: {"description": "Email ou mot de passe incorrect"}},
+)
 def login(body: AuthRequest, request: Request) -> AuthResponse:
+    """Authentifie un utilisateur existant et retourne un token JWT valable 7 jours."""
     service: SearchHistoryService = request.app.state.search_history
     user = service.get_user_by_email(body.email)
     if not user or not verify_password(body.password, user["password_hash"]):
@@ -426,7 +541,12 @@ def login(body: AuthRequest, request: Request) -> AuthResponse:
     return AuthResponse(token=token, user={"id": user["id"], "email": user["email"]})
 
 
-@app.get(f"{API_PREFIX}/auth/me", tags=["auth"])
+@app.get(
+    f"{API_PREFIX}/auth/me",
+    tags=["auth"],
+    summary="Profil de l'utilisateur connecté",
+    responses={401: {"description": "Token absent ou invalide"}},
+)
 def me(request: Request) -> dict[str, Any]:
     user_id = _current_user(request)
     if user_id is None:
@@ -595,11 +715,18 @@ def list_communes(
     f"{API_PREFIX}/search-history",
     response_model=list[dict[str, Any]],
     tags=["historique"],
+    summary="Estimations récentes",
 )
 def list_search_history(
     request: Request,
-    limit: int = Query(default=10, ge=1, le=50),
+    limit: int = Query(default=10, ge=1, le=50, description="Nombre maximum de résultats (1–50)"),
 ) -> list[dict[str, Any]]:
+    """Retourne les estimations récentes.
+
+    - **Sans token** : estimations anonymes de la session courante.
+    - **Avec token** (`Authorization: Bearer <token>`) : estimations liées au compte,
+      invisibles pour les autres utilisateurs.
+    """
     service: SearchHistoryService = request.app.state.search_history
     user_id = _current_user(request)
     return service.list_recent(limit=limit, user_id=user_id)
@@ -640,12 +767,33 @@ def _mock_estimate(surface: float, property_type: str) -> EstimationResponse:
     f"{API_PREFIX}/predictions/estimate",
     response_model=EstimationResponse,
     tags=["estimation"],
+    summary="Estimer le prix d'un bien",
 )
 def estimate(
     req: EstimationRequest,
     request: Request,
     df: pd.DataFrame | None = Depends(get_dvf),
 ) -> EstimationResponse:
+    """Estime le prix d'un bien immobilier en Île-de-France.
+
+    ### Logique de sélection du modèle
+    | Priorité | Modèle | Condition |
+    |----------|--------|-----------|
+    | 1 | **ML** (LightGBM + BAN) | modèle chargé **et** adresse/commune fournie |
+    | 2 | **DVF** (stats communales) | dataset DVF chargé |
+    | 3 | **Mock** (heuristique) | aucune donnée disponible (CI/démo) |
+
+    ### Réponse — champs clés
+    - `estimated_price` : prix estimé en €
+    - `price_per_m2` : prix au m² médian
+    - `price_range.low` / `price_range.high` : fourchette à 85 %
+    - `reliability` : indice de fiabilité [0–1] (dépend du nombre de transactions)
+    - `model` : `"ml"`, `"dvf"` ou `"mock"`
+
+    ### Codes d'erreur
+    - **422** : données manquantes ou invalides (surface, localisation, ratio surface/pièces)
+    - **404** : commune inconnue ou aucune transaction comparable
+    """
     surface = req.area_m2
     type_bien = req.property_type
 
