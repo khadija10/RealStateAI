@@ -54,16 +54,25 @@ class SearchHistoryService:
                         property_type TEXT,
                         area_m2 REAL,
                         estimated_price REAL,
+                        rooms INTEGER,
+                        address TEXT,
+                        postal_code TEXT,
                         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                     )
                     """
                 )
-                # Migration : ajoute user_id si table déjà existante sans cette colonne
-                try:
-                    conn.execute("ALTER TABLE search_history ADD COLUMN user_id INTEGER REFERENCES users(id)")
-                    conn.commit()
-                except sqlite3.OperationalError:
-                    pass  # colonne déjà présente
+                # Migrations : colonnes ajoutées progressivement
+                for _col, _typ in [
+                    ("user_id", "INTEGER REFERENCES users(id)"),
+                    ("rooms", "INTEGER"),
+                    ("address", "TEXT"),
+                    ("postal_code", "TEXT"),
+                ]:
+                    try:
+                        conn.execute(f"ALTER TABLE search_history ADD COLUMN {_col} {_typ}")
+                        conn.commit()
+                    except sqlite3.OperationalError:
+                        pass  # colonne déjà présente
                 conn.commit()
             finally:
                 conn.close()
@@ -176,6 +185,9 @@ class SearchHistoryService:
         area_m2: float | None = None,
         estimated_price: float | None = None,
         user_id: int | None = None,
+        rooms: int | None = None,
+        address: str | None = None,
+        postal_code: str | None = None,
     ) -> dict[str, Any]:
         created_at = datetime.now(timezone.utc).isoformat()
 
@@ -184,8 +196,9 @@ class SearchHistoryService:
             try:
                 cursor = conn.execute(
                     """
-                    INSERT INTO search_history (user_id, query, commune, property_type, area_m2, estimated_price, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?)
+                    INSERT INTO search_history
+                        (user_id, query, commune, property_type, area_m2, estimated_price, rooms, address, postal_code, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         user_id,
@@ -194,6 +207,9 @@ class SearchHistoryService:
                         property_type,
                         float(area_m2) if area_m2 is not None else None,
                         float(estimated_price) if estimated_price is not None else None,
+                        rooms,
+                        address,
+                        postal_code,
                         created_at,
                     ),
                 )
@@ -209,6 +225,9 @@ class SearchHistoryService:
                 "property_type": property_type,
                 "area_m2": float(area_m2) if area_m2 is not None else None,
                 "estimated_price": float(estimated_price) if estimated_price is not None else None,
+                "rooms": rooms,
+                "address": address,
+                "postal_code": postal_code,
                 "created_at": created_at,
             }
 
@@ -223,8 +242,9 @@ class SearchHistoryService:
             with conn.cursor() as cur:
                 cur.execute(
                     """
-                    INSERT INTO search_history (user_id, query, commune, property_type, area_m2, estimated_price, created_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s)
+                    INSERT INTO search_history
+                        (user_id, query, commune, property_type, area_m2, estimated_price, rooms, address, postal_code, created_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING id
                     """,
                     (
@@ -234,6 +254,9 @@ class SearchHistoryService:
                         property_type,
                         float(area_m2) if area_m2 is not None else None,
                         float(estimated_price) if estimated_price is not None else None,
+                        rooms,
+                        address,
+                        postal_code,
                         created_at,
                     ),
                 )
@@ -248,6 +271,9 @@ class SearchHistoryService:
             "property_type": property_type,
             "area_m2": float(area_m2) if area_m2 is not None else None,
             "estimated_price": float(estimated_price) if estimated_price is not None else None,
+            "rooms": rooms,
+            "address": address,
+            "postal_code": postal_code,
             "created_at": created_at,
         }
 
@@ -259,7 +285,8 @@ class SearchHistoryService:
                 if user_id is not None:
                     rows = conn.execute(
                         """
-                        SELECT id, user_id, query, commune, property_type, area_m2, estimated_price, created_at
+                        SELECT id, user_id, query, commune, property_type, area_m2, estimated_price,
+                               rooms, address, postal_code, created_at
                         FROM search_history WHERE user_id = ?
                         ORDER BY id DESC LIMIT ?
                         """,
@@ -268,7 +295,8 @@ class SearchHistoryService:
                 else:
                     rows = conn.execute(
                         """
-                        SELECT id, user_id, query, commune, property_type, area_m2, estimated_price, created_at
+                        SELECT id, user_id, query, commune, property_type, area_m2, estimated_price,
+                               rooms, address, postal_code, created_at
                         FROM search_history WHERE user_id IS NULL
                         ORDER BY id DESC LIMIT ?
                         """,
@@ -290,7 +318,8 @@ class SearchHistoryService:
                 if user_id is not None:
                     cur.execute(
                         """
-                        SELECT id, user_id, query, commune, property_type, area_m2, estimated_price, created_at
+                        SELECT id, user_id, query, commune, property_type, area_m2, estimated_price,
+                               rooms, address, postal_code, created_at
                         FROM search_history WHERE user_id = %s
                         ORDER BY created_at DESC LIMIT %s
                         """,
@@ -299,7 +328,8 @@ class SearchHistoryService:
                 else:
                     cur.execute(
                         """
-                        SELECT id, user_id, query, commune, property_type, area_m2, estimated_price, created_at
+                        SELECT id, user_id, query, commune, property_type, area_m2, estimated_price,
+                               rooms, address, postal_code, created_at
                         FROM search_history WHERE user_id IS NULL
                         ORDER BY created_at DESC LIMIT %s
                         """,

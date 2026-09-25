@@ -100,11 +100,11 @@ export default function App() {
   function handleReEstimate(item) {
     const newForm = {
       area_m2: item.area_m2 ?? '',
-      rooms: '',
+      rooms: item.rooms ?? '',
       property_type: item.property_type ?? 'apartment',
-      commune: item.commune || item.query || '',
-      address: '',
-      postal_code: '',
+      commune: item.commune || (!item.address ? item.query : '') || '',
+      address: item.address ?? '',
+      postal_code: item.postal_code ?? '',
     }
     setForm(newForm)
     setResult(null)

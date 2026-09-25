@@ -854,6 +854,9 @@ def estimate(
                         area_m2=surface,
                         estimated_price=normalized.estimated_price,
                         user_id=_current_user(request),
+                        rooms=req.rooms,
+                        address=req.address,
+                        postal_code=req.postal_code,
                     )
                 except Exception as exc:  # pragma: no cover - la persistance ne doit pas casser la réponse
                     logger.warning("Historique de recherche non inscrit : %s", exc)
@@ -874,6 +877,9 @@ def estimate(
                 area_m2=surface,
                 estimated_price=result.estimated_price,
                 user_id=_current_user(request),
+                rooms=req.rooms,
+                address=req.address,
+                postal_code=req.postal_code,
             )
         except Exception as exc:  # pragma: no cover - la persistance ne doit pas casser la réponse
             logger.warning("Historique de recherche non inscrit : %s", exc)
@@ -976,6 +982,9 @@ def estimate(
             area_m2=surface,
             estimated_price=response.estimated_price,
             user_id=_current_user(request),
+            rooms=req.rooms,
+            address=req.address,
+            postal_code=req.postal_code,
         )
     except Exception as exc:  # pragma: no cover - la persistance ne doit pas casser l'estimation
         logger.warning("Historique de recherche non inscrit : %s", exc)
