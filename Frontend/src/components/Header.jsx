@@ -33,7 +33,7 @@ export default function Header({ datasetStatus, user, onOpenAuth, onLogout }) {
             <span className="text-[var(--color-ink-muted)]">
               {datasetStatus === 'ready' && 'Données DVF chargées'}
               {datasetStatus === 'error' && 'Backend indisponible'}
-              {datasetStatus === 'loading' && 'Connexion au backend…'}
+              {datasetStatus === 'loading' && 'Chargement des données…'}
             </span>
           </div>
 

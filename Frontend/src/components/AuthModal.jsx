@@ -79,8 +79,21 @@ export default function AuthModal({ onSuccess, onClose }) {
             disabled={loading}
             className="w-full bg-seine text-white rounded-lg py-2.5 text-sm font-medium hover:bg-seine/90 disabled:opacity-60 transition-colors"
           >
-            {loading ? 'Chargement…' : mode === 'login' ? 'Se connecter' : 'Créer le compte'}
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="animate-spin h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25" />
+                  <path fill="currentColor" className="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                </svg>
+                Vérification…
+              </span>
+            ) : mode === 'login' ? 'Se connecter' : 'Créer le compte'}
           </button>
+          {loading && (
+            <p className="text-center text-[11px] text-ink-muted pt-1">
+              La vérification peut prendre quelques secondes.
+            </p>
+          )}
         </form>
 
         <p className="mt-5 text-center text-xs text-ink-muted">

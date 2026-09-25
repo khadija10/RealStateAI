@@ -11,9 +11,12 @@ SECRET_KEY = os.getenv("JWT_SECRET", "realestateai-dev-secret-change-in-prod-32c
 ALGORITHM = "HS256"
 TOKEN_EXPIRE_HOURS = 24 * 7  # 7 jours
 
+# 12 rounds en production (~200-400 ms). Réduire à 10 en dev via BCRYPT_ROUNDS=10.
+BCRYPT_ROUNDS = int(os.getenv("BCRYPT_ROUNDS", "12"))
+
 
 def hash_password(password: str) -> str:
-    return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
+    return bcrypt.hashpw(password.encode(), bcrypt.gensalt(rounds=BCRYPT_ROUNDS)).decode()
 
 
 def verify_password(plain: str, hashed: str) -> bool:
