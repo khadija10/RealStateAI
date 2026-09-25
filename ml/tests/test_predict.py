@@ -47,13 +47,15 @@ def _modele_fixe(prix_m2: float):
     return SimpleNamespace(predict=lambda X: [prix_m2])
 
 
-def _run(prix_m2_modele=10_000.0, categories=None, **overrides):
-    """Lance predire() avec un modèle factice."""
+def _run(prix_m2_modele=10_000.0, categories=None, q075=None, q925=None, **overrides):
+    """Lance predire() avec un modèle factice. q075/q925=None → fallback ±15%."""
     kwargs = {**FEATURES_BASE, **overrides}
     modele = _modele_fixe(prix_m2_modele)
     with (
         patch.object(predict_module, "_MODEL", modele),
         patch.object(predict_module, "_CATEGORIES", categories or {}),
+        patch.object(predict_module, "_Q075", q075),
+        patch.object(predict_module, "_Q925", q925),
     ):
         return predire(**kwargs)
 
@@ -71,10 +73,39 @@ class TestCalculPrix:
         assert result["price_per_m2"] == pytest.approx(8_500.0, rel=1e-3)
 
     def test_fourchette_15pct(self):
-        result = _run(prix_m2_modele=10_000.0, surface_m2=60.0)
+        """Sans modèles quantile (None), fallback ±15%."""
+        result = _run(prix_m2_modele=10_000.0, surface_m2=60.0, q075=None, q925=None)
         prix = result["predicted_price"]
         assert result["confidence_interval"]["lower"] == pytest.approx(prix * 0.85, rel=1e-3)
         assert result["confidence_interval"]["upper"] == pytest.approx(prix * 1.15, rel=1e-3)
+
+    def test_fourchette_quantile_avec_modeles(self):
+        """Avec modèles quantile injectés, la fourchette vient d'eux (q7.5–q92.5)."""
+        q075 = SimpleNamespace(predict=lambda X: [8_000.0])
+        q925 = SimpleNamespace(predict=lambda X: [12_000.0])
+        result = _run(prix_m2_modele=10_000.0, surface_m2=60.0, q075=q075, q925=q925)
+        assert result["confidence_interval"]["lower"] == pytest.approx(480_000.0, rel=1e-3)
+        assert result["confidence_interval"]["upper"] == pytest.approx(720_000.0, rel=1e-3)
+
+    def test_retourne_code_commune(self):
+        result = _run()
+        assert "code_commune" in result
+
+    def test_retourne_reliability_float(self):
+        result = _run()
+        assert "reliability" in result
+        assert isinstance(result["reliability"], float)
+        assert 0.30 <= result["reliability"] <= 0.95
+
+    def test_reliability_depuis_quantile_range(self):
+        """La fiabilité doit être calculée depuis l'écart quantile, pas figée."""
+        q075_large = SimpleNamespace(predict=lambda X: [5_000.0])
+        q925_large = SimpleNamespace(predict=lambda X: [15_000.0])
+        q075_tight = SimpleNamespace(predict=lambda X: [9_500.0])
+        q925_tight = SimpleNamespace(predict=lambda X: [10_500.0])
+        result_large = _run(prix_m2_modele=10_000.0, surface_m2=60.0, q075=q075_large, q925=q925_large)
+        result_tight = _run(prix_m2_modele=10_000.0, surface_m2=60.0, q075=q075_tight, q925=q925_tight)
+        assert result_tight["reliability"] > result_large["reliability"]
 
     def test_low_inferieur_a_prix_inferieur_a_high(self):
         result = _run(prix_m2_modele=9_000.0, surface_m2=80.0)

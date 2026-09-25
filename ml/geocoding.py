@@ -79,6 +79,8 @@ def recuperer_features_marche(
     code_commune: str,
     code_departement: str,
     code_type_local: str,
+    latitude: float | None = None,
+    longitude: float | None = None,
     gold_path: str = GOLD_PATH,
     market_ref_path: str = MARKET_REF_PATH,
 ) -> dict:
@@ -91,12 +93,12 @@ def recuperer_features_marche(
           "nb_ventes_commune_12m": float,
           "prix_m2_median_dept_12m": float | None,
           "nb_ventes_dept_12m": float,
+          "prix_m2_median_local_12m": float | None,
           "mois_index": int,
           "mois": int,
           "trimestre": int,
         }
     """
-    # Utilise gold complet si dispo, sinon table de référence pré-calculée (37 KB)
     path = Path(gold_path)
     if not path.exists():
         path = Path(market_ref_path)
@@ -126,7 +128,6 @@ def recuperer_features_marche(
     """).fetchone()
 
     if row is None:
-        # Repli département si commune inconnue
         row = con.execute(f"""
             SELECT
                 NULL,
@@ -141,6 +142,23 @@ def recuperer_features_marche(
             LIMIT 1
         """).fetchone()
 
+    # Feature spatiale locale ~1 km (nécessite lat/lon)
+    prix_m2_median_local_12m = None
+    if latitude is not None and longitude is not None:
+        lat_r = round(latitude, 2)
+        lon_r = round(longitude, 2)
+        local_row = con.execute(f"""
+            SELECT MAX(prix_m2_median_local_12m)
+            FROM {parquet_query}
+            WHERE ROUND(latitude, 2)  = {lat_r}
+              AND ROUND(longitude, 2) = {lon_r}
+              AND code_type_local = '{code_type_local}'
+              AND prix_m2_median_local_12m IS NOT NULL
+            LIMIT 1
+        """).fetchone()
+        if local_row and local_row[0] is not None:
+            prix_m2_median_local_12m = float(local_row[0])
+
     con.close()
 
     if row is None:
@@ -149,6 +167,7 @@ def recuperer_features_marche(
             "nb_ventes_commune_12m": 0.0,
             "prix_m2_median_dept_12m": None,
             "nb_ventes_dept_12m": 0.0,
+            "prix_m2_median_local_12m": prix_m2_median_local_12m,
             "mois_index": mois_index,
             "mois": mois,
             "trimestre": trimestre,
@@ -159,6 +178,7 @@ def recuperer_features_marche(
         "nb_ventes_commune_12m": float(row[1] or 0),
         "prix_m2_median_dept_12m": row[2],
         "nb_ventes_dept_12m": float(row[3] or 0),
+        "prix_m2_median_local_12m": prix_m2_median_local_12m,
         "mois_index": mois_index,
         "mois": mois,
         "trimestre": trimestre,

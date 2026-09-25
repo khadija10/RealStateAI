@@ -1,10 +1,127 @@
-import { useId } from 'react'
+import { useId, useState, useRef, useEffect } from 'react'
 
 const PROPERTY_TYPES = [
   { value: 'apartment', label: 'Appartement' },
   { value: 'house', label: 'Maison' },
   { value: 'other', label: 'Autre' },
 ]
+
+function AddressAutocomplete({ value, onChange, onSelect, formId }) {
+  const [suggestions, setSuggestions] = useState([])
+  const [open, setOpen] = useState(false)
+  const [activeIdx, setActiveIdx] = useState(-1)
+  const debounceRef = useRef(null)
+  const wrapperRef = useRef(null)
+
+  useEffect(() => {
+    function onClickOutside(e) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setOpen(false)
+        setActiveIdx(-1)
+      }
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [])
+
+  function handleChange(e) {
+    const val = e.target.value
+    onChange(val)
+    setActiveIdx(-1)
+
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+
+    if (val.trim().length < 3) {
+      setSuggestions([])
+      setOpen(false)
+      return
+    }
+
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(val)}&limit=6&autocomplete=1`
+        )
+        const data = await res.json()
+        const items = (data.features || []).map((f) => ({
+          label: f.properties.label,
+          name: f.properties.name,
+          postcode: f.properties.postcode ?? '',
+          city: f.properties.city ?? '',
+        }))
+        setSuggestions(items)
+        setOpen(items.length > 0)
+      } catch {
+        setSuggestions([])
+        setOpen(false)
+      }
+    }, 300)
+  }
+
+  function handleKeyDown(e) {
+    if (!open) return
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setActiveIdx((i) => Math.min(i + 1, suggestions.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActiveIdx((i) => Math.max(i - 1, -1))
+    } else if (e.key === 'Enter' && activeIdx >= 0) {
+      e.preventDefault()
+      pick(suggestions[activeIdx])
+    } else if (e.key === 'Escape') {
+      setOpen(false)
+      setActiveIdx(-1)
+    }
+  }
+
+  function pick(s) {
+    onSelect(s)
+    setSuggestions([])
+    setOpen(false)
+    setActiveIdx(-1)
+  }
+
+  return (
+    <div ref={wrapperRef} className="relative">
+      <input
+        id={`${formId}-address`}
+        type="text"
+        value={value}
+        onChange={handleChange}
+        onKeyDown={handleKeyDown}
+        onFocus={() => suggestions.length > 0 && setOpen(true)}
+        placeholder="ex. 21 rue de Rivoli"
+        autoComplete="off"
+        aria-autocomplete="list"
+        aria-expanded={open}
+        className="w-full rounded-lg border border-stone-100 bg-stone-50/50 px-3 py-2.5 text-sm text-ink focus:border-seine focus:bg-white outline-none transition-colors"
+      />
+      {open && (
+        <ul
+          role="listbox"
+          className="absolute z-30 w-full mt-1 bg-white border border-stone-200 rounded-xl shadow-lg overflow-hidden"
+        >
+          {suggestions.map((s, i) => (
+            <li
+              key={i}
+              role="option"
+              aria-selected={i === activeIdx}
+              onMouseDown={() => pick(s)}
+              onMouseEnter={() => setActiveIdx(i)}
+              className={`px-3 py-2.5 cursor-pointer flex flex-col gap-0.5 transition-colors ${
+                i === activeIdx ? 'bg-stone-50' : 'hover:bg-stone-50/60'
+              } ${i > 0 ? 'border-t border-stone-100' : ''}`}
+            >
+              <span className="text-sm text-ink font-medium leading-snug">{s.name}</span>
+              <span className="text-xs text-ink-muted">{s.postcode} {s.city}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
 
 export default function EstimationForm({ values, onChange, onSubmit, communes, loading, communesLoading }) {
   const formId = useId()
@@ -18,11 +135,19 @@ export default function EstimationForm({ values, onChange, onSubmit, communes, l
   function handleSubmit(e) {
     e.preventDefault()
     if (!values.property_type) {
-      // force le navigateur à signaler le champ manquant via l'input caché
       document.getElementById(`${formId}-type-required`)?.reportValidity()
       return
     }
     onSubmit()
+  }
+
+  function handleAddressSelect(s) {
+    onChange({
+      ...values,
+      address: s.name,
+      postal_code: s.postcode,
+      commune: s.city,
+    })
   }
 
   return (
@@ -94,7 +219,6 @@ export default function EstimationForm({ values, onChange, onSubmit, communes, l
             </button>
           ))}
         </div>
-        {/* Input caché pour déclencher la validation native si type manquant */}
         <input
           id={`${formId}-type-required`}
           type="text"
@@ -126,13 +250,11 @@ export default function EstimationForm({ values, onChange, onSubmit, communes, l
               ↑ active le modèle ML
             </span>
           </label>
-          <input
-            id={`${formId}-address`}
-            type="text"
+          <AddressAutocomplete
             value={values.address}
-            onChange={set('address')}
-            placeholder="ex. 21 rue de Rivoli"
-            className="w-full rounded-lg border border-stone-100 bg-stone-50/50 px-3 py-2.5 text-sm text-ink focus:border-seine focus:bg-white outline-none transition-colors"
+            onChange={(val) => onChange({ ...values, address: val })}
+            onSelect={handleAddressSelect}
+            formId={formId}
           />
         </div>
 

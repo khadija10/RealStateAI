@@ -176,6 +176,42 @@ def construire_gold(settings: Settings | None = None) -> dict:
         GROUP BY 1, 2, 3;
     """)
 
+    # --- 4b. Feature spatiale locale ~1 km ---------------------------------
+    # On arrondit lat/lon à 2 décimales (≈1,1 km × 0,7 km en IDF) pour créer
+    # des cellules géographiques. Le médian glissant 12 mois sur la cellule
+    # capture les micro-variations de prix que la commune ne voit pas
+    # (ex : deux rues séparées par une voie ferrée). Sans fuite temporelle :
+    # même fenêtre [m-12, m-1] que les agrégats commune/département.
+    con.execute("""
+        CREATE OR REPLACE TABLE mensuel_local AS
+        SELECT
+            ROUND(latitude, 2)  AS lat_cell,
+            ROUND(longitude, 2) AS lon_cell,
+            code_type_local, mois_index,
+            median(prix_m2) AS med, count(*) AS n
+        FROM base_propre
+        WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+        GROUP BY 1, 2, 3, 4;
+    """)
+    con.execute(f"""
+        CREATE OR REPLACE TABLE marche_local AS
+        SELECT g.lat_cell, g.lon_cell, g.code_type_local, g.mois_index,
+               median(h.med) AS prix_m2_median_local_12m
+        FROM (
+            SELECT DISTINCT ROUND(latitude, 2)  AS lat_cell,
+                            ROUND(longitude, 2) AS lon_cell,
+                            code_type_local, mois_index
+            FROM base_propre
+            WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+        ) g
+        LEFT JOIN mensuel_local h
+               ON h.lat_cell = g.lat_cell
+              AND h.lon_cell = g.lon_cell
+              AND h.code_type_local = g.code_type_local
+              AND h.mois_index BETWEEN g.mois_index - {FENETRE_MOIS} AND g.mois_index - 1
+        GROUP BY 1, 2, 3, 4;
+    """)
+
     # --- 5. Assemblage du dataset final ------------------------------------
     # prix_m2_reference_12m : médiane communale si elle repose sur assez de
     # ventes, sinon médiane départementale. `source_reference_prix` trace le
@@ -217,6 +253,7 @@ def construire_gold(settings: Settings | None = None) -> dict:
             mc.nb_ventes_commune_12m,
             md.prix_m2_median_dept_12m,
             md.nb_ventes_dept_12m,
+            ml.prix_m2_median_local_12m,
             CASE WHEN mc.nb_ventes_commune_12m >= {MIN_VENTES_COMMUNE}
                  THEN mc.prix_m2_median_commune_12m
                  ELSE md.prix_m2_median_dept_12m END AS prix_m2_reference_12m,
@@ -232,7 +269,12 @@ def construire_gold(settings: Settings | None = None) -> dict:
         LEFT JOIN marche_departement md
                ON md.code_departement = b.code_departement
               AND md.code_type_local = b.code_type_local
-              AND md.mois_index = b.mois_index;
+              AND md.mois_index = b.mois_index
+        LEFT JOIN marche_local ml
+               ON ml.lat_cell = ROUND(b.latitude, 2)
+              AND ml.lon_cell = ROUND(b.longitude, 2)
+              AND ml.code_type_local = b.code_type_local
+              AND ml.mois_index = b.mois_index;
     """)
 
     # Partitionné par année : l'équipe ML peut charger un seul millésime, et

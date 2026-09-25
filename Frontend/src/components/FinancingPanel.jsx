@@ -64,8 +64,12 @@ function Field({ label, children }) {
 
 const inputCls = 'w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-sm text-ink placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-seine/30 focus:border-seine transition-colors'
 
-export default function FinancingPanel({ defaultPrix }) {
-  const [form, setForm] = useState({ ...EMPTY, prix_bien: defaultPrix ? String(defaultPrix) : '' })
+export default function FinancingPanel({ defaultPrix, defaultDep }) {
+  const [form, setForm] = useState({
+    ...EMPTY,
+    prix_bien: defaultPrix ? String(Math.round(defaultPrix)) : '',
+    departement: defaultDep && DEPS_IDF.includes(defaultDep) ? defaultDep : '75',
+  })
   const [status, setStatus] = useState('idle')
   const [dossier, setDossier] = useState(null)
   const [error, setError] = useState('')
@@ -118,7 +122,7 @@ export default function FinancingPanel({ defaultPrix }) {
 
         <div className="grid grid-cols-2 gap-4">
           <Field label="Prix du bien (€)">
-            <input className={inputCls} type="number" min="50000" placeholder="350 000" value={form.prix_bien}
+            <input className={inputCls} type="number" min="50000" step="1" placeholder="350 000" value={form.prix_bien}
               onChange={e => set('prix_bien', e.target.value)} required />
           </Field>
           <Field label="Département">
@@ -214,7 +218,7 @@ export default function FinancingPanel({ defaultPrix }) {
               <p className="text-sm font-medium">
                 {conforme ? '✓ Dossier conforme HCSF' : '⚠ Hors normes HCSF — dérogation nécessaire'}
               </p>
-              {synthese?.decision_indicative && (
+              {conforme && synthese?.decision_indicative && (
                 <p className="text-xs mt-1 opacity-80">{synthese.decision_indicative}</p>
               )}
             </div>

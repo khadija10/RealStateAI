@@ -17,7 +17,7 @@ import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
-from main import app
+from main import app, _dvf_year_range
 from utils.address_parser import city_root, normalize_commune, parse_address
 from utils.dvf_search import (
     SearchConfig,
@@ -480,3 +480,95 @@ def test_financing_dossier_endpoint_uses_deterministic_module(client):
     assert body["plan_financement"]["prix_bien"] == 250000
     assert "conformite_hcsf" in body
     assert "pieces_justificatives" in body
+
+
+# ==========================================================================
+#  UNITAIRES — _dvf_year_range
+# ==========================================================================
+
+
+def test_dvf_year_range_min_et_max():
+    info = {"train_years": [2021, 2022, 2023], "test_years": [2024, 2025]}
+    assert _dvf_year_range(info, "min") == 2021
+    assert _dvf_year_range(info, "max") == 2025
+
+
+def test_dvf_year_range_uniquement_train_years():
+    info = {"train_years": [2022, 2023, 2024]}
+    assert _dvf_year_range(info, "min") == 2022
+    assert _dvf_year_range(info, "max") == 2024
+
+
+def test_dvf_year_range_none_si_info_vide():
+    assert _dvf_year_range(None, "min") is None
+    assert _dvf_year_range({}, "max") is None
+
+
+def test_dvf_year_range_none_si_pas_de_cle_years():
+    assert _dvf_year_range({"mape": 18.7}, "min") is None
+
+
+# ==========================================================================
+#  ENDPOINTS — health : champs model_info
+# ==========================================================================
+
+
+def test_health_expose_model_n_transactions(client):
+    client.app.state.model_info = {
+        "mape": 18.7, "r2": 0.78, "trained_at": "2026-01-01T00:00:00",
+        "n_features": 19, "n_train": 500_000, "n_test": 130_000,
+        "train_years": [2021, 2022, 2023, 2024], "test_years": [2025],
+    }
+    body = client.get("/api/health").json()
+    assert body["model_n_transactions"] == 630_000
+
+
+def test_health_expose_dvf_year_range(client):
+    client.app.state.model_info = {
+        "n_train": 100, "n_test": 10,
+        "train_years": [2021, 2022], "test_years": [2023],
+    }
+    body = client.get("/api/health").json()
+    assert body["dvf_min_year"] == 2021
+    assert body["dvf_max_year"] == 2023
+
+
+def test_health_year_range_absent_si_model_info_none(client):
+    client.app.state.model_info = None
+    body = client.get("/api/health").json()
+    assert body.get("dvf_min_year") is None
+    assert body.get("dvf_max_year") is None
+
+
+# ==========================================================================
+#  HISTORIQUE — adresse complète
+# ==========================================================================
+
+
+def test_history_query_contient_adresse_et_code_postal(client):
+    """Le champ query doit contenir l'adresse complète (rue + CP + commune)."""
+    client.post(
+        "/api/predictions/estimate",
+        json={
+            "area_m2": 60, "rooms": 3, "property_type": "apartment",
+            "commune": "VERSAILLES",
+            "address": "3 avenue de Paris",
+            "postal_code": "78000",
+        },
+    )
+    entries = client.get("/api/search-history").json()
+    assert entries
+    query = entries[0]["query"]
+    assert "avenue" in query.lower()
+    assert "78000" in query
+
+
+def test_history_query_commune_seule_si_pas_adresse(client):
+    """Sans adresse ni CP, la commune seule est enregistrée comme query."""
+    client.post(
+        "/api/predictions/estimate",
+        json={"area_m2": 60, "rooms": 3, "property_type": "apartment", "commune": "MELUN"},
+    )
+    entries = client.get("/api/search-history").json()
+    assert entries
+    assert entries[0]["query"]  # non vide

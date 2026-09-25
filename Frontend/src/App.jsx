@@ -48,6 +48,8 @@ function normalizeResult(raw) {
     reliability: raw.reliability ?? null,
     meta: raw.meta ?? null,
     confidenceLabel: raw.confidence_interval?.confidence ?? '85%',
+    localMape: raw.local_mape ?? null,
+    localMapeN: raw.local_mape_n ?? null,
   }
 }
 
@@ -63,10 +65,30 @@ export default function App() {
   const [error, setError] = useState('')
   const [submittedQuery, setSubmittedQuery] = useState(EMPTY_FORM)
   const [financingDefaultPrix, setFinancingDefaultPrix] = useState(null)
+  const [financingDefaultDep, setFinancingDefaultDep] = useState(null)
+  const [modelInfo, setModelInfo] = useState(null)
+  const [datasetInfo, setDatasetInfo] = useState(null)
 
   useEffect(() => {
     getHealth()
-      .then((h) => setBackendStatus((h.dvf_loaded || h.model_loaded) ? 'ready' : 'error'))
+      .then((h) => {
+        setBackendStatus((h.dvf_loaded || h.model_loaded) ? 'ready' : 'error')
+        if (h.model_mape != null) {
+          setModelInfo({
+            mape: h.model_mape,
+            r2: h.model_r2,
+            trainedAt: h.model_trained_at,
+            nFeatures: h.model_n_features,
+            nTransactions: h.model_n_transactions,
+          })
+        }
+        setDatasetInfo({
+          nCommunes: h.n_communes ?? null,
+          minYear: h.dvf_min_year ?? null,
+          maxYear: h.dvf_max_year ?? null,
+          nRows: h.n_rows ?? null,
+        })
+      })
       .catch(() => setBackendStatus('error'))
 
     getCommunes()
@@ -135,7 +157,7 @@ export default function App() {
                 Estimez la valeur de votre bien
               </h1>
               <p className="text-ink-muted mt-4 leading-relaxed">
-                Modèle LightGBM entraîné sur 700 000 transactions DVF · Île-de-France · Géolocalisation BAN
+                Modèle LightGBM entraîné sur {modelInfo?.nTransactions?.toLocaleString('fr-FR') ?? '—'} transactions DVF · Île-de-France · Géolocalisation BAN
               </p>
             </div>
 
@@ -153,7 +175,13 @@ export default function App() {
                 error={error}
                 result={result}
                 query={submittedQuery}
-                onOpenFinancement={(prix) => { setFinancingDefaultPrix(prix); setActiveTab('financement') }}
+                modelInfo={modelInfo}
+                onOpenFinancement={(prix, query) => {
+                  setFinancingDefaultPrix(Math.round(prix))
+                  const dep = query?.postal_code ? query.postal_code.slice(0, 2) : null
+                  setFinancingDefaultDep(dep)
+                  setActiveTab('financement')
+                }}
               />
             </div>
           </>
@@ -170,7 +198,7 @@ export default function App() {
                 Calcul basé sur les normes HCSF en vigueur · Taux d'effort, mensualité, score dossier.
               </p>
             </div>
-            <FinancingPanel defaultPrix={financingDefaultPrix} />
+            <FinancingPanel defaultPrix={financingDefaultPrix} defaultDep={financingDefaultDep} />
           </>
         )}
 
@@ -182,7 +210,7 @@ export default function App() {
                 Carte des prix par commune
               </h1>
               <p className="text-ink-muted mt-4 leading-relaxed">
-                Prix médian au m² — 1 193 communes d&apos;Île-de-France · transactions 2022-2024
+                Prix médian au m² — {datasetInfo?.nCommunes?.toLocaleString('fr-FR') ?? '—'} communes d&apos;Île-de-France{datasetInfo?.minYear && datasetInfo?.maxYear ? ` · transactions ${datasetInfo.minYear}–${datasetInfo.maxYear}` : ''}
               </p>
             </div>
             <PriceMap />
@@ -197,14 +225,12 @@ export default function App() {
                 Référence du marché
               </h1>
               <p className="text-ink-muted mt-4 leading-relaxed">
-                Évolution mensuelle du prix médian au m² par département, 2021-2025.
+                Évolution mensuelle du prix médian au m² par département{datasetInfo?.minYear && datasetInfo?.maxYear ? `, ${datasetInfo.minYear}–${datasetInfo.maxYear}` : ''}.
               </p>
             </div>
             <MarketTrends />
           </>
         )}
-
-      </main>
 
         {/* ONGLET HISTORIQUE */}
         {activeTab === 'historique' && (
@@ -222,6 +248,8 @@ export default function App() {
             </div>
           </>
         )}
+
+      </main>
 
       <Footer />
     </div>

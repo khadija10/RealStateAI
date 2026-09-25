@@ -16,14 +16,18 @@ features:
     - nb_ventes_commune_12m
     - prix_m2_median_dept_12m
     - nb_ventes_dept_12m
+    - prix_m2_median_local_12m
     - latitude
     - longitude
     - mois_index
     - mois
     - trimestre
+    - arrondissement
+    - surface_terrain
   categorical:
     - code_type_local
     - code_departement
+    - code_commune
   boolean:
     - a_terrain
 
@@ -32,7 +36,7 @@ target: prix_m2
 lightgbm:
   n_estimators: 2000
   learning_rate: 0.05
-  num_leaves: 127
+  num_leaves: 255
   max_depth: -1
   min_child_samples: 20
   subsample: 0.8

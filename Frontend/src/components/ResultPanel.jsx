@@ -1,6 +1,6 @@
 import ConfidenceGauge, { formatEUR } from './ConfidenceGauge'
 
-function exportPDF(result, query) {
+function exportPDF(result, query, modelInfo) {
   const date = new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long', timeStyle: 'short' }).format(new Date())
   const lieu = query?.address
     ? `${query.address}${query.postal_code ? ' ' + query.postal_code : ''}`
@@ -37,7 +37,7 @@ function exportPDF(result, query) {
   <div class="range-item"><p class="range-label">Fourchette basse</p><p class="range-val">${formatEUR(result.low)}</p></div>
   <div class="range-item"><p class="range-label">Fourchette haute</p><p class="range-val">${formatEUR(result.high)}</p></div>
 </div>
-<p class="footer">Estimation fournie à titre indicatif, sans valeur contractuelle. Modèle entraîné sur 700 000 transactions DVF Île-de-France 2021–2024. Erreur médiane : 19,6 %.</p>
+<p class="footer">Estimation fournie à titre indicatif, sans valeur contractuelle. Modèle entraîné sur ${modelInfo?.nTransactions?.toLocaleString('fr-FR') ?? '700 000'} transactions DVF Île-de-France 2021–2024. Erreur médiane${result.localMape != null ? ' locale' : ''} : ${result.localMape ?? modelInfo?.mape ?? '—'} %.</p>
 </body></html>`
   const w = window.open('', '_blank')
   w.document.write(html)
@@ -52,7 +52,6 @@ const MODEL_CONFIG = {
     color: 'text-seine bg-seine/8 border-seine/20',
     dot: 'bg-seine',
     description: 'Prédiction géolocalisée via l\'API BAN.',
-    mape: 'Erreur médiane : 19.2 %',
     reliabilityLabel: 'Précision du modèle',
   },
   dvf: {
@@ -60,7 +59,6 @@ const MODEL_CONFIG = {
     color: 'text-limestone bg-limestone/8 border-limestone/20',
     dot: 'bg-limestone',
     description: 'Médiane calculée sur transactions comparables.',
-    mape: null,
     reliabilityLabel: 'Représentativité des données',
   },
   mock: {
@@ -68,7 +66,6 @@ const MODEL_CONFIG = {
     color: 'text-ink-muted bg-stone-100 border-stone-200',
     dot: 'bg-stone-400',
     description: 'Backend hors ligne — données non représentatives.',
-    mape: null,
     reliabilityLabel: 'Fiabilité',
   },
 }
@@ -99,7 +96,7 @@ function MetaRow({ label, value }) {
   )
 }
 
-export default function ResultPanel({ status, error, result, query, onOpenFinancement }) {
+export default function ResultPanel({ status, error, result, query, modelInfo, onOpenFinancement }) {
   const cfg = result?.model ? MODEL_CONFIG[result.model] ?? MODEL_CONFIG.dvf : null
   const meta = result?.meta ?? null
 
@@ -189,7 +186,7 @@ export default function ResultPanel({ status, error, result, query, onOpenFinanc
           {/* Actions */}
           <div className="flex gap-2 flex-wrap">
             <button
-              onClick={() => exportPDF(result, query)}
+              onClick={() => exportPDF(result, query, modelInfo)}
               className="flex items-center gap-1.5 text-xs font-medium text-ink-muted border border-stone-200 rounded-lg px-3 py-1.5 hover:border-stone-400 hover:text-ink transition-colors"
             >
               <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
@@ -199,7 +196,7 @@ export default function ResultPanel({ status, error, result, query, onOpenFinanc
             </button>
             {onOpenFinancement && (
               <button
-                onClick={() => onOpenFinancement(result.price)}
+                onClick={() => onOpenFinancement(result.price, query)}
                 className="flex items-center gap-1.5 text-xs font-medium text-seine border border-seine/20 rounded-lg px-3 py-1.5 hover:bg-seine/5 transition-colors"
               >
                 Simuler mon financement →
@@ -222,7 +219,27 @@ export default function ResultPanel({ status, error, result, query, onOpenFinanc
 
             <div className="space-y-2">
               {cfg?.description && <MetaRow label="Méthode" value={cfg.description} />}
-              {cfg?.mape && <MetaRow label="Précision (test 2025)" value={cfg.mape} />}
+              {result.model === 'ml' && result.localMape != null && (
+                <MetaRow
+                  label={`Erreur médiane locale${result.localMapeN != null ? ` (${result.localMapeN} ventes)` : ''}`}
+                  value={`${result.localMape} %`}
+                />
+              )}
+              {result.model === 'ml' && result.localMape == null && modelInfo?.mape != null && (
+                <MetaRow label="Erreur médiane (modèle global)" value={`${modelInfo.mape} %`} />
+              )}
+              {result.model === 'ml' && (
+                <MetaRow label="Fourchette" value="Modèle quantile (q7.5–q92.5)" />
+              )}
+              {result.model === 'ml' && modelInfo?.r2 != null && (
+                <MetaRow label="R² (test 2025)" value={modelInfo.r2.toFixed(4)} />
+              )}
+              {result.model === 'ml' && modelInfo?.nFeatures != null && (
+                <MetaRow label="Features" value={`${modelInfo.nFeatures} variables`} />
+              )}
+              {result.model === 'ml' && modelInfo?.trainedAt && (
+                <MetaRow label="Entraîné le" value={new Date(modelInfo.trainedAt).toLocaleDateString('fr-FR')} />
+              )}
               {scopeLabel && <MetaRow label="Périmètre" value={scopeLabel} />}
               {nTransactions && (
                 <MetaRow
@@ -236,8 +253,8 @@ export default function ResultPanel({ status, error, result, query, onOpenFinanc
                   value={`${Math.round(meta.dispersion * 100)} %`}
                 />
               )}
-              {result.model === 'ml' && (
-                <MetaRow label="Entraîné sur" value="700 000 transactions DVF 2021-2024" />
+              {result.model === 'ml' && modelInfo?.nTransactions != null && (
+                <MetaRow label="Entraîné sur" value={`${modelInfo.nTransactions.toLocaleString('fr-FR')} transactions DVF 2021–2024`} />
               )}
             </div>
 

@@ -194,6 +194,8 @@ class EstimationResponse(BaseModel):
     meta: EstimationMeta | None = None
     predicted_price: float | None = None
     confidence_interval: dict[str, Any] | None = None
+    local_mape: float | None = None
+    local_mape_n: int | None = None
 
 
 class HealthResponse(BaseModel):
@@ -205,11 +207,57 @@ class HealthResponse(BaseModel):
     error: str | None = None
     model_loaded: bool = False
     model_error: str | None = None
+    model_mape: float | None = None
+    model_r2: float | None = None
+    model_trained_at: str | None = None
+    model_n_features: int | None = None
+    model_n_transactions: int | None = None
+    dvf_min_year: int | None = None
+    dvf_max_year: int | None = None
 
 
 # ==========================================================================
 #  APPLICATION
 # ==========================================================================
+
+
+def _charger_model_info() -> dict | None:
+    candidates = [
+        BASE_DIR / "models" / "model_info.json",
+        BASE_DIR.parent / "Backend" / "models" / "model_info.json",
+    ]
+    for p in candidates:
+        if p.exists():
+            try:
+                import json as _json
+                return _json.loads(p.read_text())
+            except Exception:
+                pass
+    return None
+
+
+def _dvf_year_range(info: dict | None, bound: str) -> int | None:
+    if not info:
+        return None
+    all_years = list(info.get("train_years", [])) + list(info.get("test_years", []))
+    if not all_years:
+        return None
+    return min(all_years) if bound == "min" else max(all_years)
+
+
+def _charger_local_mape() -> dict:
+    candidates = [
+        BASE_DIR / "models" / "local_mape.json",
+        BASE_DIR.parent / "Backend" / "models" / "local_mape.json",
+    ]
+    for p in candidates:
+        if p.exists():
+            try:
+                import json as _json
+                return _json.loads(p.read_text())
+            except Exception:
+                pass
+    return {}
 
 
 @asynccontextmanager
@@ -226,6 +274,8 @@ async def lifespan(app: FastAPI):
     app.state.communes = []
     app.state.search_history = SearchHistoryService()
     app.state.search_history.init_db()
+    app.state.model_info = _charger_model_info()
+    app.state.local_mape = _charger_local_mape()
 
     path = resolve_dvf_path()
     if path is None:
@@ -423,6 +473,7 @@ def _normalize_ml_result(raw: Any, surface: float) -> EstimationResponse:
 def health(request: Request) -> HealthResponse:
     df = request.app.state.dvf
     loaded = df is not None
+    info = request.app.state.model_info or {}
     return HealthResponse(
         status="healthy" if loaded else "degraded",
         dvf_loaded=loaded,
@@ -432,6 +483,13 @@ def health(request: Request) -> HealthResponse:
         error=request.app.state.dvf_error,
         model_loaded=ML_ESTIMATOR is not None,
         model_error=ML_ERROR,
+        model_mape=info.get("mape"),
+        model_r2=info.get("r2"),
+        model_trained_at=info.get("trained_at"),
+        model_n_features=info.get("n_features"),
+        model_n_transactions=(info.get("n_train", 0) + info.get("n_test", 0)) or None,
+        dvf_min_year=_dvf_year_range(info, "min"),
+        dvf_max_year=_dvf_year_range(info, "max"),
     )
 
 
@@ -529,9 +587,17 @@ def estimate(
             if ml_result is not None:
                 logger.info("Réponse renvoyée par le modèle ML")
                 normalized = _normalize_ml_result(ml_result, surface)
+                code_commune = ml_result.get("code_commune") if isinstance(ml_result, dict) else None
+                lm = getattr(request.app.state, "local_mape", {}).get(code_commune or "", {})
+                normalized.local_mape = lm.get("mape") if lm else None
+                normalized.local_mape_n = lm.get("n") if lm else None
+                if lm.get("mape"):
+                    normalized.reliability = round(max(0.30, min(0.95, 1.0 - lm["mape"] / 100)), 2)
                 try:
+                    _adresse_norm = ml_result.get("adresse_normalisee") if isinstance(ml_result, dict) else None
+                    _full_query = _adresse_norm or " ".join(filter(None, [req.address, req.postal_code, req.commune])).strip() or ""
                     request.app.state.search_history.add_search(
-                        query=req.commune or req.address or "",
+                        query=_full_query,
                         commune=req.commune,
                         property_type=req.property_type,
                         area_m2=surface,
@@ -550,7 +616,7 @@ def estimate(
         result = _mock_estimate(surface, req.property_type)
         try:
             request.app.state.search_history.add_search(
-                query=req.commune or req.address or "",
+                query=" ".join(filter(None, [req.address, req.postal_code, req.commune])).strip() or "",
                 commune=req.commune,
                 property_type=req.property_type,
                 area_m2=surface,
@@ -651,7 +717,7 @@ def estimate(
 
     try:
         request.app.state.search_history.add_search(
-            query=req.commune or req.address or "",
+            query=" ".join(filter(None, [req.address, req.postal_code, req.commune])).strip() or commune_norm or "",
             commune=req.commune,
             property_type=req.property_type,
             area_m2=surface,

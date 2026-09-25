@@ -64,7 +64,7 @@ export default function History() {
           <div key={item.id ?? i} className="flex items-center justify-between gap-4 px-5 py-4 hover:bg-stone-50 transition-colors">
             <div className="min-w-0">
               <p className="text-sm font-medium text-ink truncate">
-                {item.commune || item.query || '—'}
+                {item.query || item.commune || '—'}
               </p>
               <p className="text-xs text-ink-muted mt-0.5">
                 {TYPE_LABELS[item.property_type] ?? item.property_type ?? '—'}
