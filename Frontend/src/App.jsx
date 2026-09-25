@@ -71,6 +71,7 @@ export default function App() {
   const [financingDefaultDep, setFinancingDefaultDep] = useState(null)
   const [modelInfo, setModelInfo] = useState(null)
   const [datasetInfo, setDatasetInfo] = useState(null)
+  const [pendingSubmit, setPendingSubmit] = useState(false)
 
   useEffect(() => {
     const token = getToken()
@@ -83,6 +84,10 @@ export default function App() {
     saveToken(token)
     setUser(userData)
     setShowAuthModal(false)
+    if (pendingSubmit) {
+      setPendingSubmit(false)
+      doSubmit()
+    }
   }
 
   function handleLogout() {
@@ -120,11 +125,7 @@ export default function App() {
       .finally(() => setCommunesLoading(false))
   }, [])
 
-  async function handleSubmit() {
-    if (!user) {
-      setShowAuthModal(true)
-      return
-    }
+  async function doSubmit() {
     setStatus('loading')
     setError('')
     try {
@@ -144,6 +145,15 @@ export default function App() {
       setError(e instanceof ApiError ? e.message : "Une erreur inattendue est survenue.")
       setStatus('error')
     }
+  }
+
+  async function handleSubmit() {
+    if (!user) {
+      setPendingSubmit(true)
+      setShowAuthModal(true)
+      return
+    }
+    await doSubmit()
   }
 
   return (

@@ -10,12 +10,12 @@ services:
       - "8000:8000"
     environment:
       JWT_SECRET: ${JWT_SECRET:-realestateai-dev-secret-change-in-production}
-      # DATABASE_URL non défini → SQLite local dans /app/search_history.db
+      DATABASE_URL: sqlite:////app/data/search_history.db
     volumes:
       # Modèle ML monté en volume pour éviter de rebaker l'image à chaque entraînement
       - ./Backend/models:/app/models
-      # Persistance SQLite entre redémarrages
-      - backend_data:/app
+      # Persistance SQLite — seul /app/data est monté pour ne pas figer le code de l'image
+      - backend_data:/app/data
     restart: unless-stopped
 
   # ── Frontend React/Nginx ─────────────────────────────────────────────────

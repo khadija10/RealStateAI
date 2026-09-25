@@ -185,6 +185,7 @@ export default function History() {
           return (
             <div
               key={item.id ?? i}
+              data-testid="history-item"
               onClick={() => item.estimated_price && toggleSelect(item)}
               className={`flex items-center gap-4 px-5 py-4 transition-colors ${item.estimated_price ? 'cursor-pointer' : ''} ${isSelected ? 'bg-stone-50' : 'hover:bg-stone-50/60'}`}
             >

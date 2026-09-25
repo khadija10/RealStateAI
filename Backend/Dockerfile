@@ -31,7 +31,9 @@ RUN pip install --no-cache-dir -e "/opt/financement[agent]"
 # En local, docker-compose le monte en volume (chemin identique /app/models/).
 # DVF_OUTPUTS_DIR non défini : le backend démarre sans DVF, ML prend le relais.
 
-RUN useradd --create-home --uid 1000 appuser && chown -R appuser:appuser /app
+RUN useradd --create-home --uid 1000 appuser && \
+    mkdir -p /app/data && \
+    chown -R appuser:appuser /app
 USER appuser
 
 EXPOSE 8000

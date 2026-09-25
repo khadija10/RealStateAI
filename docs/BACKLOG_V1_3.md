@@ -1,7 +1,7 @@
 # BACKLOG — RealEstateAI v1.3
 
 > Éléments identifiés comme manquants en v1.2. À prioriser pour la prochaine itération.
-> Mis à jour le 17 septembre 2026.
+> Mis à jour le 25 septembre 2026.
 
 ---
 
@@ -23,11 +23,11 @@
 - Pipeline complet : téléchargement → gold parquet → entraînement → gate MAPE < 22 % → Docker → Render
 - Validation humaine requise avant déploiement (GitHub Environment `production`)
 
-### Base de données PostgreSQL
-- **Responsable** : Akram (Backend)
-- Stocker l'historique des estimations (adresse, surface, type, résultat, timestamp)
-- Journaliser les requêtes API (latence, erreurs, taux de succès)
-- Permettre analyse rétrospective des estimations vs ventes réelles DVF
+### ✅ Base de données PostgreSQL
+- **Responsable** : Akram (Backend) — **FAIT**
+- SQLite par défaut, PostgreSQL via `docker-compose.postgres.yml`
+- Historique des estimations avec isolation par utilisateur
+- Docker Compose opérationnel en un seul `docker compose up`
 
 ---
 
@@ -38,10 +38,10 @@
 - Rejet 422 si code département hors {75, 77, 78, 91, 92, 93, 94, 95}
 - Heuristique sur noms de communes hors IDF connus (Lyon, Marseille, Bordeaux…)
 
-### Arrondissements Paris (20 codes INSEE)
-- **Responsable** : Skander (Data)
-- Paris est actuellement une seule commune dans le modèle
-- Découper en 20 entités distinctes améliorerait significativement la précision Paris intra-muros
+### ✅ Arrondissements Paris (20 codes INSEE)
+- **Responsable** : Skander (Data) — **FAIT**
+- ML : `arrondissement` (feature numérique) + `code_commune` (catégorielle) dans `config.yaml` et `gold.py`
+- Carte choroplèthe : GeoJSON arrondissements via `geo.api.gouv.fr?type=arrondissement-municipal`
 
 ### DPE (Diagnostic de Performance Énergétique)
 - **Responsable** : Skander (Data)
@@ -49,10 +49,10 @@
 - Source : data.ademe.fr (base DPE nationale, API publique)
 - Jointure sur adresse BAN
 
-### Export PDF fiche d'estimation
-- **Responsable** : Yougarten (Frontend)
-- Fiche téléchargeable : estimation, fourchette, méthode, date, carte mini
-- Utile pour les agents immobiliers
+### ✅ Export PDF fiche d'estimation
+- **Responsable** : Yougarten (Frontend) — **FAIT**
+- Bouton "Télécharger PDF" dans le ResultPanel via `window.print()` + CSS `@media print`
+- Fiche : estimation, fourchette de confiance, modèle, date
 
 ---
 
@@ -64,23 +64,25 @@
 - 4 cas de référence IDF avec tolérance ±35 % (smoke test)
 - Intégré dans le CI/CD (job `test-model-regression`)
 
-### Tests E2E frontend
-- **Responsable** : Kadiatou
-- Playwright ou Cypress — à implémenter
-- Couvrir : formulaire estimation, carte des prix, tendances marché
+### ✅ Tests E2E frontend
+- **Responsable** : Kadiatou — **FAIT**
+- Cypress — 23 tests sur estimation, auth, historique
+- API mockée via `cy.intercept()` → CI sans backend
 
-### Tests unitaires backend complets
-- **Responsable** : Akram (en support)
-- Couverture actuelle partielle — compléter les endpoints non couverts
+### ✅ Tests unitaires backend complets
+- **Responsable** : Akram — **FAIT**
+- `test_auth.py` : 19 tests (register, login, me, historique par user)
+- Tests existants : estimation, santé, communes
 
-### Historique des estimations côté utilisateur
-- **Responsable** : Yougarten (Frontend) + Akram (Backend)
-- LocalStorage pour session courante
-- PostgreSQL pour persistance longue durée
+### ✅ Historique des estimations côté utilisateur
+- **Responsable** : Yougarten + Akram — **FAIT**
+- SQLite avec isolation par `user_id` (JWT) ou session anonyme
+- Pagination 5 items, comparaison side-by-side de 2 biens
 
-### Authentification
-- **Hors scope v1.3** — aucun besoin métier identifié pour l'instant
-- À reconsidérer si le produit passe en SaaS
+### ✅ Authentification
+- **Responsable** : équipe — **FAIT** (hors scope → livré)
+- JWT 7 jours, register/login/me, gate sur estimation et onglets protégés
+- Rate limiting : 5/min login, 3/min register (via `slowapi`)
 
 ---
 
@@ -91,13 +93,13 @@
 | CI/CD ML | Haute | Kadiatou | ✅ Fait |
 | Monitoring drift | Haute | Kadiatou | ✅ Fait |
 | Réentraînement auto | Haute | Kadiatou | ✅ Fait |
-| PostgreSQL / historique | Haute | Akram | À faire |
+| PostgreSQL / historique | Haute | Akram | ✅ Fait |
 | Filtre géo IDF | Moyenne | Kadiatou | ✅ Fait |
-| Arrondissements Paris | Moyenne | Skander | À faire |
+| Arrondissements Paris | Moyenne | Skander | ✅ Fait |
 | DPE | Moyenne | Skander | À faire |
-| Export PDF | Moyenne | Yougarten | À faire |
+| Export PDF | Moyenne | Yougarten | ✅ Fait |
 | Tests régression ML | Basse | Kadiatou | ✅ Fait |
-| Tests E2E frontend | Basse | Kadiatou | À faire |
-| Tests unitaires backend | Basse | Akram | À faire |
-| Historique utilisateur | Basse | Yougarten + Akram | À faire |
-| Authentification | Hors scope | — | — |
+| Tests E2E frontend | Basse | Kadiatou | ✅ Fait |
+| Tests unitaires backend | Basse | Akram | ✅ Fait |
+| Historique utilisateur | Basse | Yougarten + Akram | ✅ Fait |
+| Authentification | Hors scope | équipe | ✅ Fait |

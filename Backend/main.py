@@ -35,6 +35,9 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.util import get_remote_address
 
 from auth import create_access_token, decode_token, hash_password, verify_password
 from database import SearchHistoryService
@@ -364,6 +367,8 @@ _OPENAPI_TAGS = [
     },
 ]
 
+_limiter = Limiter(key_func=get_remote_address)
+
 app = FastAPI(
     title="RealEstateAI API",
     description="""
@@ -401,6 +406,9 @@ Obtenir un token via `POST /api/auth/login` ou `POST /api/auth/register`.
     openapi_tags=_OPENAPI_TAGS,
     lifespan=lifespan,
 )
+
+app.state.limiter = _limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
@@ -505,6 +513,7 @@ class AuthResponse(BaseModel):
     summary="Créer un compte",
     responses={409: {"description": "Email déjà utilisé"}},
 )
+@_limiter.limit("3/minute")
 def register(body: RegisterRequest, request: Request) -> AuthResponse:
     """Crée un nouveau compte et retourne un token JWT valable 7 jours.
 
@@ -531,6 +540,7 @@ def register(body: RegisterRequest, request: Request) -> AuthResponse:
     summary="Se connecter",
     responses={401: {"description": "Email ou mot de passe incorrect"}},
 )
+@_limiter.limit("5/minute")
 def login(body: AuthRequest, request: Request) -> AuthResponse:
     """Authentifie un utilisateur existant et retourne un token JWT valable 7 jours."""
     service: SearchHistoryService = request.app.state.search_history
