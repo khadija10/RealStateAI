@@ -126,4 +126,66 @@ describe('Authentification', () => {
       cy.contains('Financement').should('be.visible')
     })
   })
+
+  context('Mot de passe oublié / Réinitialisation', () => {
+    it('affiche le lien "Oublié ?" sur le formulaire de connexion', () => {
+      cy.contains('Connexion').click()
+      cy.contains(/oublié/i).should('be.visible')
+    })
+
+    it('bascule vers le formulaire forgot-password', () => {
+      cy.contains('Connexion').click()
+      cy.contains(/oublié/i).click()
+      cy.contains(/mot de passe oublié/i).should('be.visible')
+      cy.get('input[type="email"]').should('be.visible')
+    })
+
+    it('envoie la demande et bascule vers le formulaire reset avec le code pré-rempli', () => {
+      cy.contains('Connexion').click()
+      cy.contains(/oublié/i).click()
+      cy.get('input[type="email"]').type('test@example.com')
+      cy.get('button[type="submit"]').click()
+      cy.wait('@forgotPassword')
+
+      // Mode reset — code auto-rempli depuis dev_token
+      cy.contains(/nouveau mot de passe/i).should('be.visible')
+      cy.get('#reset-code').should('have.value', 'aaaaaaaa-bbbb-cccc-dddd-eeeeeeeeeeee')
+    })
+
+    it('réinitialise le mot de passe et retourne à la connexion', () => {
+      cy.contains('Connexion').click()
+      cy.contains(/oublié/i).click()
+      cy.get('input[type="email"]').type('test@example.com')
+      cy.get('button[type="submit"]').click()
+      cy.wait('@forgotPassword')
+
+      cy.get('#reset-pw').type('nouveaumdp123')
+      cy.get('button[type="submit"]').click()
+      cy.wait('@resetPassword')
+
+      cy.contains(/connexion/i).should('be.visible')
+      cy.get('input[type="email"]').should('exist')
+    })
+
+    it('affiche une erreur si le code est invalide', () => {
+      cy.intercept('POST', '/api/auth/reset-password', {
+        statusCode: 400,
+        body: { detail: 'Code invalide ou expiré.' },
+      }).as('resetFail')
+
+      cy.contains('Connexion').click()
+      cy.contains(/oublié/i).click()
+      cy.get('input[type="email"]').type('test@example.com')
+      cy.get('button[type="submit"]').click()
+      cy.wait('@forgotPassword')
+
+      // Vider le code auto-rempli et mettre un code invalide
+      cy.get('#reset-code').clear().type('code-invalide')
+      cy.get('#reset-pw').type('nouveaumdp123')
+      cy.get('button[type="submit"]').click()
+      cy.wait('@resetFail')
+
+      cy.contains(/invalide|expiré/i).should('be.visible')
+    })
+  })
 })

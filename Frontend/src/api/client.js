@@ -105,4 +105,41 @@ export function getMe() {
   return request('/api/auth/me')
 }
 
+export function deleteHistoryItem(id) {
+  return request(`/api/history/${id}`, { method: 'DELETE' })
+}
+
+export function forgotPassword(email) {
+  return request('/api/auth/forgot-password', {
+    method: 'POST',
+    body: JSON.stringify({ email }),
+  })
+}
+
+export function resetPassword(token, newPassword) {
+  return request('/api/auth/reset-password', {
+    method: 'POST',
+    body: JSON.stringify({ token, new_password: newPassword }),
+  })
+}
+
+export function changePassword(currentPassword, newPassword) {
+  return request('/api/auth/me/password', {
+    method: 'PUT',
+    body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+  })
+}
+
+export function clearHistory() {
+  return request('/api/history', { method: 'DELETE' })
+}
+
+export function deleteAccount() {
+  return request('/api/auth/me', { method: 'DELETE' })
+}
+
+export function getFinancingRates() {
+  return request('/api/financing/rates')
+}
+
 export { ApiError }

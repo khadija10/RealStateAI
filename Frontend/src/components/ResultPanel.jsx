@@ -98,8 +98,30 @@ function MetaRow({ label, value }) {
   )
 }
 
+function buildShareUrl(query) {
+  if (!query) return null
+  const p = new URLSearchParams()
+  if (query.area_m2) p.set('area_m2', query.area_m2)
+  if (query.rooms) p.set('rooms', query.rooms)
+  if (query.property_type) p.set('type', query.property_type)
+  if (query.address) p.set('address', query.address)
+  if (query.postal_code) p.set('postal_code', query.postal_code)
+  if (query.commune) p.set('commune', query.commune)
+  return `${window.location.origin}${window.location.pathname}?${p.toString()}`
+}
+
 export default function ResultPanel({ status, error, result, query, modelInfo, onOpenFinancement }) {
   const [detailsOpen, setDetailsOpen] = useState(false)
+  const [copied, setCopied] = useState(false)
+
+  function handleCopyLink() {
+    const url = buildShareUrl(query)
+    if (!url) return
+    navigator.clipboard.writeText(url).then(() => {
+      setCopied(true)
+      setTimeout(() => setCopied(false), 2000)
+    })
+  }
   const cfg = result?.model ? MODEL_CONFIG[result.model] ?? MODEL_CONFIG.dvf : null
   const meta = result?.meta ?? null
 
@@ -227,6 +249,26 @@ export default function ResultPanel({ status, error, result, query, modelInfo, o
                 <path d="M2 9v2h9V9M6.5 1v7M4 6l2.5 2.5L9 6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
               </svg>
               Exporter PDF
+            </button>
+            <button
+              onClick={handleCopyLink}
+              className="flex items-center gap-1.5 text-xs font-medium text-ink-muted border border-stone-200 rounded-lg px-3 py-1.5 hover:border-stone-400 hover:text-ink transition-colors"
+            >
+              {copied ? (
+                <>
+                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
+                    <path d="M2 7l3 3 6-6" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  Copié !
+                </>
+              ) : (
+                <>
+                  <svg width="13" height="13" viewBox="0 0 13 13" fill="none" aria-hidden="true">
+                    <path d="M5 2H2v9h9V8M7 2h4v4M7 6l4-4" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                  Partager
+                </>
+              )}
             </button>
             {onOpenFinancement && (
               <button

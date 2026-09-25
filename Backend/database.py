@@ -46,6 +46,17 @@ class SearchHistoryService:
                 )
                 conn.execute(
                     """
+                    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        user_id INTEGER NOT NULL REFERENCES users(id),
+                        token TEXT NOT NULL UNIQUE,
+                        expires_at TEXT NOT NULL,
+                        used INTEGER NOT NULL DEFAULT 0
+                    )
+                    """
+                )
+                conn.execute(
+                    """
                     CREATE TABLE IF NOT EXISTS search_history (
                         id INTEGER PRIMARY KEY AUTOINCREMENT,
                         user_id INTEGER REFERENCES users(id),
@@ -57,6 +68,7 @@ class SearchHistoryService:
                         rooms INTEGER,
                         address TEXT,
                         postal_code TEXT,
+                        adresse_normalisee TEXT,
                         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                     )
                     """
@@ -67,6 +79,7 @@ class SearchHistoryService:
                     ("rooms", "INTEGER"),
                     ("address", "TEXT"),
                     ("postal_code", "TEXT"),
+                    ("adresse_normalisee", "TEXT"),
                 ]:
                     try:
                         conn.execute(f"ALTER TABLE search_history ADD COLUMN {_col} {_typ}")
@@ -188,6 +201,7 @@ class SearchHistoryService:
         rooms: int | None = None,
         address: str | None = None,
         postal_code: str | None = None,
+        adresse_normalisee: str | None = None,
     ) -> dict[str, Any]:
         created_at = datetime.now(timezone.utc).isoformat()
 
@@ -197,8 +211,8 @@ class SearchHistoryService:
                 cursor = conn.execute(
                     """
                     INSERT INTO search_history
-                        (user_id, query, commune, property_type, area_m2, estimated_price, rooms, address, postal_code, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        (user_id, query, commune, property_type, area_m2, estimated_price, rooms, address, postal_code, adresse_normalisee, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         user_id,
@@ -210,6 +224,7 @@ class SearchHistoryService:
                         rooms,
                         address,
                         postal_code,
+                        adresse_normalisee,
                         created_at,
                     ),
                 )
@@ -228,6 +243,7 @@ class SearchHistoryService:
                 "rooms": rooms,
                 "address": address,
                 "postal_code": postal_code,
+                "adresse_normalisee": adresse_normalisee,
                 "created_at": created_at,
             }
 
@@ -243,8 +259,8 @@ class SearchHistoryService:
                 cur.execute(
                     """
                     INSERT INTO search_history
-                        (user_id, query, commune, property_type, area_m2, estimated_price, rooms, address, postal_code, created_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        (user_id, query, commune, property_type, area_m2, estimated_price, rooms, address, postal_code, adresse_normalisee, created_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING id
                     """,
                     (
@@ -257,6 +273,7 @@ class SearchHistoryService:
                         rooms,
                         address,
                         postal_code,
+                        adresse_normalisee,
                         created_at,
                     ),
                 )
@@ -274,6 +291,7 @@ class SearchHistoryService:
             "rooms": rooms,
             "address": address,
             "postal_code": postal_code,
+            "adresse_normalisee": adresse_normalisee,
             "created_at": created_at,
         }
 
@@ -286,7 +304,7 @@ class SearchHistoryService:
                     rows = conn.execute(
                         """
                         SELECT id, user_id, query, commune, property_type, area_m2, estimated_price,
-                               rooms, address, postal_code, created_at
+                               rooms, address, postal_code, adresse_normalisee, created_at
                         FROM search_history WHERE user_id = ?
                         ORDER BY id DESC LIMIT ?
                         """,
@@ -296,7 +314,7 @@ class SearchHistoryService:
                     rows = conn.execute(
                         """
                         SELECT id, user_id, query, commune, property_type, area_m2, estimated_price,
-                               rooms, address, postal_code, created_at
+                               rooms, address, postal_code, adresse_normalisee, created_at
                         FROM search_history WHERE user_id IS NULL
                         ORDER BY id DESC LIMIT ?
                         """,
@@ -319,7 +337,7 @@ class SearchHistoryService:
                     cur.execute(
                         """
                         SELECT id, user_id, query, commune, property_type, area_m2, estimated_price,
-                               rooms, address, postal_code, created_at
+                               rooms, address, postal_code, adresse_normalisee, created_at
                         FROM search_history WHERE user_id = %s
                         ORDER BY created_at DESC LIMIT %s
                         """,
@@ -329,10 +347,157 @@ class SearchHistoryService:
                     cur.execute(
                         """
                         SELECT id, user_id, query, commune, property_type, area_m2, estimated_price,
-                               rooms, address, postal_code, created_at
+                               rooms, address, postal_code, adresse_normalisee, created_at
                         FROM search_history WHERE user_id IS NULL
                         ORDER BY created_at DESC LIMIT %s
                         """,
                         (limit,),
                     )
                 return cur.fetchall()
+
+    # ── Réinitialisation mot de passe ─────────────────────────────────────────
+
+    def create_reset_token(self, email: str) -> dict[str, Any] | None:
+        import uuid
+        from datetime import timedelta
+        user = self.get_user_by_email(email)
+        if not user:
+            return None
+        token = str(uuid.uuid4())
+        expires_at = (datetime.now(timezone.utc) + timedelta(hours=1)).isoformat()
+        if self._db_type == "sqlite":
+            conn = sqlite3.connect(_resolve_sqlite_path(self.database_url))
+            try:
+                conn.execute(
+                    "INSERT INTO password_reset_tokens (user_id, token, expires_at) VALUES (?, ?, ?)",
+                    (user["id"], token, expires_at),
+                )
+                conn.commit()
+            finally:
+                conn.close()
+        return {"token": token, "email": user["email"], "user_id": user["id"]}
+
+    def get_valid_reset_token(self, token: str) -> int | None:
+        now = datetime.now(timezone.utc).isoformat()
+        if self._db_type == "sqlite":
+            conn = sqlite3.connect(_resolve_sqlite_path(self.database_url))
+            conn.row_factory = sqlite3.Row
+            try:
+                row = conn.execute(
+                    "SELECT user_id FROM password_reset_tokens WHERE token=? AND used=0 AND expires_at > ?",
+                    (token, now),
+                ).fetchone()
+                return row["user_id"] if row else None
+            finally:
+                conn.close()
+        return None
+
+    def use_reset_token(self, token: str) -> None:
+        if self._db_type == "sqlite":
+            conn = sqlite3.connect(_resolve_sqlite_path(self.database_url))
+            try:
+                conn.execute("UPDATE password_reset_tokens SET used=1 WHERE token=?", (token,))
+                conn.commit()
+            finally:
+                conn.close()
+
+    def update_password(self, user_id: int, new_hash: str) -> None:
+        if self._db_type == "sqlite":
+            conn = sqlite3.connect(_resolve_sqlite_path(self.database_url))
+            try:
+                conn.execute("UPDATE users SET password_hash=? WHERE id=?", (new_hash, user_id))
+                conn.commit()
+            finally:
+                conn.close()
+            return
+        try:
+            import psycopg
+        except ImportError as exc:
+            raise RuntimeError("psycopg requis pour PostgreSQL") from exc
+        with psycopg.connect(self.database_url) as conn:
+            with conn.cursor() as cur:
+                cur.execute("UPDATE users SET password_hash=%s WHERE id=%s", (new_hash, user_id))
+                conn.commit()
+
+    def clear_history(self, user_id: int | None = None) -> int:
+        if self._db_type == "sqlite":
+            conn = sqlite3.connect(_resolve_sqlite_path(self.database_url))
+            try:
+                if user_id is not None:
+                    cursor = conn.execute("DELETE FROM search_history WHERE user_id=?", (user_id,))
+                else:
+                    cursor = conn.execute("DELETE FROM search_history WHERE user_id IS NULL")
+                conn.commit()
+                return cursor.rowcount
+            finally:
+                conn.close()
+        try:
+            import psycopg
+        except ImportError as exc:
+            raise RuntimeError("psycopg requis pour PostgreSQL") from exc
+        with psycopg.connect(self.database_url) as conn:
+            with conn.cursor() as cur:
+                if user_id is not None:
+                    cur.execute("DELETE FROM search_history WHERE user_id=%s", (user_id,))
+                else:
+                    cur.execute("DELETE FROM search_history WHERE user_id IS NULL")
+                deleted = cur.rowcount
+                conn.commit()
+                return deleted
+
+    def delete_user(self, user_id: int) -> bool:
+        if self._db_type == "sqlite":
+            conn = sqlite3.connect(_resolve_sqlite_path(self.database_url))
+            try:
+                conn.execute("DELETE FROM search_history WHERE user_id=?", (user_id,))
+                conn.execute("DELETE FROM password_reset_tokens WHERE user_id=?", (user_id,))
+                cursor = conn.execute("DELETE FROM users WHERE id=?", (user_id,))
+                conn.commit()
+                return cursor.rowcount > 0
+            finally:
+                conn.close()
+        try:
+            import psycopg
+        except ImportError as exc:
+            raise RuntimeError("psycopg requis pour PostgreSQL") from exc
+        with psycopg.connect(self.database_url) as conn:
+            with conn.cursor() as cur:
+                cur.execute("DELETE FROM search_history WHERE user_id=%s", (user_id,))
+                cur.execute("DELETE FROM users WHERE id=%s", (user_id,))
+                deleted = cur.rowcount > 0
+                conn.commit()
+                return deleted
+
+    def delete_search(self, item_id: int, user_id: int | None = None) -> bool:
+        if self._db_type == "sqlite":
+            conn = sqlite3.connect(_resolve_sqlite_path(self.database_url))
+            try:
+                if user_id is not None:
+                    cursor = conn.execute(
+                        "DELETE FROM search_history WHERE id=? AND user_id=?", (item_id, user_id)
+                    )
+                else:
+                    cursor = conn.execute(
+                        "DELETE FROM search_history WHERE id=? AND user_id IS NULL", (item_id,)
+                    )
+                conn.commit()
+                return cursor.rowcount > 0
+            finally:
+                conn.close()
+        try:
+            import psycopg
+        except ImportError as exc:
+            raise RuntimeError("psycopg requis pour PostgreSQL") from exc
+        with psycopg.connect(self.database_url) as conn:
+            with conn.cursor() as cur:
+                if user_id is not None:
+                    cur.execute(
+                        "DELETE FROM search_history WHERE id=%s AND user_id=%s", (item_id, user_id)
+                    )
+                else:
+                    cur.execute(
+                        "DELETE FROM search_history WHERE id=%s AND user_id IS NULL", (item_id,)
+                    )
+                deleted = cur.rowcount > 0
+                conn.commit()
+                return deleted

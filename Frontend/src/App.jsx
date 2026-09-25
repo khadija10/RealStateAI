@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useState } from 'react'
 import Header from './components/Header'
 import Footer from './components/Footer'
 import EstimationForm from './components/EstimationForm'
@@ -7,6 +7,7 @@ import PriceMap from './components/PriceMap'
 import MarketTrends from './components/MarketTrends'
 import History from './components/History'
 import FinancingPanel from './components/FinancingPanel'
+import ProfilePanel from './components/ProfilePanel'
 import { getHealth, getCommunes, estimatePrice, getMe, getToken, saveToken, clearToken, ApiError } from './api/client'
 import AuthModal from './components/AuthModal'
 
@@ -25,7 +26,20 @@ const TABS = [
   { id: 'carte', label: 'Carte des prix' },
   { id: 'marche', label: 'Référence du marché' },
   { id: 'historique', label: 'Historique', protected: true },
+  { id: 'profil', label: 'Profil', protected: true },
 ]
+
+function readUrlParams() {
+  const p = new URLSearchParams(window.location.search)
+  return {
+    area_m2: p.get('area_m2') || '',
+    rooms: p.get('rooms') || '',
+    property_type: p.get('type') || 'apartment',
+    address: p.get('address') || '',
+    postal_code: p.get('postal_code') || '',
+    commune: p.get('commune') || '',
+  }
+}
 
 function normalizeCommunes(raw) {
   if (!Array.isArray(raw)) return []
@@ -73,11 +87,27 @@ export default function App() {
   const [datasetInfo, setDatasetInfo] = useState(null)
   const [pendingSubmit, setPendingSubmit] = useState(false)
   const [toast, setToast] = useState(null)
+  const [historyKey, setHistoryKey] = useState(0)
+  const [darkMode, setDarkMode] = useState(() => {
+    try { return localStorage.getItem('reai_theme') === 'dark' } catch { return false }
+  })
+
+  useLayoutEffect(() => {
+    document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light')
+    try { localStorage.setItem('reai_theme', darkMode ? 'dark' : 'light') } catch { /* ignore */ }
+  }, [darkMode])
 
   useEffect(() => {
     const token = getToken()
     if (token) {
       getMe().then((u) => setUser(u)).catch(() => { clearToken(); setUser(null) })
+    }
+    // Pré-remplir depuis les paramètres URL (lien partagé)
+    const fromUrl = readUrlParams()
+    if (fromUrl.area_m2 || fromUrl.address || fromUrl.commune) {
+      setForm(fromUrl)
+      // Nettoyer l'URL sans rechargement
+      window.history.replaceState({}, '', window.location.pathname)
     }
   }, [])
 
@@ -103,7 +133,7 @@ export default function App() {
       rooms: item.rooms ?? '',
       property_type: item.property_type ?? 'apartment',
       commune: item.commune || (!item.address ? item.query : '') || '',
-      address: item.address ?? '',
+      address: item.adresse_normalisee || item.address || '',
       postal_code: item.postal_code ?? '',
     }
     setForm(newForm)
@@ -187,6 +217,8 @@ export default function App() {
         user={user}
         onOpenAuth={() => setShowAuthModal(true)}
         onLogout={handleLogout}
+        darkMode={darkMode}
+        onToggleDark={() => setDarkMode((d) => !d)}
       />
       {showAuthModal && (
         <AuthModal onSuccess={handleAuthSuccess} onClose={() => { setShowAuthModal(false); setPendingSubmit(false) }} />
@@ -204,7 +236,10 @@ export default function App() {
             {TABS.filter((tab) => !tab.protected || user).map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  setActiveTab(tab.id)
+                  if (tab.id === 'historique') setHistoryKey((k) => k + 1)
+                }}
                 className={`px-3 sm:px-5 py-4 text-sm font-medium border-b-2 shrink-0 transition-colors ${
                   activeTab === tab.id
                     ? 'border-seine text-seine'
@@ -318,8 +353,23 @@ export default function App() {
               </p>
             </div>
             <div className="max-w-2xl">
-              <History onReEstimate={handleReEstimate} />
+              <History key={historyKey} onReEstimate={handleReEstimate} />
             </div>
+          </>
+        )}
+
+        {/* ONGLET PROFIL */}
+        {activeTab === 'profil' && (
+          <>
+            <div className="max-w-xl mb-8">
+              <h1 className="font-[var(--font-display)] text-4xl sm:text-5xl text-ink leading-[1.05]">
+                Mon profil
+              </h1>
+              <p className="text-ink-muted mt-4 leading-relaxed">
+                Paramètres de votre compte.
+              </p>
+            </div>
+            <ProfilePanel user={user} onLogout={handleLogout} />
           </>
         )}
 

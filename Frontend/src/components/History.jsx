@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { getSearchHistory } from '../api/client'
+import { getSearchHistory, deleteHistoryItem, clearHistory } from '../api/client'
 
 function formatEUR(n) {
   return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n)
@@ -108,6 +108,10 @@ export default function History({ onReEstimate }) {
   const [error, setError] = useState(null)
   const [selected, setSelected] = useState([]) // max 2 ids
   const [page, setPage] = useState(0)
+  const [deleting, setDeleting] = useState(null)
+  const [clearing, setClearing] = useState(false)
+  const [confirmClear, setConfirmClear] = useState(false)
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     getSearchHistory(20)
@@ -115,6 +119,37 @@ export default function History({ onReEstimate }) {
       .catch(() => setError("Impossible de charger l'historique."))
       .finally(() => setLoading(false))
   }, [])
+
+  async function handleDelete(e, item) {
+    e.stopPropagation()
+    if (deleting === item.id) return
+    setDeleting(item.id)
+    try {
+      await deleteHistoryItem(item.id)
+      setItems((prev) => prev.filter((i) => i.id !== item.id))
+      setSelected((prev) => prev.filter((s) => s.id !== item.id))
+    } catch {
+      // silently ignore — item stays
+    } finally {
+      setDeleting(null)
+    }
+  }
+
+  async function handleClearAll() {
+    if (!confirmClear) { setConfirmClear(true); return }
+    setClearing(true)
+    setConfirmClear(false)
+    try {
+      await clearHistory()
+      setItems([])
+      setSelected([])
+      setPage(0)
+    } catch {
+      // silently ignore
+    } finally {
+      setClearing(false)
+    }
+  }
 
   function toggleSelect(item) {
     setSelected((prev) => {
@@ -125,8 +160,20 @@ export default function History({ onReEstimate }) {
     })
   }
 
-  const totalPages = Math.ceil(items.length / PAGE_SIZE)
-  const pageItems = items.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE)
+  const filtered = search.trim()
+    ? items.filter((item) => {
+        const q = search.trim().toLowerCase()
+        return (
+          (item.query || '').toLowerCase().includes(q) ||
+          (item.commune || '').toLowerCase().includes(q) ||
+          (item.address || '').toLowerCase().includes(q) ||
+          (item.property_type || '').toLowerCase().includes(q)
+        )
+      })
+    : items
+
+  const totalPages = Math.ceil(filtered.length / PAGE_SIZE)
+  const pageItems = filtered.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE)
 
   const selA = selected[0] ?? null
   const selB = selected[1] ?? null
@@ -156,13 +203,69 @@ export default function History({ onReEstimate }) {
     )
   }
 
+  if (filtered.length === 0 && search.trim()) {
+    return (
+      <div className="space-y-4">
+        <div className="relative">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" aria-hidden="true">
+            <circle cx="5.5" cy="5.5" r="4" stroke="currentColor" strokeWidth="1.3" />
+            <path d="M9 9l3 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+          </svg>
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Rechercher…"
+            className="w-full pl-8 pr-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-seine transition-colors"
+          />
+        </div>
+        <div className="flex flex-col items-center justify-center py-16 gap-2 text-center">
+          <p className="text-sm text-ink-muted">Aucune estimation ne correspond à <strong>"{search}"</strong>.</p>
+          <button onClick={() => setSearch('')} className="text-xs text-seine hover:underline">Effacer la recherche</button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-4">
+      {/* Barre de recherche + actions */}
+      <div className="flex items-center gap-3">
+        <div className="relative flex-1">
+          <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted pointer-events-none" aria-hidden="true">
+            <circle cx="5.5" cy="5.5" r="4" stroke="currentColor" strokeWidth="1.3" />
+            <path d="M9 9l3 3" stroke="currentColor" strokeWidth="1.3" strokeLinecap="round" />
+          </svg>
+          <input
+            type="search"
+            value={search}
+            onChange={(e) => { setSearch(e.target.value); setPage(0) }}
+            placeholder="Rechercher…"
+            className="w-full pl-8 pr-3 py-2 text-sm border border-stone-200 rounded-lg focus:outline-none focus:border-seine transition-colors"
+          />
+        </div>
+        {items.length > 0 && (
+          <button
+            onClick={handleClearAll}
+            disabled={clearing}
+            className="text-xs text-ink-muted hover:text-red-500 transition-colors shrink-0 flex items-center gap-1"
+          >
+            {clearing ? (
+              <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25" />
+                <path fill="currentColor" className="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+              </svg>
+            ) : null}
+            {confirmClear ? 'Confirmer ?' : 'Vider tout'}
+          </button>
+        )}
+      </div>
+
       <div className="flex items-center justify-between">
         <p className="text-xs text-ink-muted">
-          {items.length} estimation{items.length > 1 ? 's' : ''} · page {page + 1}/{totalPages}
+          {filtered.length} estimation{filtered.length > 1 ? 's' : ''}{totalPages > 1 ? ` · page ${page + 1}/${totalPages}` : ''}
         </p>
-        {items.length >= 2 && selected.length === 0 && (
+        {filtered.length >= 2 && selected.length === 0 && (
           <p className="text-xs text-ink-muted">Sélectionne 2 biens pour les comparer</p>
         )}
         {selected.length > 0 && selected.length < 2 && (
@@ -207,6 +310,7 @@ export default function History({ onReEstimate }) {
                 <p className="text-xs text-ink-muted mt-0.5">
                   {TYPE_LABELS[item.property_type] ?? item.property_type ?? '—'}
                   {item.area_m2 ? ` · ${item.area_m2} m²` : ''}
+                  {item.rooms ? ` · ${item.rooms} pièce${item.rooms > 1 ? 's' : ''}` : ''}
                   {' · '}{formatDate(item.created_at)}
                 </p>
               </div>
@@ -230,6 +334,23 @@ export default function History({ onReEstimate }) {
                     Ré-estimer
                   </button>
                 )}
+                <button
+                  onClick={(e) => handleDelete(e, item)}
+                  disabled={deleting === item.id}
+                  className="mt-1 text-ink-muted hover:text-red-500 transition-colors disabled:opacity-40"
+                  title="Supprimer"
+                >
+                  {deleting === item.id ? (
+                    <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25" />
+                      <path fill="currentColor" className="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                  ) : (
+                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                      <path d="M2 3h8M5 3V2h2v1M3.5 3l.5 7h4l.5-7" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
+                    </svg>
+                  )}
+                </button>
               </div>
             </div>
           )

@@ -61,4 +61,54 @@ describe('Historique', () => {
 
     cy.contains(/aucune estimation/i).should('be.visible')
   })
+
+  context('Suppression d\'un item', () => {
+    it('supprime un item au clic sur la corbeille', () => {
+      cy.get('[data-testid="history-item"]').first().within(() => {
+        cy.get('button[title="Supprimer"]').click()
+      })
+      cy.wait('@deleteHistoryItem')
+    })
+  })
+
+  context('Vider tout l\'historique', () => {
+    it('affiche le bouton Vider tout', () => {
+      cy.contains(/vider tout/i).should('be.visible')
+    })
+
+    it('demande une confirmation avant de vider', () => {
+      cy.contains(/vider tout/i).click()
+      cy.contains(/confirmer/i).should('be.visible')
+    })
+
+    it('vide l\'historique après confirmation', () => {
+      cy.contains(/vider tout/i).click()
+      cy.contains(/confirmer/i).click()
+      cy.wait('@clearHistory')
+      cy.contains(/aucune estimation/i).should('be.visible')
+    })
+  })
+
+  context('Recherche / filtre', () => {
+    it('affiche un champ de recherche', () => {
+      cy.get('input[placeholder*="Rechercher"]').should('be.visible')
+    })
+
+    it('filtre les estimations selon la saisie', () => {
+      cy.get('input[placeholder*="Rechercher"]').type('Versailles')
+      cy.contains('12 Rue de la Paix').should('not.exist')
+      cy.contains('Versailles').should('be.visible')
+    })
+
+    it('affiche un message si aucun résultat', () => {
+      cy.get('input[placeholder*="Rechercher"]').type('xxxxxxxxxx')
+      cy.contains(/aucune estimation ne correspond/i).should('be.visible')
+    })
+
+    it('effacer la recherche restaure la liste complète', () => {
+      cy.get('input[placeholder*="Rechercher"]').type('xxxxxxxxxx')
+      cy.contains(/effacer la recherche/i).click()
+      cy.contains('12 Rue de la Paix').should('be.visible')
+    })
+  })
 })

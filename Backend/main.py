@@ -429,7 +429,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
 )
 app.include_router(financing_router)
@@ -516,6 +516,17 @@ class AuthResponse(BaseModel):
     token: str
     user: dict[str, Any]
 
+class ForgotPasswordRequest(BaseModel):
+    email: str = Field(..., min_length=3, max_length=254)
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(..., min_length=6, max_length=128)
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(..., min_length=1, max_length=128)
+    new_password: str = Field(..., min_length=6, max_length=128)
+
 
 # ==========================================================================
 #  AUTH ENDPOINTS
@@ -584,6 +595,82 @@ def me(request: Request) -> dict[str, Any]:
     if not payload:
         raise HTTPException(401, "Token invalide.")
     return {"id": user_id, "email": payload.get("email", "")}
+
+
+@app.post(f"{API_PREFIX}/auth/forgot-password", tags=["auth"], summary="Demander un reset de mot de passe")
+@_limiter.limit("3/minute")
+def forgot_password(body: ForgotPasswordRequest, request: Request) -> dict[str, Any]:
+    service: SearchHistoryService = request.app.state.search_history
+    result = service.create_reset_token(body.email)
+    if result:
+        logger.info("Reset token pour %s : %s", result["email"], result["token"])
+    return {
+        "message": "Si un compte existe avec cet email, un code a été généré.",
+        "dev_token": result["token"] if result else None,
+    }
+
+
+@app.post(f"{API_PREFIX}/auth/reset-password", tags=["auth"], summary="Réinitialiser le mot de passe")
+def reset_password(body: ResetPasswordRequest, request: Request) -> dict[str, Any]:
+    service: SearchHistoryService = request.app.state.search_history
+    user_id = service.get_valid_reset_token(body.token)
+    if not user_id:
+        raise HTTPException(400, "Code invalide ou expiré.")
+    service.update_password(user_id, hash_password(body.new_password))
+    service.use_reset_token(body.token)
+    return {"message": "Mot de passe réinitialisé avec succès."}
+
+
+@app.put(f"{API_PREFIX}/auth/me/password", tags=["auth"], summary="Changer son mot de passe")
+def change_password(body: ChangePasswordRequest, request: Request) -> dict[str, Any]:
+    user_id = _current_user(request)
+    if user_id is None:
+        raise HTTPException(401, "Non authentifié.")
+    auth = request.headers.get("Authorization", "")
+    token = auth.removeprefix("Bearer ").strip()
+    payload = decode_token(token)
+    if not payload:
+        raise HTTPException(401, "Token invalide.")
+    service: SearchHistoryService = request.app.state.search_history
+    user = service.get_user_by_email(payload.get("email", ""))
+    if not user:
+        raise HTTPException(404, "Utilisateur introuvable.")
+    if not verify_password(body.current_password, user["password_hash"]):
+        raise HTTPException(400, "Mot de passe actuel incorrect.")
+    service.update_password(user_id, hash_password(body.new_password))
+    return {"message": "Mot de passe modifié avec succès."}
+
+
+@app.delete(f"{API_PREFIX}/history/{{item_id}}", tags=["historique"], summary="Supprimer une estimation")
+def delete_history_item(item_id: int, request: Request) -> dict[str, Any]:
+    user_id = _current_user(request)
+    service: SearchHistoryService = request.app.state.search_history
+    deleted = service.delete_search(item_id, user_id)
+    if not deleted:
+        raise HTTPException(404, "Estimation introuvable ou accès refusé.")
+    return {"message": "Estimation supprimée."}
+
+
+@app.delete(f"{API_PREFIX}/history", tags=["historique"], summary="Vider tout l'historique")
+def clear_history(request: Request) -> dict[str, Any]:
+    user_id = _current_user(request)
+    if user_id is None:
+        raise HTTPException(401, "Non authentifié.")
+    service: SearchHistoryService = request.app.state.search_history
+    deleted = service.clear_history(user_id)
+    return {"message": f"{deleted} estimation(s) supprimée(s).", "deleted": deleted}
+
+
+@app.delete(f"{API_PREFIX}/auth/me", tags=["auth"], summary="Supprimer son compte")
+def delete_account(request: Request) -> dict[str, Any]:
+    user_id = _current_user(request)
+    if user_id is None:
+        raise HTTPException(401, "Non authentifié.")
+    service: SearchHistoryService = request.app.state.search_history
+    deleted = service.delete_user(user_id)
+    if not deleted:
+        raise HTTPException(404, "Utilisateur introuvable.")
+    return {"message": "Compte supprimé définitivement."}
 
 
 def _load_ml_estimator() -> tuple[Any | None, str | None]:
@@ -857,6 +944,7 @@ def estimate(
                         rooms=req.rooms,
                         address=req.address,
                         postal_code=req.postal_code,
+                        adresse_normalisee=_adresse_norm,
                     )
                 except Exception as exc:  # pragma: no cover - la persistance ne doit pas casser la réponse
                     logger.warning("Historique de recherche non inscrit : %s", exc)

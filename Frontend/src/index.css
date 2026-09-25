@@ -39,6 +39,101 @@
   }
 }
 
+/* ── Dark mode ───────────────────────────────────────────────────────────── */
+
+:root[data-theme="dark"],
+:root:not([data-theme="light"]):has(body) {
+  /* écrasement uniquement si système = dark, via le selecteur ci-dessous */
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-stone-50: #1A1A1A;
+    --color-stone-100: #282828;
+    --color-stone-600: #8A8179;
+    --color-ink: #EDE9E3;
+    --color-ink-muted: #9C9890;
+    --color-surface: #222222;
+    --color-limestone-light: rgba(176,141,87,0.18);
+    --shadow-card: 0 1px 3px rgba(0,0,0,0.3), 0 8px 24px -8px rgba(0,0,0,0.5);
+  }
+}
+
+:root[data-theme="dark"] {
+  --color-stone-50: #1A1A1A;
+  --color-stone-100: #323232;
+  --color-stone-600: #8A8179;
+  --color-ink: #EDE9E3;
+  --color-ink-muted: #9C9890;
+  --color-surface: #222222;
+  --color-limestone-light: rgba(176,141,87,0.18);
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.3), 0 8px 24px -8px rgba(0,0,0,0.5);
+}
+
+/* Surfaces blanches en mode sombre */
+:root[data-theme="dark"] .bg-white,
+:root[data-theme="dark"] header,
+:root[data-theme="dark"] nav { background-color: #222222 !important; }
+
+:root[data-theme="dark"] .bg-stone-50 { background-color: #2a2a2a !important; }
+:root[data-theme="dark"] .bg-stone-50\/50 { background-color: rgba(42,42,42,0.5) !important; }
+:root[data-theme="dark"] .hover\:bg-stone-50\/60:hover { background-color: rgba(42,42,42,0.6) !important; }
+:root[data-theme="dark"] .bg-red-50 { background-color: rgba(127,29,29,0.15) !important; }
+:root[data-theme="dark"] .bg-emerald-50 { background-color: rgba(6,78,59,0.15) !important; }
+:root[data-theme="dark"] .bg-amber-50 { background-color: rgba(92,65,0,0.2) !important; }
+
+/* bg-ink utilisé comme fond de bouton (ex: "Estimer le prix", filtres carte) */
+:root[data-theme="dark"] .bg-ink { background-color: #3a3a3a !important; }
+:root[data-theme="dark"] .border-ink { border-color: #3a3a3a !important; }
+:root[data-theme="dark"] .hover\:bg-seine-dark:hover { background-color: #1a5a8a !important; }
+
+/* Bordures visibles en dark mode */
+:root[data-theme="dark"] .border-stone-200 { border-color: #3f3f3f !important; }
+:root[data-theme="dark"] .border-stone-100 { border-color: #323232 !important; }
+:root[data-theme="dark"] .hover\:border-stone-400:hover { border-color: #666 !important; }
+
+/* Inputs, selects, textarea */
+:root[data-theme="dark"] input,
+:root[data-theme="dark"] select,
+:root[data-theme="dark"] textarea {
+  background-color: #2a2a2a !important;
+  border-color: #3f3f3f !important;
+  color: var(--color-ink) !important;
+}
+:root[data-theme="dark"] input::placeholder,
+:root[data-theme="dark"] textarea::placeholder { color: var(--color-ink-muted) !important; }
+:root[data-theme="dark"] input:focus,
+:root[data-theme="dark"] select:focus,
+:root[data-theme="dark"] textarea:focus { background-color: #2a2a2a !important; }
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-stone-50: #1A1A1A;
+    --color-stone-100: #323232;
+    --color-stone-600: #8A8179;
+    --color-ink: #EDE9E3;
+    --color-ink-muted: #9C9890;
+    --color-surface: #222222;
+    --color-limestone-light: rgba(176,141,87,0.18);
+    --shadow-card: 0 1px 3px rgba(0,0,0,0.3), 0 8px 24px -8px rgba(0,0,0,0.5);
+  }
+  :root:not([data-theme="light"]) .bg-white,
+  :root:not([data-theme="light"]) header,
+  :root:not([data-theme="light"]) nav { background-color: #222222 !important; }
+  :root:not([data-theme="light"]) .bg-stone-50 { background-color: #2a2a2a !important; }
+  :root:not([data-theme="light"]) .bg-ink { background-color: #3a3a3a !important; }
+  :root:not([data-theme="light"]) .border-ink { border-color: #3a3a3a !important; }
+  :root:not([data-theme="light"]) .border-stone-200 { border-color: #3f3f3f !important; }
+  :root:not([data-theme="light"]) .border-stone-100 { border-color: #323232 !important; }
+  :root:not([data-theme="light"]) input,
+  :root:not([data-theme="light"]) select,
+  :root:not([data-theme="light"]) textarea {
+    background-color: #2a2a2a !important;
+    border-color: #3f3f3f !important;
+    color: var(--color-ink) !important;
+  }
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(4px); }
   to { opacity: 1; transform: translateY(0); }

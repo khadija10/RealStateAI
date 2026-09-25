@@ -13,6 +13,7 @@ if str(FINANCING_SRC) not in sys.path:
     sys.path.insert(0, str(FINANCING_SRC))
 
 from realstate_financement.agent import Agent  # noqa: E402
+from realstate_financement.config import parametre  # noqa: E402
 from realstate_financement.dossier import generer_dossier, resumer_dossier  # noqa: E402
 from realstate_financement.modeles import ProfilEmprunteur, Projet  # noqa: E402
 
@@ -108,3 +109,15 @@ def financing_agent_message(payload: FinancingAgentRequest) -> dict:
 def reset_financing_agent(session_id: str) -> dict[str, bool]:
     SESSIONS.pop(session_id, None)
     return {"reset": True}
+
+
+@router.get("/rates")
+def get_financing_rates() -> dict:
+    """Taux indicatifs du barème (source : bareme.yaml)."""
+    taux = parametre("hypotheses_marche", "taux_nominal_par_duree", defaut={})
+    return {
+        "taux_par_duree": {str(k): v for k, v in taux.items()},
+        "taux_assurance": parametre("hypotheses_marche", "taux_assurance_emprunteur", defaut=0.0034),
+        "derniere_verification": parametre("derniere_verification", defaut=""),
+        "millesime": parametre("millesime", defaut=2026),
+    }
