@@ -102,7 +102,7 @@ export default function App() {
       area_m2: item.area_m2 ?? '',
       rooms: '',
       property_type: item.property_type ?? 'apartment',
-      commune: item.commune ?? '',
+      commune: item.commune || item.query || '',
       address: '',
       postal_code: '',
     })
@@ -224,11 +224,11 @@ export default function App() {
         {/* ONGLET ESTIMATION */}
         {activeTab === 'estimation' && (
           <>
-            <div className="max-w-xl mb-10">
-              <h1 className="font-[var(--font-display)] text-4xl sm:text-5xl text-ink leading-[1.05]">
+            <div className="mb-10">
+              <h1 className="font-[var(--font-display)] text-4xl sm:text-5xl text-ink leading-[1.05] whitespace-nowrap">
                 Estimez la valeur de votre bien
               </h1>
-              <p className="text-ink-muted mt-4 leading-relaxed">
+              <p className="text-sm text-ink-muted mt-3 whitespace-nowrap">
                 Modèle LightGBM entraîné sur {modelInfo?.nTransactions?.toLocaleString('fr-FR') ?? '—'} transactions DVF · Île-de-France · Géolocalisation BAN
               </p>
             </div>
