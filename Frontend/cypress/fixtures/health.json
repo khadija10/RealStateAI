@@ -1,0 +1,14 @@
+{
+  "status": "healthy",
+  "dvf_loaded": true,
+  "model_loaded": true,
+  "n_rows": 850000,
+  "n_communes": 1193,
+  "model_mape": 14.2,
+  "model_r2": 0.8821,
+  "model_trained_at": "2026-01-15T08:00:00",
+  "model_n_features": 19,
+  "model_n_transactions": 630000,
+  "dvf_min_year": 2021,
+  "dvf_max_year": 2025
+}

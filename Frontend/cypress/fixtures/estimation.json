@@ -1,0 +1,16 @@
+{
+  "estimated_price": 525000,
+  "price_per_m2": 8750,
+  "price_range": { "low": 472500, "high": 577500, "confidence": "85%" },
+  "model": "ml",
+  "reliability": 0.84,
+  "adresse_normalisee": "12 Rue de la Paix, 75002 Paris",
+  "local_mape": 11.3,
+  "local_mape_n": 312,
+  "meta": {
+    "scope": "commune",
+    "scope_value": "Paris",
+    "n_transactions": 18420,
+    "dispersion": 0.18
+  }
+}
