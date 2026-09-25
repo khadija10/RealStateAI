@@ -1,0 +1,30 @@
+# Override PostgreSQL — à combiner avec docker-compose.yml :
+#   docker compose -f docker-compose.yml -f docker-compose.postgres.yml up
+
+services:
+
+  db:
+    image: postgres:16-alpine
+    container_name: reai_db
+    environment:
+      POSTGRES_USER: realestate
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-devpass}
+      POSTGRES_DB: realestate_ai
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U realestate -d realestate_ai"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+
+  backend:
+    environment:
+      DATABASE_URL: postgresql://realestate:${DB_PASSWORD:-devpass}@db:5432/realestate_ai
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  postgres_data:

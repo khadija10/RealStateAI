@@ -1,58 +1,37 @@
 services:
-  db:
-    image: postgres:15-alpine
-    container_name: realestate_db
-    environment:
-      POSTGRES_USER: realestate_user
-      POSTGRES_PASSWORD: secure_password_dev
-      POSTGRES_DB: realestate_ai
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./Backend/db/init.sql:/docker-entrypoint-initdb.d/init.sql
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U realestate_user -d realestate_ai"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
 
+  # ── Backend FastAPI ──────────────────────────────────────────────────────
   backend:
     build:
       context: .
       dockerfile: Backend/Dockerfile
-    container_name: realestate_backend
+    container_name: reai_backend
     ports:
       - "8000:8000"
-    volumes:
-      # Modèle ML (généré par "make train" ou "make install")
-      - ./Backend/models:/app/models
     environment:
-      DATABASE_URL: postgresql://realestate_user:secure_password_dev@db:5432/realestate_ai
-      ENVIRONMENT: production
-      LOG_LEVEL: info
-    depends_on:
-      db:
-        condition: service_healthy
+      JWT_SECRET: ${JWT_SECRET:-realestateai-dev-secret-change-in-production}
+      # DATABASE_URL non défini → SQLite local dans /app/search_history.db
+    volumes:
+      # Modèle ML monté en volume pour éviter de rebaker l'image à chaque entraînement
+      - ./Backend/models:/app/models
+      # Persistance SQLite entre redémarrages
+      - backend_data:/app
     restart: unless-stopped
 
+  # ── Frontend React/Nginx ─────────────────────────────────────────────────
   frontend:
     build:
-      context: .
-      dockerfile: Frontend/Dockerfile
+      context: Frontend
+      dockerfile: Dockerfile
       args:
+        # Le navigateur appelle le backend directement sur localhost:8000
         VITE_API_URL: ${VITE_API_URL:-http://localhost:8000}
-    container_name: realestate_frontend
-    environment:
-      - VITE_API_URL=${VITE_API_URL:-http://localhost:8000}
+    container_name: reai_frontend
     ports:
       - "80:80"
-    volumes:
-      - ./Frontend:/app
     depends_on:
-      backend:
-        condition: service_healthy
+      - backend
     restart: unless-stopped
 
 volumes:
-  postgres_data:
+  backend_data:
