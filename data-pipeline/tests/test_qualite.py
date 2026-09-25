@@ -89,3 +89,38 @@ def test_detecte_une_surface_aberrante(dataset):
 
     with pytest.raises(Exception):
         construire_schema(dataset).validate(df, lazy=True)
+
+
+def test_arrondissement_extrait_pour_paris(dataset):
+    """
+    DVF code Paris par arrondissement (75101 à 75120). La colonne doit être
+    exposée en clair, sinon l'information reste noyée dans le code commune.
+    """
+    import duckdb
+
+    dossier = dataset.chemins.processed / "gold_transactions"
+    lignes = duckdb.sql(f"""
+        SELECT DISTINCT ville, arrondissement, code_commune
+        FROM read_parquet('{dossier}/**/*.parquet', hive_partitioning=true)
+        WHERE code_commune BETWEEN '75101' AND '75120'
+    """).fetchall()
+
+    assert lignes, "Aucune mutation parisienne dans l'échantillon"
+    for ville, arrondissement, code in lignes:
+        assert ville == "Paris"
+        assert arrondissement == int(code[3:])
+        assert 1 <= arrondissement <= 20
+
+
+def test_arrondissement_nul_hors_paris_lyon_marseille(dataset):
+    """Une commune ordinaire n'a pas d'arrondissement."""
+    import duckdb
+
+    dossier = dataset.chemins.processed / "gold_transactions"
+    nuls = duckdb.sql(f"""
+        SELECT count(*) FROM read_parquet('{dossier}/**/*.parquet',
+                                          hive_partitioning=true)
+        WHERE code_commune NOT BETWEEN '75101' AND '75120'
+          AND arrondissement IS NOT NULL
+    """).fetchone()[0]
+    assert nuls == 0

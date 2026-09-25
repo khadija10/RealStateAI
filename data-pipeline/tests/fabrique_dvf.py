@@ -27,8 +27,11 @@ COLONNES = [
     "nombre_pieces_principales", "surface_terrain", "longitude", "latitude",
 ]
 
+# Codes INSEE réels : DVF découpe Paris par arrondissement (75101 à 75120),
+# et non sous le code global de la ville (75056).
 COMMUNES = {
-    "75056": ("Paris", "75", "75011", 11000, 2.37, 48.86),
+    "75111": ("Paris 11e Arrondissement", "75", "75011", 11000, 2.37, 48.86),
+    "75116": ("Paris 16e Arrondissement", "75", "75116", 14500, 2.27, 48.86),
     "92044": ("Issy-les-Moulineaux", "92", "92130", 8000, 2.27, 48.82),
     "93066": ("Saint-Denis", "93", "93200", 4200, 2.36, 48.94),
     "77288": ("Melun", "77", "77000", 2800, 2.66, 48.54),
