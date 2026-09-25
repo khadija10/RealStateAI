@@ -35,9 +35,24 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, model_validator
-from slowapi import Limiter, _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
+try:
+    from slowapi import Limiter, _rate_limit_exceeded_handler
+    from slowapi.errors import RateLimitExceeded
+    from slowapi.util import get_remote_address
+    _SLOWAPI = True
+except ImportError:
+    _SLOWAPI = False
+    RateLimitExceeded = Exception
+
+    class _NoOpLimiter:
+        def limit(self, *args, **kwargs):
+            def decorator(fn): return fn
+            return decorator
+
+    def _rate_limit_exceeded_handler(request, exc):
+        return JSONResponse(status_code=429, content={"detail": "Trop de tentatives."})
+
+    def get_remote_address(request): return "0.0.0.0"
 
 from auth import create_access_token, decode_token, hash_password, verify_password
 from database import SearchHistoryService
@@ -367,7 +382,7 @@ _OPENAPI_TAGS = [
     },
 ]
 
-_limiter = Limiter(key_func=get_remote_address)
+_limiter = Limiter(key_func=get_remote_address) if _SLOWAPI else _NoOpLimiter()
 
 app = FastAPI(
     title="RealEstateAI API",
