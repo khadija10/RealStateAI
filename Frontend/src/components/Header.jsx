@@ -20,22 +20,19 @@ export default function Header({ datasetStatus, user, onOpenAuth, onLogout }) {
         </div>
 
         <div className="flex items-center gap-4">
-          <div className="hidden sm:flex items-center gap-2 text-xs">
-            <span
-              className={`h-1.5 w-1.5 rounded-full ${
-                datasetStatus === 'ready'
-                  ? 'bg-emerald-500'
-                  : datasetStatus === 'error'
-                  ? 'bg-red-400'
-                  : 'bg-stone-300 animate-pulse'
-              }`}
-            />
-            <span className="text-[var(--color-ink-muted)]">
-              {datasetStatus === 'ready' && 'Données DVF chargées'}
-              {datasetStatus === 'error' && 'Backend indisponible'}
-              {datasetStatus === 'loading' && 'Chargement des données…'}
-            </span>
-          </div>
+          {datasetStatus !== 'loading' && (
+            <div className="hidden sm:flex items-center gap-2 text-xs">
+              <span
+                className={`h-1.5 w-1.5 rounded-full ${
+                  datasetStatus === 'ready' ? 'bg-emerald-500' : 'bg-red-400'
+                }`}
+              />
+              <span className="text-[var(--color-ink-muted)]">
+                {datasetStatus === 'ready' && 'Données DVF chargées'}
+                {datasetStatus === 'error' && 'Backend indisponible'}
+              </span>
+            </div>
+          )}
 
           {user ? (
             <div className="flex items-center gap-2">
