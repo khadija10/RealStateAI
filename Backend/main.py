@@ -385,6 +385,10 @@ def _current_user(request: Request) -> int | None:
 
 class AuthRequest(BaseModel):
     email: str = Field(..., min_length=3, max_length=254)
+    password: str = Field(..., min_length=1, max_length=128)
+
+class RegisterRequest(BaseModel):
+    email: str = Field(..., min_length=3, max_length=254)
     password: str = Field(..., min_length=6, max_length=128)
 
 
@@ -398,7 +402,7 @@ class AuthResponse(BaseModel):
 # ==========================================================================
 
 @app.post(f"{API_PREFIX}/auth/register", response_model=AuthResponse, tags=["auth"])
-def register(body: AuthRequest, request: Request) -> AuthResponse:
+def register(body: RegisterRequest, request: Request) -> AuthResponse:
     service: SearchHistoryService = request.app.state.search_history
     existing = service.get_user_by_email(body.email)
     if existing:

@@ -100,11 +100,14 @@ function ComparisonSummary({ a, b, onClear }) {
   )
 }
 
+const PAGE_SIZE = 5
+
 export default function History() {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [selected, setSelected] = useState([]) // max 2 ids
+  const [page, setPage] = useState(0)
 
   useEffect(() => {
     getSearchHistory(20)
@@ -117,10 +120,13 @@ export default function History() {
     setSelected((prev) => {
       const isSelected = prev.find((s) => s.id === item.id)
       if (isSelected) return prev.filter((s) => s.id !== item.id)
-      if (prev.length >= 2) return [prev[1], item] // remplace le plus ancien
+      if (prev.length >= 2) return [prev[1], item]
       return [...prev, item]
     })
   }
+
+  const totalPages = Math.ceil(items.length / PAGE_SIZE)
+  const pageItems = items.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE)
 
   const selA = selected[0] ?? null
   const selB = selected[1] ?? null
@@ -154,7 +160,7 @@ export default function History() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-xs text-ink-muted">
-          {items.length} estimation{items.length > 1 ? 's' : ''} enregistrée{items.length > 1 ? 's' : ''}
+          {items.length} estimation{items.length > 1 ? 's' : ''} · page {page + 1}/{totalPages}
         </p>
         {items.length >= 2 && selected.length === 0 && (
           <p className="text-xs text-ink-muted">Sélectionne 2 biens pour les comparer</p>
@@ -169,8 +175,9 @@ export default function History() {
         )}
       </div>
 
-      <div className="divide-y divide-stone-100 bg-white rounded-2xl border border-stone-100 shadow-[var(--shadow-card)] overflow-hidden">
-        {items.map((item, i) => {
+      <div className="bg-white rounded-2xl border border-stone-100 shadow-[var(--shadow-card)] overflow-hidden">
+        <div className="divide-y divide-stone-100">
+        {pageItems.map((item, i) => {
           const selIdx = selected.findIndex((s) => s.id === item.id)
           const isSelected = selIdx !== -1
           const badge = selIdx === 0 ? 'A' : selIdx === 1 ? 'B' : null
@@ -218,6 +225,42 @@ export default function History() {
             </div>
           )
         })}
+        </div>
+
+        {/* Pagination */}
+        {totalPages > 1 && (
+        <div className="flex items-center justify-between px-5 py-3 border-t border-stone-100">
+          <button
+            onClick={() => setPage((p) => Math.max(0, p - 1))}
+            disabled={page === 0}
+            className="flex items-center gap-1.5 text-xs text-ink-muted disabled:opacity-30 hover:text-ink transition-colors"
+          >
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <path d="M9 11L5 7l4-4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+            Précédent
+          </button>
+          <div className="flex items-center gap-1">
+            {Array.from({ length: totalPages }).map((_, i) => (
+              <button
+                key={i}
+                onClick={() => setPage(i)}
+                className={`h-1.5 rounded-full transition-all ${i === page ? 'w-4 bg-seine' : 'w-1.5 bg-stone-300'}`}
+              />
+            ))}
+          </div>
+          <button
+            onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+            disabled={page === totalPages - 1}
+            className="flex items-center gap-1.5 text-xs text-ink-muted disabled:opacity-30 hover:text-ink transition-colors"
+          >
+            Suivant
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
+              <path d="M5 3l4 4-4 4" stroke="currentColor" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round" />
+            </svg>
+          </button>
+        </div>
+        )}
       </div>
 
       {canCompare && (
