@@ -121,6 +121,10 @@ export default function App() {
   }, [])
 
   async function handleSubmit() {
+    if (!user) {
+      setShowAuthModal(true)
+      return
+    }
     setStatus('loading')
     setError('')
     try {
@@ -207,8 +211,6 @@ export default function App() {
                 result={result}
                 query={submittedQuery}
                 modelInfo={modelInfo}
-                user={user}
-                onOpenAuth={() => setShowAuthModal(true)}
                 onOpenFinancement={(prix, query) => {
                   setFinancingDefaultPrix(Math.round(prix))
                   const dep = query?.postal_code ? query.postal_code.slice(0, 2) : null

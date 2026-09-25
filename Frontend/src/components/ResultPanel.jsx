@@ -98,7 +98,7 @@ function MetaRow({ label, value }) {
   )
 }
 
-export default function ResultPanel({ status, error, result, query, modelInfo, user, onOpenAuth, onOpenFinancement }) {
+export default function ResultPanel({ status, error, result, query, modelInfo, onOpenFinancement }) {
   const [detailsOpen, setDetailsOpen] = useState(false)
   const cfg = result?.model ? MODEL_CONFIG[result.model] ?? MODEL_CONFIG.dvf : null
   const meta = result?.meta ?? null
@@ -215,20 +215,12 @@ export default function ResultPanel({ status, error, result, query, modelInfo, u
               </svg>
               Exporter PDF
             </button>
-            {onOpenFinancement && user && (
+            {onOpenFinancement && (
               <button
                 onClick={() => onOpenFinancement(result.price, query)}
                 className="flex items-center gap-1.5 text-xs font-medium text-seine border border-seine/20 rounded-lg px-3 py-1.5 hover:bg-seine/5 transition-colors"
               >
                 Simuler mon financement →
-              </button>
-            )}
-            {onOpenFinancement && !user && (
-              <button
-                onClick={onOpenAuth}
-                className="flex items-center gap-1.5 text-xs font-medium text-ink-muted border border-stone-200 rounded-lg px-3 py-1.5 hover:border-stone-400 hover:text-ink transition-colors"
-              >
-                Connexion pour simuler le financement
               </button>
             )}
           </div>
@@ -305,21 +297,8 @@ export default function ResultPanel({ status, error, result, query, modelInfo, u
           </div>
 
           {/* ── VALORISATION À TERME ── */}
-          {result.model !== 'mock' && user && (
+          {result.model !== 'mock' && (
             <ValuationProjection basePrice={result.price} query={query} />
-          )}
-          {result.model !== 'mock' && !user && (
-            <button
-              onClick={onOpenAuth}
-              className="w-full text-left px-4 py-3 rounded-xl border border-stone-200 hover:border-seine/30 hover:bg-seine/5 transition-colors group"
-            >
-              <p className="text-xs font-semibold text-ink-muted group-hover:text-seine transition-colors">
-                Valorisation à terme
-              </p>
-              <p className="text-xs text-ink-muted mt-0.5">
-                Connectez-vous pour voir la projection à 1, 2, 3, 5 et 10 ans.
-              </p>
-            </button>
           )}
 
         </div>
