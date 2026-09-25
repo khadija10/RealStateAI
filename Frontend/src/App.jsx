@@ -21,10 +21,10 @@ const EMPTY_FORM = {
 
 const TABS = [
   { id: 'estimation', label: 'Estimation' },
-  { id: 'financement', label: 'Financement' },
+  { id: 'financement', label: 'Financement', protected: true },
   { id: 'carte', label: 'Carte des prix' },
   { id: 'marche', label: 'Référence du marché' },
-  { id: 'historique', label: 'Historique' },
+  { id: 'historique', label: 'Historique', protected: true },
 ]
 
 function normalizeCommunes(raw) {
@@ -88,6 +88,8 @@ export default function App() {
   function handleLogout() {
     clearToken()
     setUser(null)
+    // Si on est sur un onglet protégé, retour à estimation
+    setActiveTab((t) => (TABS.find((tab) => tab.id === t)?.protected ? 'estimation' : t))
   }
 
   useEffect(() => {
@@ -156,7 +158,7 @@ export default function App() {
       <nav className="border-b border-stone-100 bg-white sticky top-0 z-20">
         <div className="max-w-5xl mx-auto px-6">
           <div className="flex gap-0">
-            {TABS.map((tab) => (
+            {TABS.filter((tab) => !tab.protected || user).map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
@@ -205,6 +207,8 @@ export default function App() {
                 result={result}
                 query={submittedQuery}
                 modelInfo={modelInfo}
+                user={user}
+                onOpenAuth={() => setShowAuthModal(true)}
                 onOpenFinancement={(prix, query) => {
                   setFinancingDefaultPrix(Math.round(prix))
                   const dep = query?.postal_code ? query.postal_code.slice(0, 2) : null
