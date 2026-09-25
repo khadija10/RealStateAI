@@ -300,10 +300,10 @@ export default function App() {
         {activeTab === 'financement' && (
           <>
             <div className="max-w-xl mb-10">
-              <h1 className="font-[var(--font-display)] text-4xl sm:text-5xl text-ink leading-[1.05]">
+              <h1 className="font-[var(--font-display)] text-4xl sm:text-5xl text-ink leading-[1.05] whitespace-nowrap">
                 Simulez votre financement
               </h1>
-              <p className="text-ink-muted mt-4 leading-relaxed">
+              <p className="text-sm text-ink-muted mt-3 whitespace-nowrap">
                 Calcul basé sur les normes HCSF en vigueur · Taux d'effort, mensualité, score dossier.
               </p>
             </div>
@@ -315,10 +315,10 @@ export default function App() {
         {activeTab === 'carte' && (
           <>
             <div className="max-w-xl mb-8">
-              <h1 className="font-[var(--font-display)] text-4xl sm:text-5xl text-ink leading-[1.05]">
+              <h1 className="font-[var(--font-display)] text-4xl sm:text-5xl text-ink leading-[1.05] whitespace-nowrap">
                 Carte des prix par commune
               </h1>
-              <p className="text-ink-muted mt-4 leading-relaxed">
+              <p className="text-sm text-ink-muted mt-3 whitespace-nowrap">
                 Prix médian au m² — {datasetInfo?.nCommunes?.toLocaleString('fr-FR') ?? '—'} communes d&apos;Île-de-France{datasetInfo?.minYear && datasetInfo?.maxYear ? ` · transactions ${datasetInfo.minYear}–${datasetInfo.maxYear}` : ''}
               </p>
             </div>
@@ -330,10 +330,10 @@ export default function App() {
         {activeTab === 'marche' && (
           <>
             <div className="max-w-xl mb-8">
-              <h1 className="font-[var(--font-display)] text-4xl sm:text-5xl text-ink leading-[1.05]">
+              <h1 className="font-[var(--font-display)] text-4xl sm:text-5xl text-ink leading-[1.05] whitespace-nowrap">
                 Référence du marché
               </h1>
-              <p className="text-ink-muted mt-4 leading-relaxed">
+              <p className="text-sm text-ink-muted mt-3 whitespace-nowrap">
                 Évolution mensuelle du prix médian au m² par département{datasetInfo?.minYear && datasetInfo?.maxYear ? `, ${datasetInfo.minYear}–${datasetInfo.maxYear}` : ''}.
               </p>
             </div>
@@ -345,10 +345,10 @@ export default function App() {
         {activeTab === 'historique' && (
           <>
             <div className="max-w-xl mb-8">
-              <h1 className="font-[var(--font-display)] text-4xl sm:text-5xl text-ink leading-[1.05]">
+              <h1 className="font-[var(--font-display)] text-4xl sm:text-5xl text-ink leading-[1.05] whitespace-nowrap">
                 Historique
               </h1>
-              <p className="text-ink-muted mt-4 leading-relaxed">
+              <p className="text-sm text-ink-muted mt-3 whitespace-nowrap">
                 Vos 20 dernières estimations enregistrées.
               </p>
             </div>
@@ -362,10 +362,10 @@ export default function App() {
         {activeTab === 'profil' && (
           <>
             <div className="max-w-xl mb-8">
-              <h1 className="font-[var(--font-display)] text-4xl sm:text-5xl text-ink leading-[1.05]">
+              <h1 className="font-[var(--font-display)] text-4xl sm:text-5xl text-ink leading-[1.05] whitespace-nowrap">
                 Mon profil
               </h1>
-              <p className="text-ink-muted mt-4 leading-relaxed">
+              <p className="text-sm text-ink-muted mt-3 whitespace-nowrap">
                 Paramètres de votre compte.
               </p>
             </div>
