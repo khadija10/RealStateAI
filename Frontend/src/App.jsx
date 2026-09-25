@@ -7,7 +7,8 @@ import PriceMap from './components/PriceMap'
 import MarketTrends from './components/MarketTrends'
 import History from './components/History'
 import FinancingPanel from './components/FinancingPanel'
-import { getHealth, getCommunes, estimatePrice, ApiError } from './api/client'
+import { getHealth, getCommunes, estimatePrice, getMe, getToken, saveToken, clearToken, ApiError } from './api/client'
+import AuthModal from './components/AuthModal'
 
 const EMPTY_FORM = {
   area_m2: '',
@@ -58,6 +59,8 @@ export default function App() {
   const [communes, setCommunes] = useState([])
   const [communesLoading, setCommunesLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('estimation')
+  const [user, setUser] = useState(null)
+  const [showAuthModal, setShowAuthModal] = useState(false)
 
   const [form, setForm] = useState(EMPTY_FORM)
   const [status, setStatus] = useState('idle')
@@ -68,6 +71,24 @@ export default function App() {
   const [financingDefaultDep, setFinancingDefaultDep] = useState(null)
   const [modelInfo, setModelInfo] = useState(null)
   const [datasetInfo, setDatasetInfo] = useState(null)
+
+  useEffect(() => {
+    const token = getToken()
+    if (token) {
+      getMe().then((u) => setUser(u)).catch(() => { clearToken(); setUser(null) })
+    }
+  }, [])
+
+  function handleAuthSuccess(token, userData) {
+    saveToken(token)
+    setUser(userData)
+    setShowAuthModal(false)
+  }
+
+  function handleLogout() {
+    clearToken()
+    setUser(null)
+  }
 
   useEffect(() => {
     getHealth()
@@ -121,7 +142,15 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col">
-      <Header datasetStatus={backendStatus} />
+      <Header
+        datasetStatus={backendStatus}
+        user={user}
+        onOpenAuth={() => setShowAuthModal(true)}
+        onLogout={handleLogout}
+      />
+      {showAuthModal && (
+        <AuthModal onSuccess={handleAuthSuccess} onClose={() => setShowAuthModal(false)} />
+      )}
 
       {/* Barre de navigation onglets */}
       <nav className="border-b border-stone-100 bg-white sticky top-0 z-20">

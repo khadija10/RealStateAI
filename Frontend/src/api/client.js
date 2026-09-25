@@ -4,6 +4,18 @@
 
 const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
+const TOKEN_KEY = 'reai_token'
+
+export function getToken() {
+  try { return localStorage.getItem(TOKEN_KEY) } catch { return null }
+}
+export function saveToken(t) {
+  try { localStorage.setItem(TOKEN_KEY, t) } catch { /* ignore */ }
+}
+export function clearToken() {
+  try { localStorage.removeItem(TOKEN_KEY) } catch { /* ignore */ }
+}
+
 class ApiError extends Error {
   constructor(message, status) {
     super(message)
@@ -12,10 +24,12 @@ class ApiError extends Error {
 }
 
 async function request(path, options = {}) {
+  const token = getToken()
+  const authHeader = token ? { Authorization: `Bearer ${token}` } : {}
   let response
   try {
     response = await fetch(`${BASE_URL}${path}`, {
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json', ...authHeader },
       ...options,
     })
   } catch {
@@ -71,6 +85,24 @@ export function getFinancingDossier(payload) {
     method: 'POST',
     body: JSON.stringify(payload),
   })
+}
+
+export function register(email, password) {
+  return request('/api/auth/register', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  })
+}
+
+export function login(email, password) {
+  return request('/api/auth/login', {
+    method: 'POST',
+    body: JSON.stringify({ email, password }),
+  })
+}
+
+export function getMe() {
+  return request('/api/auth/me')
 }
 
 export { ApiError }

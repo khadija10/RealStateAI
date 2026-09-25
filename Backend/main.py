@@ -36,6 +36,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
+from auth import create_access_token, decode_token, hash_password, verify_password
 from database import SearchHistoryService
 from financing_api import router as financing_router
 from utils.address_parser import normalize_commune, parse_address
@@ -364,6 +365,78 @@ def get_dvf(request: Request) -> pd.DataFrame | None:
     return request.app.state.dvf
 
 
+def _current_user(request: Request) -> int | None:
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        return None
+    token = auth.removeprefix("Bearer ").strip()
+    payload = decode_token(token)
+    if not payload:
+        return None
+    try:
+        return int(payload["sub"])
+    except (KeyError, ValueError, TypeError):
+        return None
+
+
+# ==========================================================================
+#  AUTH SCHEMAS
+# ==========================================================================
+
+class AuthRequest(BaseModel):
+    email: str = Field(..., min_length=3, max_length=254)
+    password: str = Field(..., min_length=6, max_length=128)
+
+
+class AuthResponse(BaseModel):
+    token: str
+    user: dict[str, Any]
+
+
+# ==========================================================================
+#  AUTH ENDPOINTS
+# ==========================================================================
+
+@app.post(f"{API_PREFIX}/auth/register", response_model=AuthResponse, tags=["auth"])
+def register(body: AuthRequest, request: Request) -> AuthResponse:
+    service: SearchHistoryService = request.app.state.search_history
+    existing = service.get_user_by_email(body.email)
+    if existing:
+        raise HTTPException(409, "Un compte existe déjà avec cet email.")
+    try:
+        user = service.create_user(body.email, hash_password(body.password))
+    except Exception as exc:
+        logger.warning("Erreur création utilisateur : %s", exc)
+        raise HTTPException(409, "Un compte existe déjà avec cet email.") from exc
+    token = create_access_token(user["id"], user["email"])
+    return AuthResponse(token=token, user={"id": user["id"], "email": user["email"]})
+
+
+@app.post(f"{API_PREFIX}/auth/login", response_model=AuthResponse, tags=["auth"])
+def login(body: AuthRequest, request: Request) -> AuthResponse:
+    service: SearchHistoryService = request.app.state.search_history
+    user = service.get_user_by_email(body.email)
+    if not user or not verify_password(body.password, user["password_hash"]):
+        raise HTTPException(401, "Email ou mot de passe incorrect.")
+    token = create_access_token(user["id"], user["email"])
+    return AuthResponse(token=token, user={"id": user["id"], "email": user["email"]})
+
+
+@app.get(f"{API_PREFIX}/auth/me", tags=["auth"])
+def me(request: Request) -> dict[str, Any]:
+    user_id = _current_user(request)
+    if user_id is None:
+        raise HTTPException(401, "Non authentifié.")
+    service: SearchHistoryService = request.app.state.search_history
+    # Cherche par id via email dans le token
+    auth = request.headers.get("Authorization", "")
+    token = auth.removeprefix("Bearer ").strip()
+    payload = decode_token(token)
+    if not payload:
+        raise HTTPException(401, "Token invalide.")
+    return {"id": user_id, "email": payload.get("email", "")}
+
+
 def _load_ml_estimator() -> tuple[Any | None, str | None]:
     """Charge un module ML s’il existe dans le dépôt.
 
@@ -524,7 +597,8 @@ def list_search_history(
     limit: int = Query(default=10, ge=1, le=50),
 ) -> list[dict[str, Any]]:
     service: SearchHistoryService = request.app.state.search_history
-    return service.list_recent(limit=limit)
+    user_id = _current_user(request)
+    return service.list_recent(limit=limit, user_id=user_id)
 
 
 def _mock_estimate(surface: float, property_type: str) -> EstimationResponse:
@@ -602,6 +676,7 @@ def estimate(
                         property_type=req.property_type,
                         area_m2=surface,
                         estimated_price=normalized.estimated_price,
+                        user_id=_current_user(request),
                     )
                 except Exception as exc:  # pragma: no cover - la persistance ne doit pas casser la réponse
                     logger.warning("Historique de recherche non inscrit : %s", exc)
@@ -621,6 +696,7 @@ def estimate(
                 property_type=req.property_type,
                 area_m2=surface,
                 estimated_price=result.estimated_price,
+                user_id=_current_user(request),
             )
         except Exception as exc:  # pragma: no cover - la persistance ne doit pas casser la réponse
             logger.warning("Historique de recherche non inscrit : %s", exc)
@@ -722,6 +798,7 @@ def estimate(
             property_type=req.property_type,
             area_m2=surface,
             estimated_price=response.estimated_price,
+            user_id=_current_user(request),
         )
     except Exception as exc:  # pragma: no cover - la persistance ne doit pas casser l'estimation
         logger.warning("Historique de recherche non inscrit : %s", exc)
