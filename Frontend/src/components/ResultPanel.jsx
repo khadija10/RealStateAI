@@ -1,4 +1,5 @@
 import ConfidenceGauge, { formatEUR } from './ConfidenceGauge'
+import ValuationProjection from './ValuationProjection'
 
 function exportPDF(result, query, modelInfo) {
   const date = new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long', timeStyle: 'short' }).format(new Date())
@@ -276,6 +277,11 @@ export default function ResultPanel({ status, error, result, query, modelInfo, o
               </div>
             )}
           </div>
+
+          {/* Valorisation à terme */}
+          {result.model !== 'mock' && (
+            <ValuationProjection basePrice={result.price} query={query} />
+          )}
 
         </div>
       )}
