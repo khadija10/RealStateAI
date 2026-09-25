@@ -72,6 +72,7 @@ export default function App() {
   const [modelInfo, setModelInfo] = useState(null)
   const [datasetInfo, setDatasetInfo] = useState(null)
   const [pendingSubmit, setPendingSubmit] = useState(false)
+  const [toast, setToast] = useState(null)
 
   useEffect(() => {
     const token = getToken()
@@ -80,14 +81,35 @@ export default function App() {
     }
   }, [])
 
+  function showToast(msg) {
+    setToast(msg)
+    setTimeout(() => setToast(null), 2500)
+  }
+
   function handleAuthSuccess(token, userData) {
     saveToken(token)
     setUser(userData)
     setShowAuthModal(false)
     if (pendingSubmit) {
       setPendingSubmit(false)
+      showToast('Estimation lancée…')
       doSubmit()
     }
+  }
+
+  function handleReEstimate(item) {
+    setForm({
+      area_m2: item.area_m2 ?? '',
+      rooms: '',
+      property_type: item.property_type ?? 'apartment',
+      commune: item.commune ?? '',
+      address: '',
+      postal_code: '',
+    })
+    setResult(null)
+    setStatus('idle')
+    setError('')
+    setActiveTab('estimation')
   }
 
   function handleLogout() {
@@ -165,18 +187,23 @@ export default function App() {
         onLogout={handleLogout}
       />
       {showAuthModal && (
-        <AuthModal onSuccess={handleAuthSuccess} onClose={() => setShowAuthModal(false)} />
+        <AuthModal onSuccess={handleAuthSuccess} onClose={() => { setShowAuthModal(false); setPendingSubmit(false) }} />
+      )}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-ink text-white text-xs font-medium px-4 py-2.5 rounded-full shadow-lg pointer-events-none">
+          {toast}
+        </div>
       )}
 
       {/* Barre de navigation onglets */}
       <nav className="border-b border-stone-100 bg-white sticky top-0 z-20">
         <div className="max-w-5xl mx-auto px-6">
-          <div className="flex gap-0">
+          <div className="flex gap-0 overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
             {TABS.filter((tab) => !tab.protected || user).map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`px-5 py-4 text-sm font-medium border-b-2 transition-colors ${
+                className={`px-3 sm:px-5 py-4 text-sm font-medium border-b-2 shrink-0 transition-colors ${
                   activeTab === tab.id
                     ? 'border-seine text-seine'
                     : 'border-transparent text-ink-muted hover:text-ink hover:border-stone-100'
@@ -289,7 +316,7 @@ export default function App() {
               </p>
             </div>
             <div className="max-w-2xl">
-              <History />
+              <History onReEstimate={handleReEstimate} />
             </div>
           </>
         )}

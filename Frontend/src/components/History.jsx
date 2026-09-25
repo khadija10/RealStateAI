@@ -102,7 +102,7 @@ function ComparisonSummary({ a, b, onClear }) {
 
 const PAGE_SIZE = 5
 
-export default function History() {
+export default function History({ onReEstimate }) {
   const [items, setItems] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -221,6 +221,14 @@ export default function History() {
                   <p className="text-[11px] text-ink-muted tabular-nums mt-0.5">
                     {formatEUR(Math.round(item.estimated_price / item.area_m2))} / m²
                   </p>
+                )}
+                {onReEstimate && item.estimated_price && (
+                  <button
+                    onClick={(e) => { e.stopPropagation(); onReEstimate(item) }}
+                    className="text-[11px] font-medium text-seine hover:underline mt-1 block"
+                  >
+                    Ré-estimer
+                  </button>
                 )}
               </div>
             </div>

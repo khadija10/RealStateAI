@@ -1,4 +1,4 @@
-import { useId, useState, useRef, useEffect } from 'react'
+import { useId, useState, useRef, useEffect, useMemo } from 'react'
 
 const PROPERTY_TYPES = [
   { value: 'apartment', label: 'Appartement' },
@@ -123,6 +123,94 @@ function AddressAutocomplete({ value, onChange, onSelect, formId }) {
   )
 }
 
+function CommuneCombobox({ value, onChange, communes, required, formId, disabled }) {
+  const [open, setOpen] = useState(false)
+  const [activeIdx, setActiveIdx] = useState(-1)
+  const wrapperRef = useRef(null)
+
+  useEffect(() => {
+    function onClickOutside(e) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setOpen(false)
+        setActiveIdx(-1)
+      }
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [])
+
+  const filtered = useMemo(() => {
+    if (!value || value.trim().length < 2) return []
+    const needle = value.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    return communes
+      .filter((c) => c.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').includes(needle))
+      .slice(0, 8)
+  }, [value, communes])
+
+  function handleChange(e) {
+    onChange(e.target.value)
+    setActiveIdx(-1)
+    setOpen(true)
+  }
+
+  function handleKeyDown(e) {
+    if (!open || filtered.length === 0) return
+    if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIdx((i) => Math.min(i + 1, filtered.length - 1)) }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIdx((i) => Math.max(i - 1, -1)) }
+    else if (e.key === 'Enter' && activeIdx >= 0) { e.preventDefault(); pick(filtered[activeIdx]) }
+    else if (e.key === 'Escape') { setOpen(false); setActiveIdx(-1) }
+  }
+
+  function pick(c) {
+    onChange(c)
+    setOpen(false)
+    setActiveIdx(-1)
+  }
+
+  const showDropdown = open && filtered.length > 0
+
+  return (
+    <div ref={wrapperRef} className="relative">
+      <input
+        id={`${formId}-commune`}
+        type="text"
+        value={value}
+        onChange={handleChange}
+        onFocus={() => filtered.length > 0 && setOpen(true)}
+        onKeyDown={handleKeyDown}
+        required={required}
+        disabled={disabled}
+        placeholder={disabled ? 'Chargement…' : 'ex. PARIS 04'}
+        autoComplete="off"
+        aria-autocomplete="list"
+        aria-expanded={showDropdown}
+        className="w-full rounded-lg border border-stone-100 bg-stone-50/50 px-3 py-2.5 text-sm text-ink focus:border-seine focus:bg-white outline-none transition-colors"
+      />
+      {showDropdown && (
+        <ul
+          role="listbox"
+          className="absolute z-30 w-full mt-1 bg-white border border-stone-200 rounded-xl shadow-lg overflow-hidden max-h-52 overflow-y-auto"
+        >
+          {filtered.map((c, i) => (
+            <li
+              key={c}
+              role="option"
+              aria-selected={i === activeIdx}
+              onMouseDown={() => pick(c)}
+              onMouseEnter={() => setActiveIdx(i)}
+              className={`px-3 py-2.5 cursor-pointer text-sm text-ink transition-colors ${
+                i === activeIdx ? 'bg-stone-50' : 'hover:bg-stone-50/60'
+              } ${i > 0 ? 'border-t border-stone-100' : ''}`}
+            >
+              {c}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 export default function EstimationForm({ values, onChange, onSubmit, communes, loading, communesLoading }) {
   const formId = useId()
 
@@ -179,14 +267,13 @@ export default function EstimationForm({ values, onChange, onSubmit, communes, l
         </div>
         <div>
           <label htmlFor={`${formId}-rooms`} className="block text-xs font-medium text-ink-muted mb-1.5">
-            Pièces <span className="text-seine font-semibold">*</span>
+            Pièces
           </label>
           <input
             id={`${formId}-rooms`}
             type="number"
             min="1"
             max="30"
-            required
             value={values.rooms}
             onChange={set('rooms')}
             placeholder="ex. 3"
@@ -280,20 +367,14 @@ export default function EstimationForm({ values, onChange, onSubmit, communes, l
                 ? <span className="text-ink-muted/50 font-normal">optionnel</span>
                 : <span className="text-seine font-semibold">*</span>}
             </label>
-            <input
-              id={`${formId}-commune`}
-              list={`${formId}-communes-list`}
-              required={!hasAddress}
+            <CommuneCombobox
               value={values.commune}
-              onChange={set('commune')}
-              placeholder={communesLoading ? 'Chargement…' : 'ex. PARIS 04'}
-              className="w-full rounded-lg border border-stone-100 bg-stone-50/50 px-3 py-2.5 text-sm text-ink focus:border-seine focus:bg-white outline-none transition-colors"
+              onChange={(val) => onChange({ ...values, commune: val })}
+              communes={communes}
+              required={!hasAddress}
+              formId={formId}
+              disabled={communesLoading}
             />
-            <datalist id={`${formId}-communes-list`}>
-              {communes.map((c) => (
-                <option key={c} value={c} />
-              ))}
-            </datalist>
           </div>
         </div>
 

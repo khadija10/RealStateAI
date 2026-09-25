@@ -119,15 +119,28 @@ export default function ResultPanel({ status, error, result, query, modelInfo, o
       <h2 className="font-[var(--font-display)] text-[1.6rem] text-ink leading-tight">Résultat</h2>
 
       {status === 'idle' && (
-        <div className="flex-1 flex flex-col items-center justify-center text-center gap-3 py-14">
-          <svg width="48" height="48" viewBox="0 0 48 48" fill="none" aria-hidden="true" className="opacity-30">
-            <path d="M8 40 L16 12 L32 12 L40 40 Z" stroke="var(--color-ink-muted)" strokeWidth="1.4" />
-            <line x1="19.5" y1="12" x2="16.5" y2="40" stroke="var(--color-ink-muted)" strokeWidth="1" />
-            <line x1="28.5" y1="12" x2="31.5" y2="40" stroke="var(--color-ink-muted)" strokeWidth="1" />
+        <div className="flex-1 flex flex-col items-center justify-center text-center gap-5 py-10">
+          <svg width="44" height="44" viewBox="0 0 48 48" fill="none" aria-hidden="true" className="opacity-25">
+            <path d="M8 40 L16 12 L32 12 L40 40 Z" stroke="currentColor" strokeWidth="1.4" />
+            <line x1="19.5" y1="12" x2="16.5" y2="40" stroke="currentColor" strokeWidth="1" />
+            <line x1="28.5" y1="12" x2="31.5" y2="40" stroke="currentColor" strokeWidth="1" />
           </svg>
-          <p className="text-sm text-ink-muted max-w-[220px]">
-            Complétez le formulaire pour voir l&apos;estimation.
+          <p className="text-sm text-ink-muted max-w-[200px]">
+            Renseignez le formulaire pour obtenir votre estimation.
           </p>
+          <ul className="text-left space-y-2.5 max-w-[210px]">
+            {[
+              'Prix estimé et fourchette de confiance',
+              'Modèle LightGBM géolocalisé',
+              'Projection de plus-value à 5 ans',
+              'Export PDF de la fiche',
+            ].map((feat) => (
+              <li key={feat} className="flex items-start gap-2 text-xs text-ink-muted">
+                <span className="mt-0.5 h-1.5 w-1.5 rounded-full bg-seine shrink-0" />
+                {feat}
+              </li>
+            ))}
+          </ul>
         </div>
       )}
 
