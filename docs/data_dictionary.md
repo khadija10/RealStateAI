@@ -45,13 +45,18 @@ df = duckdb.sql("""
 | `nom_commune` | string | non | Libellé, pour l'affichage uniquement — ne jamais l'utiliser comme clé |
 | `ville` | string | non | `Paris`, `Lyon`, `Marseille` pour les villes à arrondissements, sinon le nom de la commune. Permet de regrouper les arrondissements d'une même ville. |
 | `arrondissement` | int | oui | Numéro d'arrondissement (1 à 20 pour Paris, 1 à 9 pour Lyon, 1 à 16 pour Marseille). `NULL` ailleurs. **Les features de marché sont calculées à cette maille**, pas au niveau de la ville. |
-| `code_postal` | string | oui | Code postal |
+| `code_postal` | string | oui | Code postal. Sert aussi de clé à l'indicateur de zone DPE. |
+| `adresse_numero` | string | oui | Numéro dans la voie, sans suffixe |
+| `adresse_suffixe` | string | oui | `B`, `T`... quand il existe |
+| `adresse_nom_voie` | string | oui | Voie au format DVF, abrégé : `AV DE LA REPUBLIQUE`, `BD ST GERMAIN`. Clé de jointure avec le DPE après normalisation. |
 | `latitude`, `longitude` | float | non | WGS84, géocodage à la parcelle. Contrôlées : chaque point est à moins de 1,5° du centroïde de son département. La source publie quelques coordonnées fausses, elles sont écartées. |
 
 ### Caractéristiques du bien
 
 | Colonne | Type | Nullable | Unité / plage | Description |
 |---|---|---|---|---|
+| `nature_mutation` | string | non | | `Vente` ou `Vente en l'état futur d'achèvement` |
+| `est_vefa` | bool | non | | Vrai pour une vente en l'état futur d'achèvement. **91 % des VEFA sont classées A, B ou C et se vendent avec une prime de neuf** : à contrôler dans toute analyse du DPE |
 | `type_local` | string | non | `Maison` \| `Appartement` | Libellé |
 | `code_type_local` | string | non | `1` = Maison, `2` = Appartement | Version encodée, à préférer pour le ML |
 | `surface_bati` | float | non | m², ≥ 9 | Surface réelle bâtie |
@@ -81,6 +86,24 @@ Toutes calculées sur une fenêtre glissante de 12 mois **strictement antérieur
 | `prix_m2_reference_12m` | float | oui | Médiane communale si `nb_ventes_commune_12m ≥ 5`, sinon médiane départementale |
 | `source_reference_prix` | string | non | `commune` \| `departement` — trace le repli appliqué |
 
+### Performance énergétique — DPE de l'ADEME
+
+Colonnes toujours présentes. **Vides tant que `pipeline dpe` n'a pas été lancé.**
+Méthode complète et résultats mesurés : `docs/enrichissement_dpe.md`.
+
+| Colonne | Type | Nullable | Description |
+|---|---|---|---|
+| `dpe_classe` | string | oui | Étiquette énergie, `A` (meilleure) à `G`. `NULL` si aucun DPE trouvé |
+| `dpe_ges` | string | oui | Étiquette gaz à effet de serre, `A` à `G` |
+| `dpe_qualite_appariement` | string | oui | `exacte` : un seul DPE compatible à cette adresse. `probable` : plusieurs, le plus proche en surface retenu. **Filtrer sur `exacte` pour un signal fiable** |
+| `dpe_nb_candidats` | int | oui | Nombre de DPE compatibles trouvés à l'adresse |
+| `dpe_ecart_surface` | float | oui | Écart relatif entre surface vendue et surface du DPE retenu, 0 à 0,10 |
+| `dpe_date` | date | oui | Date d'établissement du diagnostic |
+| `annee_construction` | int | oui | Année de construction du logement, issue du DPE. Renseignée sur environ la moitié des ventes appariées |
+| `periode_construction` | string | oui | `avant 1949`, `1949-1974`, `1975-1989`, `1990-2005`, `depuis 2006`. **Variable de contrôle indispensable** : sans elle, l'étiquette énergie est confondue avec l'âge du bâti |
+| `zone_part_dpe_fg` | float | oui | Part des logements classés F ou G parmi tous les DPE du code postal, 0 à 1. **Attention : corrélée à +0,38 avec le prix** — les quartiers haussmanniens cumulent vieux bâti et prix élevés. Ne pas utiliser sans variables de localisation. |
+| `zone_nb_dpe` | int | oui | Nombre de DPE du code postal, pour juger de la fiabilité du précédent |
+
 ---
 
 ## Les 5 règles que l'équipe ML doit connaître
@@ -96,6 +119,36 @@ Toutes calculées sur une fenêtre glissante de 12 mois **strictement antérieur
 5. **Ne recalculez pas d'agrégat géographique sur l'ensemble du dataset.** Toute nouvelle feature de type « prix moyen du quartier » doit respecter la même règle de fenêtre antérieure, sinon les scores de validation seront artificiellement excellents.
 
 ---
+
+## Utiliser le DPE sans se tromper
+
+**La couverture est partielle, par nature.** Les DPE au nouveau format n'existent
+que depuis juillet 2021, et tous les logements vendus n'en ont pas. Une grande
+partie des ventes de 2021 n'aura pas de classe. Ne pas imputer ces valeurs par
+la classe la plus fréquente : cela effacerait précisément le signal recherché.
+
+**L'effet du DPE sur le prix n'a PAS pu être isolé.** Mesuré seul, il donne
+−3 points pour les passoires. Mais une fois le neuf exclu et l'âge du bâti
+neutralisé, l'écart disparaît et s'inverse même sur le bâti d'après-guerre.
+L'étiquette énergie est enchevêtrée avec la nature de la vente, l'âge du bâti
+et la surface. **Sa valeur réelle doit être établie par le modèle**, en
+comparant deux entraînements avec et sans ces colonnes. Détail des mesures
+dans `docs/enrichissement_dpe.md`.
+
+**Filtrer sur la qualité d'appariement change tout.** Mesuré sur Paris, l'écart
+de prix entre passoires et classes courantes vaut −3,1 points sur les
+appariements `exacte`, contre −1,1 seulement sur les `probable`. La colonne
+`dpe_ecart_surface` permet un filtrage plus fin encore : les appariements sous
+4 % d'écart portent le signal le plus net.
+
+**Deux usages complémentaires** :
+- `dpe_classe` filtré sur `dpe_qualite_appariement = 'exacte'`, pour le signal
+  individuel quand il existe ;
+- `zone_part_dpe_fg` comme signal de repli — mais jamais seule, voir la mise
+  en garde ci-dessus.
+
+**Aucune fuite de la cible.** Le DPE décrit le logement, pas son prix. L'indicateur
+de zone décrit le parc de logements du code postal, pas les transactions.
 
 ## Pièges connus et limites assumées
 

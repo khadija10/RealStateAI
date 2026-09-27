@@ -23,6 +23,7 @@ import duckdb
 
 from realstate_data.cleaning.silver import ouvrir_connexion
 from realstate_data.config import Settings, charger_settings
+from realstate_data.enrichment.dpe import enrichir_dpe
 from realstate_data.logging_conf import configurer_logging
 
 log = configurer_logging()
@@ -187,6 +188,13 @@ def construire_gold(settings: Settings | None = None) -> dict:
             b.id_mutation,
             b.date_mutation,
             b.annee, b.mois, b.trimestre, b.mois_index,
+            -- Nature de la mutation : distingue une VEFA (logement neuf) d'une
+            -- vente dans l'ancien. Indispensable pour interpréter le DPE — un
+            -- logement neuf est classé A, B ou C par construction et se vend
+            -- avec une prime de neuf. Sans cette colonne, on attribue à
+            -- l'étiquette énergie un effet qui vient de l'ancienneté du bien.
+            b.nature_mutation,
+            b.nature_mutation = 'Vente en l''état futur d''achèvement' AS est_vefa,
             b.code_departement, b.code_commune, b.nom_commune, b.code_postal,
             -- Paris, Lyon et Marseille sont découpés en arrondissements dans
             -- DVF : le code INSEE n'est pas celui de la ville (75056) mais
@@ -211,6 +219,9 @@ def construire_gold(settings: Settings | None = None) -> dict:
             END AS ville,
             b.latitude, b.longitude,
             b.type_local, b.code_type_local,
+            -- Adresse du logement : clé de jointure avec le DPE, et utile au
+            -- backend pour l'affichage.
+            b.adresse_numero, b.adresse_suffixe, b.adresse_nom_voie,
             b.surface_bati, b.nb_pieces, b.surface_terrain, b.nb_parcelles,
             b.valeur_fonciere, b.prix_m2,
             mc.prix_m2_median_commune_12m,
@@ -237,6 +248,11 @@ def construire_gold(settings: Settings | None = None) -> dict:
 
     # Partitionné par année : l'équipe ML peut charger un seul millésime, et
     # découper train/test chronologiquement sans lire tout le dataset.
+    # --- 6. Enrichissement DPE ---------------------------------------------
+    # Colonnes toujours présentes : vides si les DPE n'ont pas été
+    # téléchargés, pour que le schéma du dataset ne varie jamais.
+    bilan_dpe = enrichir_dpe(con, settings)
+
     sortie = settings.chemins.processed / "gold_transactions"
     con.execute(f"""
         COPY gold TO '{sortie}'
@@ -256,6 +272,7 @@ def construire_gold(settings: Settings | None = None) -> dict:
         "sans_reference_marche": sans_ref,
         "part_sans_reference": round(sans_ref / n_final, 4) if n_final else None,
         "chemin": str(sortie),
+        "dpe": bilan_dpe,
     }
     _ecrire_empreinte(con, settings, rapport)
     log.info("Gold écrit : %s (%d lignes, %d sans référence de marché)",

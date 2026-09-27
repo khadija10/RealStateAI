@@ -205,10 +205,28 @@ def construire_silver(
     journal.append(_compter(con, "s4_biens", "4. biens distincts (maisons + appartements)"))
 
     # --- Étape 5 : agrégation au niveau mutation ---------------------------
+    # --- Adresse du logement ------------------------------------------------
+    # Nécessaire à la jointure avec le DPE de l'ADEME. Elle est prise sur les
+    # lignes du LOGEMENT uniquement : une mutation peut couvrir plusieurs
+    # parcelles à des adresses différentes (un appartement et une cave dans
+    # un autre bâtiment), et c'est l'adresse du logement qui porte le DPE.
+    # Chaque colonne n'est lue que si elle existe dans la source : le schéma
+    # DVF a varié selon les millésimes.
+    colonnes_adresse = ["adresse_numero", "adresse_suffixe",
+                        "adresse_nom_voie", "adresse_code_voie"]
+    select_adresse = ",\n                ".join(
+        f"any_value({c}) AS {c}" if c in colonnes_presentes
+        else f"CAST(NULL AS VARCHAR) AS {c}"
+        for c in colonnes_adresse
+    )
+    if not all(t.isdigit() for t in types_locaux):
+        raise ValueError(f"Codes type_local invalides : {types_locaux}")
+    liste_types = ", ".join(f"'{t}'" for t in types_locaux)
+
     # valeur_fonciere : max() car constante sur toutes les lignes de la
     # mutation. On contrôle cette hypothèse via ecart_valeur : si min <> max,
     # la donnée source est incohérente et on veut le savoir.
-    con.execute("""
+    con.execute(f"""
         CREATE OR REPLACE TABLE s5_mutations AS
         WITH entete AS (
             SELECT
@@ -242,11 +260,21 @@ def construire_silver(
         terrains AS (
             SELECT id_mutation, sum(surface_terrain) AS surface_terrain
             FROM s4_parcelles GROUP BY id_mutation
+        ),
+        adresses AS (
+            SELECT
+                id_mutation,
+                {select_adresse}
+            FROM s3_valeur
+            WHERE code_type_local IN ({liste_types})
+            GROUP BY id_mutation
         )
-        SELECT e.*, b.* EXCLUDE (id_mutation), t.surface_terrain
+        SELECT e.*, b.* EXCLUDE (id_mutation), t.surface_terrain,
+               a.* EXCLUDE (id_mutation)
         FROM entete e
         JOIN biens b USING (id_mutation)
-        LEFT JOIN terrains t USING (id_mutation);
+        LEFT JOIN terrains t USING (id_mutation)
+        LEFT JOIN adresses a USING (id_mutation);
     """)
     journal.append(_compter(con, "s5_mutations", "5. agrégation par id_mutation (déduplication)"))
 

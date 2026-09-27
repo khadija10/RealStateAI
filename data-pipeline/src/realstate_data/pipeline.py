@@ -6,6 +6,8 @@ Usage :
     python -m realstate_data.pipeline silver      # nettoyage + déduplication
     python -m realstate_data.pipeline gold        # features ML-ready
     python -m realstate_data.pipeline qualite     # contrôles qualité (schéma + seuils)
+    python -m realstate_data.pipeline dpe-test    # vérifie l'API ADEME (quelques lignes)
+    python -m realstate_data.pipeline dpe         # télécharge les DPE du périmètre
     python -m realstate_data.pipeline run         # les trois d'affilée
     python -m realstate_data.pipeline rapport     # journal de perte lisible
 """
@@ -52,8 +54,13 @@ def afficher_rapport(settings=None) -> None:
 def main(argv: list[str] | None = None) -> int:
     parseur = argparse.ArgumentParser(description="Pipeline data DVF — RealStateAI")
     parseur.add_argument(
+        "--departements", nargs="+", metavar="DEP",
+        help="restreint la commande à ces départements, ex. --departements 75 92. "
+             "Utile pour le téléchargement DPE, long sur tout un périmètre.")
+    parseur.add_argument(
         "commande",
-        choices=["ingest", "silver", "gold", "qualite", "run", "rapport"],
+        choices=["ingest", "silver", "gold", "qualite", "run", "rapport",
+                 "dpe", "dpe-test", "dpe-diagnostic"],
         help="étape à exécuter",
     )
     args = parseur.parse_args(argv)
@@ -65,6 +72,49 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.commande in ("ingest", "run"):
         ingerer(settings)
+    if args.commande == "dpe-diagnostic":
+        from realstate_data.enrichment.dpe import diagnostic_api
+
+        print("\nFormes de requête acceptées par l'API ADEME :\n")
+        print(f"{'Variante':<26} {'Statut':>7} {'Total':>12}  Surface  Message")
+        print("-" * 86)
+        for r in diagnostic_api(settings):
+            total = f"{r['total']:,}".replace(",", " ") if r["total"] else "-"
+            surface = "oui" if r["surface_presente"] else "-"
+            print(f"{r['variante']:<26} {str(r['statut']):>7} {total:>12}"
+                  f"  {surface:>7}  {r['message']}")
+        print("\nOn retiendra la forme la plus filtrante parmi celles en 200.\n")
+        return 0
+    if args.commande == "dpe-test":
+        from realstate_data.enrichment.dpe import tester_api
+
+        resultat = tester_api(settings)
+        print(f"\nDPE disponibles en France : {resultat['total_dpe_france']:,}"
+              .replace(",", " "))
+        print(f"Dont département {resultat['departement_teste']} : "
+              f"{resultat['dpe_dans_le_departement']:,}".replace(",", " "))
+        print(f"Filtre effectivement appliqué : "
+              f"{'oui' if resultat['filtre_effectif'] else 'NON — ne pas télécharger'}")
+        print(f"\nChamps présents au schéma : "
+              f"{', '.join(resultat['champs_attendus_presents'])}")
+        if resultat["champs_attendus_absents"]:
+            print(f"CHAMPS ABSENTS  : {', '.join(resultat['champs_attendus_absents'])}")
+            print("-> Ils seront ignorés. Bloquant uniquement pour la surface.")
+        else:
+            print("Tous les champs attendus figurent au schéma.")
+        print(f"Surface renseignée sur l'exemple : "
+              f"{'oui' if resultat['surface_renseignee'] else 'NON — à investiguer'}")
+        print("\nExemple de diagnostic (appartement du périmètre) :")
+        for cle, valeur in resultat["exemple"].items():
+            print(f"  {cle:<28} {valeur}")
+        return 0
+    if args.commande == "dpe":
+        from realstate_data.enrichment.dpe import telecharger_dpe
+
+        bilan = telecharger_dpe(settings, departements=args.departements)
+        for departement, nombre in bilan.items():
+            log.info("Département %s : %d diagnostics", departement, nombre)
+        return 0
     if args.commande in ("silver", "run"):
         construire_silver(settings)
     if args.commande in ("gold", "run"):

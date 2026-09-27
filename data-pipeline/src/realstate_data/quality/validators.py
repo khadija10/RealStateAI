@@ -89,6 +89,13 @@ def construire_schema(settings: Settings) -> DataFrameSchema:
                 float, Check.in_range(plancher, plafond), nullable=True
             ),
             "source_reference_prix": Column(str, Check.isin(["commune", "departement"])),
+            # Colonnes DPE : vides tant que l'enrichissement n'a pas été lancé,
+            # d'où l'absence de contrainte de type. Quand elles sont remplies,
+            # les valeurs doivent être valides.
+            "dpe_classe": Column(None, Check.isin(list("ABCDEFG")), nullable=True),
+            "dpe_qualite_appariement": Column(
+                None, Check.isin(["exacte", "probable"]), nullable=True),
+            "zone_part_dpe_fg": Column(float, Check.in_range(0, 1), nullable=True),
         },
         # strict=False : l'équipe ML peut recevoir des colonnes supplémentaires
         # sans faire échouer la validation. Seules les colonnes du contrat sont
