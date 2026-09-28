@@ -5,10 +5,10 @@ services:
   # ── Backend FastAPI ───────────────────────────────────────────────────────
   - type: web
     name: realestateai-backend
-    env: docker
+    runtime: image
+    image:
+      url: docker.io/khdj0/realestateai-backend:v1.4
     plan: free
-    dockerfilePath: ./Backend/Dockerfile
-    dockerContext: .
     healthCheckPath: /api/health
     envVars:
       - key: ENVIRONMENT
