@@ -35,7 +35,28 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+try:
+    from slowapi import Limiter, _rate_limit_exceeded_handler
+    from slowapi.errors import RateLimitExceeded
+    from slowapi.util import get_remote_address
+    _SLOWAPI = True
+except ImportError:
+    _SLOWAPI = False
+    RateLimitExceeded = Exception
 
+    class _NoOpLimiter:
+        def limit(self, *args, **kwargs):
+            def decorator(fn): return fn
+            return decorator
+
+    def _rate_limit_exceeded_handler(request, exc):
+        return JSONResponse(status_code=429, content={"detail": "Trop de tentatives."})
+
+    def get_remote_address(request): return "0.0.0.0"
+
+from auth import create_access_token, decode_token, hash_password, verify_password
+from database import SearchHistoryService
+from financing_api import router as financing_router
 from utils.address_parser import normalize_commune, parse_address
 from utils.dvf_search import (
     SearchConfig,
@@ -68,6 +89,7 @@ DEFAULT_ORIGINS = [
     "http://localhost:4173",   # Vite preview
     "http://localhost:8501",   # frontend Docker
     "http://127.0.0.1:8501",
+    "https://realestateai-frontend.onrender.com",  # prod Render
 ]
 CORS_ORIGINS = json.loads(os.getenv("CORS_ORIGINS", json.dumps(DEFAULT_ORIGINS)))
 
@@ -114,14 +136,48 @@ PropertyType = Literal["apartment", "house", "studio", "other"]
 
 
 class EstimationRequest(BaseModel):
+    model_config = ConfigDict(json_schema_extra={
+        "examples": [
+            {
+                "summary": "Appartement Paris 15e (adresse complète)",
+                "value": {
+                    "area_m2": 65,
+                    "rooms": 3,
+                    "property_type": "apartment",
+                    "address": "12 rue de la Convention",
+                    "postal_code": "75015",
+                    "commune": "Paris 15e",
+                },
+            },
+            {
+                "summary": "Maison à Versailles (commune seule)",
+                "value": {
+                    "area_m2": 120,
+                    "rooms": 5,
+                    "property_type": "house",
+                    "commune": "Versailles",
+                },
+            },
+        ],
+    })
+
     area_m2: float = Field(..., gt=5, le=2000, description="Surface habitable en m²")
-    property_type: PropertyType = "apartment"
-    rooms: int | None = Field(default=None, ge=0, le=30)
-    commune: str | None = None
-    address: str | None = None
-    postal_code: str | None = None
-    location_lat: float | None = Field(default=None, ge=-90, le=90)
-    location_lng: float | None = Field(default=None, ge=-180, le=180)
+    property_type: PropertyType = Field(
+        default="apartment",
+        description="Type de bien : `apartment`, `house`, `studio` ou `other`",
+    )
+    rooms: int | None = Field(default=None, ge=0, le=30, description="Nombre de pièces (optionnel)")
+    commune: str | None = Field(default=None, description="Nom de commune IDF (ex : `PARIS 15`, `Versailles`)")
+    address: str | None = Field(default=None, description="Rue et numéro (ex : `12 rue de la Paix`)")
+    postal_code: str | None = Field(default=None, description="Code postal à 5 chiffres (ex : `75015`)")
+    location_lat: float | None = Field(default=None, ge=-90, le=90, description="Latitude WGS84 (optionnel)")
+    location_lng: float | None = Field(default=None, ge=-180, le=180, description="Longitude WGS84 (optionnel)")
+    dpe_classe: Literal["A", "B", "C", "D", "E", "F", "G"] | None = Field(
+        default=None, description="Classe DPE du bien (A à G, optionnel)"
+    )
+    annee_construction: int | None = Field(
+        default=None, ge=1800, le=2026, description="Année de construction (optionnel)"
+    )
 
     @model_validator(mode="after")
     def require_location(self):
@@ -191,6 +247,8 @@ class EstimationResponse(BaseModel):
     meta: EstimationMeta | None = None
     predicted_price: float | None = None
     confidence_interval: dict[str, Any] | None = None
+    local_mape: float | None = None
+    local_mape_n: int | None = None
 
 
 class HealthResponse(BaseModel):
@@ -202,11 +260,62 @@ class HealthResponse(BaseModel):
     error: str | None = None
     model_loaded: bool = False
     model_error: str | None = None
+    model_mape: float | None = None
+    model_r2: float | None = None
+    model_trained_at: str | None = None
+    model_n_features: int | None = None
+    model_n_transactions: int | None = None
+    model_n_train: int | None = None
+    model_n_test: int | None = None
+    dvf_min_year: int | None = None
+    dvf_max_year: int | None = None
+    dpe_loaded: bool = False
+    dpe_coverage_pct: float | None = None
+    dpe_n_zones: int = 0
 
 
 # ==========================================================================
 #  APPLICATION
 # ==========================================================================
+
+
+def _charger_model_info() -> dict | None:
+    candidates = [
+        BASE_DIR / "models" / "model_info.json",
+        BASE_DIR.parent / "Backend" / "models" / "model_info.json",
+    ]
+    for p in candidates:
+        if p.exists():
+            try:
+                import json as _json
+                return _json.loads(p.read_text())
+            except Exception:
+                pass
+    return None
+
+
+def _dvf_year_range(info: dict | None, bound: str) -> int | None:
+    if not info:
+        return None
+    all_years = list(info.get("train_years", [])) + list(info.get("test_years", []))
+    if not all_years:
+        return None
+    return min(all_years) if bound == "min" else max(all_years)
+
+
+def _charger_local_mape() -> dict:
+    candidates = [
+        BASE_DIR / "models" / "local_mape.json",
+        BASE_DIR.parent / "Backend" / "models" / "local_mape.json",
+    ]
+    for p in candidates:
+        if p.exists():
+            try:
+                import json as _json
+                return _json.loads(p.read_text())
+            except Exception:
+                pass
+    return {}
 
 
 @asynccontextmanager
@@ -221,6 +330,12 @@ async def lifespan(app: FastAPI):
     app.state.dvf_error = None
     app.state.dvf_path = None
     app.state.communes = []
+    app.state.dpe_zone = {}       # {code_postal: zone_part_dpe_fg}
+    app.state.dpe_coverage = 0.0  # fraction de transactions avec dpe_classe
+    app.state.search_history = SearchHistoryService()
+    app.state.search_history.init_db()
+    app.state.model_info = _charger_model_info()
+    app.state.local_mape = _charger_local_mape()
 
     path = resolve_dvf_path()
     if path is None:
@@ -238,24 +353,120 @@ async def lifespan(app: FastAPI):
             app.state.dvf_error = f"{type(exc).__name__} : {exc}"
             logger.exception("Échec du chargement du dataset DVF")
 
+    # Enrichissement DPE : index zone automatiquement si les colonnes existent
+    if app.state.dvf is not None:
+        try:
+            dvf = app.state.dvf
+            if "dpe_classe" in dvf.columns:
+                app.state.dpe_coverage = round(float(dvf["dpe_classe"].notna().mean()), 4)
+                if "zone_part_dpe_fg" in dvf.columns and "code_postal" in dvf.columns:
+                    zone = dvf[["code_postal", "zone_part_dpe_fg"]].dropna(subset=["zone_part_dpe_fg"])
+                    zone = zone.drop_duplicates("code_postal")
+                    app.state.dpe_zone = dict(
+                        zip(zone["code_postal"].astype(str), zone["zone_part_dpe_fg"].astype(float))
+                    )
+                logger.info(
+                    "DPE : couverture %.1f %%, %d codes postaux avec indicateur de zone",
+                    app.state.dpe_coverage * 100, len(app.state.dpe_zone),
+                )
+            else:
+                logger.info("DPE : colonnes absentes du dataset — lance `pipeline dpe` puis `gold`")
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Chargement index DPE échoué : %s", exc)
+
     yield
     app.state.dvf = None
 
 
+_OPENAPI_TAGS = [
+    {
+        "name": "estimation",
+        "description": (
+            "Estimation du prix d'un bien immobilier en Île-de-France. "
+            "Utilise un modèle LightGBM entraîné sur les données DVF 2021–2025 "
+            "avec géolocalisation BAN. Repli automatique sur les statistiques DVF "
+            "communales si le modèle ML n'est pas disponible."
+        ),
+    },
+    {
+        "name": "auth",
+        "description": (
+            "Authentification JWT. Les tokens ont une durée de vie de 7 jours. "
+            "Passer le token dans le header : `Authorization: Bearer <token>`."
+        ),
+    },
+    {
+        "name": "historique",
+        "description": (
+            "Historique des estimations. Sans token → estimations anonymes. "
+            "Avec token → estimations liées au compte, invisibles pour les autres utilisateurs."
+        ),
+    },
+    {
+        "name": "marché",
+        "description": "Statistiques de marché par commune et évolution mensuelle par département.",
+    },
+    {
+        "name": "métadonnées",
+        "description": "Communes disponibles pour l'autocomplétion du formulaire.",
+    },
+    {
+        "name": "système",
+        "description": "Santé de l'API, état du dataset DVF et du modèle ML.",
+    },
+]
+
+_limiter = Limiter(key_func=get_remote_address) if _SLOWAPI else _NoOpLimiter()
+
 app = FastAPI(
-    title="RealEstateAI Backend",
-    description="Estimation de prix immobiliers à partir des données DVF (Île-de-France).",
-    version="1.0.0",
+    title="RealEstateAI API",
+    description="""
+## Estimation immobilière Île-de-France
+
+API REST d'estimation de prix au m² basée sur les **données DVF** (Demandes de Valeurs Foncières)
+et un modèle **LightGBM** géolocalisé via l'API BAN (Base Adresse Nationale).
+
+### Périmètre
+- 8 départements : 75, 77, 78, 91, 92, 93, 94, 95
+- ~630 000 transactions DVF 2021–2025
+- Erreur médiane (MAPE) : ~14 %
+
+### Authentification
+Les routes protégées requièrent un token JWT dans le header :
+```
+Authorization: Bearer <token>
+```
+Obtenir un token via `POST /api/auth/login` ou `POST /api/auth/register`.
+
+### Flux typique
+1. `GET /api/health` — vérifier que le modèle est chargé
+2. `POST /api/auth/login` — s'authentifier
+3. `POST /api/predictions/estimate` — estimer un bien
+4. `GET /api/search-history` — consulter ses estimations
+""",
+    version="1.4.0",
+    contact={
+        "name": "RealEstateAI",
+        "url": "https://github.com/kalioudiallo/RealStateAI",
+    },
+    license_info={
+        "name": "MIT",
+    },
+    openapi_tags=_OPENAPI_TAGS,
     lifespan=lifespan,
 )
+
+app.state.limiter = _limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=CORS_ORIGINS,
     allow_credentials=True,
-    allow_methods=["GET", "POST"],
+    allow_methods=["GET", "POST", "PUT", "DELETE"],
     allow_headers=["*"],
 )
+app.include_router(financing_router)
 
 
 # ---------------------------------------------------- erreurs lisibles
@@ -306,6 +517,194 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 
 def get_dvf(request: Request) -> pd.DataFrame | None:
     return request.app.state.dvf
+
+
+def _current_user(request: Request) -> int | None:
+    auth = request.headers.get("Authorization", "")
+    if not auth.startswith("Bearer "):
+        return None
+    token = auth.removeprefix("Bearer ").strip()
+    payload = decode_token(token)
+    if not payload:
+        return None
+    try:
+        return int(payload["sub"])
+    except (KeyError, ValueError, TypeError):
+        return None
+
+
+# ==========================================================================
+#  AUTH SCHEMAS
+# ==========================================================================
+
+class AuthRequest(BaseModel):
+    email: str = Field(..., min_length=3, max_length=254)
+    password: str = Field(..., min_length=1, max_length=128)
+
+class RegisterRequest(BaseModel):
+    email: str = Field(..., min_length=3, max_length=254)
+    password: str = Field(..., min_length=6, max_length=128)
+
+
+class AuthResponse(BaseModel):
+    token: str
+    user: dict[str, Any]
+
+class ForgotPasswordRequest(BaseModel):
+    email: str = Field(..., min_length=3, max_length=254)
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str = Field(..., min_length=6, max_length=128)
+
+class ChangePasswordRequest(BaseModel):
+    current_password: str = Field(..., min_length=1, max_length=128)
+    new_password: str = Field(..., min_length=6, max_length=128)
+
+
+# ==========================================================================
+#  AUTH ENDPOINTS
+# ==========================================================================
+
+@app.post(
+    f"{API_PREFIX}/auth/register",
+    response_model=AuthResponse,
+    tags=["auth"],
+    summary="Créer un compte",
+    responses={409: {"description": "Email déjà utilisé"}},
+)
+@_limiter.limit("3/minute")
+def register(body: RegisterRequest, request: Request) -> AuthResponse:
+    """Crée un nouveau compte et retourne un token JWT valable 7 jours.
+
+    - **email** : adresse email unique (3–254 caractères)
+    - **password** : mot de passe en clair, haché côté serveur (min 6 caractères)
+    """
+    service: SearchHistoryService = request.app.state.search_history
+    existing = service.get_user_by_email(body.email)
+    if existing:
+        raise HTTPException(409, "Un compte existe déjà avec cet email.")
+    try:
+        user = service.create_user(body.email, hash_password(body.password))
+    except Exception as exc:
+        logger.warning("Erreur création utilisateur : %s", exc)
+        raise HTTPException(409, "Un compte existe déjà avec cet email.") from exc
+    token = create_access_token(user["id"], user["email"])
+    return AuthResponse(token=token, user={"id": user["id"], "email": user["email"]})
+
+
+@app.post(
+    f"{API_PREFIX}/auth/login",
+    response_model=AuthResponse,
+    tags=["auth"],
+    summary="Se connecter",
+    responses={401: {"description": "Email ou mot de passe incorrect"}},
+)
+@_limiter.limit("5/minute")
+def login(body: AuthRequest, request: Request) -> AuthResponse:
+    """Authentifie un utilisateur existant et retourne un token JWT valable 7 jours."""
+    service: SearchHistoryService = request.app.state.search_history
+    user = service.get_user_by_email(body.email)
+    if not user or not verify_password(body.password, user["password_hash"]):
+        raise HTTPException(401, "Email ou mot de passe incorrect.")
+    token = create_access_token(user["id"], user["email"])
+    return AuthResponse(token=token, user={"id": user["id"], "email": user["email"]})
+
+
+@app.get(
+    f"{API_PREFIX}/auth/me",
+    tags=["auth"],
+    summary="Profil de l'utilisateur connecté",
+    responses={401: {"description": "Token absent ou invalide"}},
+)
+def me(request: Request) -> dict[str, Any]:
+    user_id = _current_user(request)
+    if user_id is None:
+        raise HTTPException(401, "Non authentifié.")
+    service: SearchHistoryService = request.app.state.search_history
+    # Cherche par id via email dans le token
+    auth = request.headers.get("Authorization", "")
+    token = auth.removeprefix("Bearer ").strip()
+    payload = decode_token(token)
+    if not payload:
+        raise HTTPException(401, "Token invalide.")
+    return {"id": user_id, "email": payload.get("email", "")}
+
+
+@app.post(f"{API_PREFIX}/auth/forgot-password", tags=["auth"], summary="Demander un reset de mot de passe")
+@_limiter.limit("3/minute")
+def forgot_password(body: ForgotPasswordRequest, request: Request) -> dict[str, Any]:
+    service: SearchHistoryService = request.app.state.search_history
+    result = service.create_reset_token(body.email)
+    if result:
+        logger.info("Reset token pour %s : %s", result["email"], result["token"])
+    return {
+        "message": "Si un compte existe avec cet email, un code a été généré.",
+        "dev_token": result["token"] if result else None,
+    }
+
+
+@app.post(f"{API_PREFIX}/auth/reset-password", tags=["auth"], summary="Réinitialiser le mot de passe")
+def reset_password(body: ResetPasswordRequest, request: Request) -> dict[str, Any]:
+    service: SearchHistoryService = request.app.state.search_history
+    user_id = service.get_valid_reset_token(body.token)
+    if not user_id:
+        raise HTTPException(400, "Code invalide ou expiré.")
+    service.update_password(user_id, hash_password(body.new_password))
+    service.use_reset_token(body.token)
+    return {"message": "Mot de passe réinitialisé avec succès."}
+
+
+@app.put(f"{API_PREFIX}/auth/me/password", tags=["auth"], summary="Changer son mot de passe")
+def change_password(body: ChangePasswordRequest, request: Request) -> dict[str, Any]:
+    user_id = _current_user(request)
+    if user_id is None:
+        raise HTTPException(401, "Non authentifié.")
+    auth = request.headers.get("Authorization", "")
+    token = auth.removeprefix("Bearer ").strip()
+    payload = decode_token(token)
+    if not payload:
+        raise HTTPException(401, "Token invalide.")
+    service: SearchHistoryService = request.app.state.search_history
+    user = service.get_user_by_email(payload.get("email", ""))
+    if not user:
+        raise HTTPException(404, "Utilisateur introuvable.")
+    if not verify_password(body.current_password, user["password_hash"]):
+        raise HTTPException(400, "Mot de passe actuel incorrect.")
+    service.update_password(user_id, hash_password(body.new_password))
+    return {"message": "Mot de passe modifié avec succès."}
+
+
+@app.delete(f"{API_PREFIX}/history/{{item_id}}", tags=["historique"], summary="Supprimer une estimation")
+def delete_history_item(item_id: int, request: Request) -> dict[str, Any]:
+    user_id = _current_user(request)
+    service: SearchHistoryService = request.app.state.search_history
+    deleted = service.delete_search(item_id, user_id)
+    if not deleted:
+        raise HTTPException(404, "Estimation introuvable ou accès refusé.")
+    return {"message": "Estimation supprimée."}
+
+
+@app.delete(f"{API_PREFIX}/history", tags=["historique"], summary="Vider tout l'historique")
+def clear_history(request: Request) -> dict[str, Any]:
+    user_id = _current_user(request)
+    if user_id is None:
+        raise HTTPException(401, "Non authentifié.")
+    service: SearchHistoryService = request.app.state.search_history
+    deleted = service.clear_history(user_id)
+    return {"message": f"{deleted} estimation(s) supprimée(s).", "deleted": deleted}
+
+
+@app.delete(f"{API_PREFIX}/auth/me", tags=["auth"], summary="Supprimer son compte")
+def delete_account(request: Request) -> dict[str, Any]:
+    user_id = _current_user(request)
+    if user_id is None:
+        raise HTTPException(401, "Non authentifié.")
+    service: SearchHistoryService = request.app.state.search_history
+    deleted = service.delete_user(user_id)
+    if not deleted:
+        raise HTTPException(404, "Utilisateur introuvable.")
+    return {"message": "Compte supprimé définitivement."}
 
 
 def _load_ml_estimator() -> tuple[Any | None, str | None]:
@@ -417,6 +816,9 @@ def _normalize_ml_result(raw: Any, surface: float) -> EstimationResponse:
 def health(request: Request) -> HealthResponse:
     df = request.app.state.dvf
     loaded = df is not None
+    info = request.app.state.model_info or {}
+    dpe_cov = getattr(request.app.state, "dpe_coverage", 0.0)
+    dpe_zones = getattr(request.app.state, "dpe_zone", {})
     return HealthResponse(
         status="healthy" if loaded else "degraded",
         dvf_loaded=loaded,
@@ -426,6 +828,18 @@ def health(request: Request) -> HealthResponse:
         error=request.app.state.dvf_error,
         model_loaded=ML_ESTIMATOR is not None,
         model_error=ML_ERROR,
+        model_mape=info.get("mape"),
+        model_r2=info.get("r2"),
+        model_trained_at=info.get("trained_at"),
+        model_n_features=info.get("n_features"),
+        model_n_transactions=(info.get("n_train", 0) + info.get("n_test", 0)) or None,
+        model_n_train=info.get("n_train") or None,
+        model_n_test=info.get("n_test") or None,
+        dvf_min_year=_dvf_year_range(info, "min"),
+        dvf_max_year=_dvf_year_range(info, "max"),
+        dpe_loaded=dpe_cov > 0,
+        dpe_coverage_pct=round(dpe_cov * 100, 1) if dpe_cov > 0 else None,
+        dpe_n_zones=len(dpe_zones),
     )
 
 
@@ -448,6 +862,27 @@ def list_communes(
         needle = normalize_commune(q)
         communes = [c for c in communes if needle in normalize_commune(c)]
     return communes
+
+
+@app.get(
+    f"{API_PREFIX}/search-history",
+    response_model=list[dict[str, Any]],
+    tags=["historique"],
+    summary="Estimations récentes",
+)
+def list_search_history(
+    request: Request,
+    limit: int = Query(default=10, ge=1, le=50, description="Nombre maximum de résultats (1–50)"),
+) -> list[dict[str, Any]]:
+    """Retourne les estimations récentes.
+
+    - **Sans token** : estimations anonymes de la session courante.
+    - **Avec token** (`Authorization: Bearer <token>`) : estimations liées au compte,
+      invisibles pour les autres utilisateurs.
+    """
+    service: SearchHistoryService = request.app.state.search_history
+    user_id = _current_user(request)
+    return service.list_recent(limit=limit, user_id=user_id)
 
 
 def _mock_estimate(surface: float, property_type: str) -> EstimationResponse:
@@ -485,11 +920,33 @@ def _mock_estimate(surface: float, property_type: str) -> EstimationResponse:
     f"{API_PREFIX}/predictions/estimate",
     response_model=EstimationResponse,
     tags=["estimation"],
+    summary="Estimer le prix d'un bien",
 )
 def estimate(
     req: EstimationRequest,
+    request: Request,
     df: pd.DataFrame | None = Depends(get_dvf),
 ) -> EstimationResponse:
+    """Estime le prix d'un bien immobilier en Île-de-France.
+
+    ### Logique de sélection du modèle
+    | Priorité | Modèle | Condition |
+    |----------|--------|-----------|
+    | 1 | **ML** (LightGBM + BAN) | modèle chargé **et** adresse/commune fournie |
+    | 2 | **DVF** (stats communales) | dataset DVF chargé |
+    | 3 | **Mock** (heuristique) | aucune donnée disponible (CI/démo) |
+
+    ### Réponse — champs clés
+    - `estimated_price` : prix estimé en €
+    - `price_per_m2` : prix au m² médian
+    - `price_range.low` / `price_range.high` : fourchette à 85 %
+    - `reliability` : indice de fiabilité [0–1] (dépend du nombre de transactions)
+    - `model` : `"ml"`, `"dvf"` ou `"mock"`
+
+    ### Codes d'erreur
+    - **422** : données manquantes ou invalides (surface, localisation, ratio surface/pièces)
+    - **404** : commune inconnue ou aucune transaction comparable
+    """
     surface = req.area_m2
     type_bien = req.property_type
 
@@ -505,10 +962,68 @@ def estimate(
             }
             if req.commune and not req.address:
                 payload["adresse"] = req.commune
+            # zone_part_dpe_fg : feature DPE de zone, indexée par code postal
+            _dpe_zone = getattr(request.app.state, "dpe_zone", {})
+            if req.postal_code and req.postal_code in _dpe_zone:
+                payload["zone_part_dpe_fg"] = float(_dpe_zone[req.postal_code])
+            if req.dpe_classe:
+                payload["dpe_classe"] = req.dpe_classe
+            if req.annee_construction:
+                payload["annee_construction"] = req.annee_construction
             ml_result = ML_ESTIMATOR(**{k: v for k, v in payload.items() if v is not None})
             if ml_result is not None:
                 logger.info("Réponse renvoyée par le modèle ML")
-                return _normalize_ml_result(ml_result, surface)
+                normalized = _normalize_ml_result(ml_result, surface)
+                code_commune = ml_result.get("code_commune") if isinstance(ml_result, dict) else None
+                lm = getattr(request.app.state, "local_mape", {}).get(code_commune or "", {})
+                normalized.local_mape = lm.get("mape") if lm else None
+                normalized.local_mape_n = lm.get("n") if lm else None
+                if lm.get("mape"):
+                    normalized.reliability = round(max(0.30, min(0.95, 1.0 - lm["mape"] / 100)), 2)
+                # Score géocodage BAN
+                score_geocodage = ml_result.get("score_geocodage") if isinstance(ml_result, dict) else None
+                if score_geocodage is not None and score_geocodage < 0.6:
+                    normalized.geocoding_warning = (
+                        f"Adresse localisée avec une confiance faible ({score_geocodage:.0%}) "
+                        "— vérifiez que l'adresse est correcte."
+                    )
+                # Enrichissement DPE
+                if req.dpe_classe:
+                    normalized.dpe_classe = req.dpe_classe
+                if req.annee_construction:
+                    normalized.annee_construction = req.annee_construction
+                dpe_zone = getattr(request.app.state, "dpe_zone", {})
+                if req.postal_code and req.postal_code in dpe_zone:
+                    normalized.dpe_zone_fg_pct = round(float(dpe_zone[req.postal_code]) * 100, 1)
+                try:
+                    _adresse_norm = ml_result.get("adresse_normalisee") if isinstance(ml_result, dict) else None
+                    _full_query = _adresse_norm or " ".join(filter(None, [req.address, req.postal_code, req.commune])).strip() or ""
+                    request.app.state.search_history.add_search(
+                        query=_full_query,
+                        commune=req.commune,
+                        property_type=req.property_type,
+                        area_m2=surface,
+                        estimated_price=normalized.estimated_price,
+                        user_id=_current_user(request),
+                        rooms=req.rooms,
+                        address=req.address,
+                        postal_code=req.postal_code,
+                        adresse_normalisee=_adresse_norm,
+                        dpe_classe=req.dpe_classe,
+                        annee_construction=req.annee_construction,
+                    )
+                except Exception as exc:  # pragma: no cover - la persistance ne doit pas casser la réponse
+                    logger.warning("Historique de recherche non inscrit : %s", exc)
+                return normalized
+        except ValueError as exc:
+            # Erreur métier lisible (adresse introuvable, hors périmètre IDF…)
+            msg = str(exc)
+            if "introuvable" in msg.lower():
+                raise HTTPException(
+                    422,
+                    "Adresse introuvable — vérifiez l'orthographe ou précisez la commune (ex : Neuilly-sur-Seine).",
+                ) from exc
+            raise HTTPException(422, msg) from exc
         except Exception as exc:  # pragma: no cover - dépend du module ML réel
             logger.warning("Erreur modèle ML, fallback vers DVF : %s", exc)
 
@@ -516,7 +1031,24 @@ def estimate(
         if not ALLOW_MOCK_FALLBACK:
             raise HTTPException(503, "Le service d'estimation est momentanément indisponible.")
         logger.warning("Dataset indisponible : réponse mock renvoyée")
-        return _mock_estimate(surface, type_bien)
+        result = _mock_estimate(surface, req.property_type)
+        try:
+            request.app.state.search_history.add_search(
+                query=" ".join(filter(None, [req.address, req.postal_code, req.commune])).strip() or "",
+                commune=req.commune,
+                property_type=req.property_type,
+                area_m2=surface,
+                estimated_price=result.estimated_price,
+                user_id=_current_user(request),
+                rooms=req.rooms,
+                address=req.address,
+                postal_code=req.postal_code,
+                dpe_classe=req.dpe_classe,
+                annee_construction=req.annee_construction,
+            )
+        except Exception as exc:  # pragma: no cover - la persistance ne doit pas casser la réponse
+            logger.warning("Historique de recherche non inscrit : %s", exc)
+        return result
 
     # Localisation : commune explicite en priorité, sinon parsing de l'adresse.
     dep: str | None = None
@@ -531,6 +1063,29 @@ def estimate(
 
     if not commune_norm:
         raise HTTPException(422, "Impossible de déterminer la commune à partir de la saisie.")
+
+    # Filtre géographique Île-de-France
+    _IDF_DEPS = {"75", "77", "78", "91", "92", "93", "94", "95"}
+    # Noms de communes hors IDF couramment saisis par erreur
+    _HORS_IDF_COMMUNES = {
+        "lyon", "marseille", "bordeaux", "lille", "toulouse", "nantes",
+        "strasbourg", "montpellier", "rennes", "grenoble", "nice", "toulon",
+        "saint etienne", "tours", "dijon", "angers", "nimes", "clermont ferrand",
+        "le mans", "aix en provence", "brest", "limoges", "amiens",
+    }
+    if dep and dep not in _IDF_DEPS:
+        raise HTTPException(
+            422,
+            f"RealEstateAI couvre uniquement l'Île-de-France (départements 75–95). "
+            f"La localisation saisie semble être dans le département {dep}. "
+            f"Vérifiez votre adresse ou votre code postal.",
+        )
+    if not dep and commune_norm in _HORS_IDF_COMMUNES:
+        raise HTTPException(
+            422,
+            f"RealEstateAI couvre uniquement l'Île-de-France. "
+            f"« {req.commune or commune_norm} » ne fait pas partie du périmètre couvert.",
+        )
 
     outcome = search_comparables(
         df=df,
@@ -554,7 +1109,7 @@ def estimate(
     except NoComparableError as exc:
         raise HTTPException(404, str(exc)) from exc
 
-    return EstimationResponse(
+    response = EstimationResponse(
         estimated_price=result.estimated_price,
         price_per_m2=result.price_per_m2,
         price_range=PriceRange(
@@ -583,6 +1138,33 @@ def estimate(
             notes=outcome.notes,
         ),
     )
+    # Enrichissement DPE
+    if req.dpe_classe:
+        response.dpe_classe = req.dpe_classe
+    if req.annee_construction:
+        response.annee_construction = req.annee_construction
+    dpe_zone = getattr(request.app.state, "dpe_zone", {})
+    if req.postal_code and req.postal_code in dpe_zone:
+        response.dpe_zone_fg_pct = round(float(dpe_zone[req.postal_code]) * 100, 1)
+
+    try:
+        request.app.state.search_history.add_search(
+            query=" ".join(filter(None, [req.address, req.postal_code, req.commune])).strip() or commune_norm or "",
+            commune=req.commune,
+            property_type=req.property_type,
+            area_m2=surface,
+            estimated_price=response.estimated_price,
+            user_id=_current_user(request),
+            rooms=req.rooms,
+            address=req.address,
+            postal_code=req.postal_code,
+            dpe_classe=req.dpe_classe,
+            annee_construction=req.annee_construction,
+        )
+    except Exception as exc:  # pragma: no cover - la persistance ne doit pas casser l'estimation
+        logger.warning("Historique de recherche non inscrit : %s", exc)
+
+    return response
 
 
 # ==========================================================================

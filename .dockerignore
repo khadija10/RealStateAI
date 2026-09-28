@@ -1,7 +1,12 @@
 # Données brutes DVF — 1.9 Go, inutiles dans l'image
 Backend/Data pipeline/Data/
-# CSV nettoyé — le modèle ML ne s'en sert pas en prod
 Backend/Data pipeline/outputs/
+# Exclure tout data/ sauf le gold parquet et les samples
+data/raw/
+data/interim/
+data/external/
+data/dvf_raw*/
+data-pipeline/
 
 # Environnements Python virtuels
 data_env/
@@ -21,10 +26,12 @@ Frontend/dist/
 **/__pycache__/
 **/*.pyc
 **/*.pyo
+**/*.pyd
 **/.pytest_cache/
+**/.mypy_cache/
+**/.ruff_cache/
 
 # Fichiers de dev
-*.md
-docs/
 *.log
 .env*
+.DS_Store

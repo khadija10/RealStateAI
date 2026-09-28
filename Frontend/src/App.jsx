@@ -1,11 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useState } from 'react'
 import Header from './components/Header'
 import Footer from './components/Footer'
 import EstimationForm from './components/EstimationForm'
 import ResultPanel from './components/ResultPanel'
 import PriceMap from './components/PriceMap'
 import MarketTrends from './components/MarketTrends'
-import { getHealth, getCommunes, estimatePrice, ApiError } from './api/client'
+import History from './components/History'
+import FinancingPanel from './components/FinancingPanel'
+import ProfilePanel from './components/ProfilePanel'
+import { getHealth, getCommunes, estimatePrice, getMe, getToken, saveToken, clearToken, ApiError } from './api/client'
+import AuthModal from './components/AuthModal'
 
 const EMPTY_FORM = {
   area_m2: '',
@@ -14,13 +18,30 @@ const EMPTY_FORM = {
   commune: '',
   address: '',
   postal_code: '',
+  dpe_classe: '',
+  annee_construction: '',
 }
 
 const TABS = [
   { id: 'estimation', label: 'Estimation' },
+  { id: 'financement', label: 'Financement', protected: true },
   { id: 'carte', label: 'Carte des prix' },
   { id: 'marche', label: 'Référence du marché' },
+  { id: 'historique', label: 'Historique', protected: true },
+  { id: 'profil', label: 'Profil', protected: true },
 ]
+
+function readUrlParams() {
+  const p = new URLSearchParams(window.location.search)
+  return {
+    area_m2: p.get('area_m2') || '',
+    rooms: p.get('rooms') || '',
+    property_type: p.get('type') || 'apartment',
+    address: p.get('address') || '',
+    postal_code: p.get('postal_code') || '',
+    commune: p.get('commune') || '',
+  }
+}
 
 function normalizeCommunes(raw) {
   if (!Array.isArray(raw)) return []
@@ -44,6 +65,12 @@ function normalizeResult(raw) {
     reliability: raw.reliability ?? null,
     meta: raw.meta ?? null,
     confidenceLabel: raw.confidence_interval?.confidence ?? '85%',
+    localMape: raw.local_mape ?? null,
+    localMapeN: raw.local_mape_n ?? null,
+    dpeClasse: raw.dpe_classe ?? null,
+    anneeConstruction: raw.annee_construction ?? null,
+    dpeZoneFgPct: raw.dpe_zone_fg_pct ?? null,
+    geocodingWarning: raw.geocoding_warning ?? null,
   }
 }
 
@@ -52,16 +79,111 @@ export default function App() {
   const [communes, setCommunes] = useState([])
   const [communesLoading, setCommunesLoading] = useState(true)
   const [activeTab, setActiveTab] = useState('estimation')
+  const [user, setUser] = useState(null)
+  const [showAuthModal, setShowAuthModal] = useState(false)
 
   const [form, setForm] = useState(EMPTY_FORM)
   const [status, setStatus] = useState('idle')
   const [result, setResult] = useState(null)
   const [error, setError] = useState('')
   const [submittedQuery, setSubmittedQuery] = useState(EMPTY_FORM)
+  const [financingDefaultPrix, setFinancingDefaultPrix] = useState(null)
+  const [financingDefaultDep, setFinancingDefaultDep] = useState(null)
+  const [modelInfo, setModelInfo] = useState(null)
+  const [datasetInfo, setDatasetInfo] = useState(null)
+  const [pendingSubmit, setPendingSubmit] = useState(false)
+  const [toast, setToast] = useState(null)
+  const [historyKey, setHistoryKey] = useState(0)
+  const [dpeInfo, setDpeInfo] = useState(null)
+  const [darkMode, setDarkMode] = useState(() => {
+    try { return localStorage.getItem('reai_theme') === 'dark' } catch { return false }
+  })
+
+  useLayoutEffect(() => {
+    document.documentElement.setAttribute('data-theme', darkMode ? 'dark' : 'light')
+    try { localStorage.setItem('reai_theme', darkMode ? 'dark' : 'light') } catch { /* ignore */ }
+  }, [darkMode])
+
+  useEffect(() => {
+    const token = getToken()
+    if (token) {
+      getMe().then((u) => setUser(u)).catch(() => { clearToken(); setUser(null) })
+    }
+    // Pré-remplir depuis les paramètres URL (lien partagé)
+    const fromUrl = readUrlParams()
+    if (fromUrl.area_m2 || fromUrl.address || fromUrl.commune) {
+      setForm(fromUrl)
+      // Nettoyer l'URL sans rechargement
+      window.history.replaceState({}, '', window.location.pathname)
+    }
+  }, [])
+
+  function showToast(msg) {
+    setToast(msg)
+    setTimeout(() => setToast(null), 2500)
+  }
+
+  function handleAuthSuccess(token, userData) {
+    saveToken(token)
+    setUser(userData)
+    setShowAuthModal(false)
+    if (pendingSubmit) {
+      setPendingSubmit(false)
+      showToast('Estimation lancée…')
+      doSubmit()
+    }
+  }
+
+  function handleReEstimate(item) {
+    const newForm = {
+      area_m2: item.area_m2 ?? '',
+      rooms: item.rooms ?? '',
+      property_type: item.property_type ?? 'apartment',
+      commune: item.commune || (!item.address ? item.query : '') || '',
+      address: item.adresse_normalisee || item.address || '',
+      postal_code: item.postal_code ?? '',
+      dpe_classe: item.dpe_classe ?? '',
+      annee_construction: item.annee_construction ?? '',
+    }
+    setForm(newForm)
+    setResult(null)
+    setError('')
+    setActiveTab('estimation')
+    doSubmit(newForm)
+  }
+
+  function handleLogout() {
+    clearToken()
+    setUser(null)
+    // Si on est sur un onglet protégé, retour à estimation
+    setActiveTab((t) => (TABS.find((tab) => tab.id === t)?.protected ? 'estimation' : t))
+  }
 
   useEffect(() => {
     getHealth()
-      .then((h) => setBackendStatus((h.dvf_loaded || h.model_loaded) ? 'ready' : 'error'))
+      .then((h) => {
+        setBackendStatus((h.dvf_loaded || h.model_loaded) ? 'ready' : 'error')
+        if (h.model_mape != null) {
+          setModelInfo({
+            mape: h.model_mape,
+            r2: h.model_r2,
+            trainedAt: h.model_trained_at,
+            nFeatures: h.model_n_features,
+            nTransactions: h.model_n_transactions,
+            nTrain: h.model_n_train,
+            nTest: h.model_n_test,
+          })
+        }
+        setDatasetInfo({
+          nCommunes: h.n_communes ?? null,
+          minYear: h.dvf_min_year ?? null,
+          maxYear: h.dvf_max_year ?? null,
+          nRows: h.n_rows ?? null,
+        })
+        if (h.dpe_loaded) {
+          setDpeInfo({ coveragePct: h.dpe_coverage_pct, nZones: h.dpe_n_zones })
+        }
+      })
       .catch(() => setBackendStatus('error'))
 
     getCommunes()
@@ -70,21 +192,24 @@ export default function App() {
       .finally(() => setCommunesLoading(false))
   }, [])
 
-  async function handleSubmit() {
+  async function doSubmit(formValues) {
+    const f = formValues ?? form
     setStatus('loading')
     setError('')
     try {
       const payload = {
-        area_m2: Number(form.area_m2),
-        rooms: Number(form.rooms),
-        property_type: form.property_type,
-        ...(form.commune ? { commune: form.commune } : {}),
-        ...(form.address ? { address: form.address } : {}),
-        ...(form.postal_code ? { postal_code: form.postal_code } : {}),
+        area_m2: Number(f.area_m2),
+        rooms: Number(f.rooms),
+        property_type: f.property_type,
+        ...(f.commune ? { commune: f.commune } : {}),
+        ...(f.address ? { address: f.address } : {}),
+        ...(f.postal_code ? { postal_code: f.postal_code } : {}),
+        ...(f.dpe_classe ? { dpe_classe: f.dpe_classe } : {}),
+        ...(f.annee_construction ? { annee_construction: Number(f.annee_construction) } : {}),
       }
       const raw = await estimatePrice(payload)
       setResult(normalizeResult({ ...raw, area_m2: payload.area_m2 }))
-      setSubmittedQuery(form)
+      setSubmittedQuery(f)
       setStatus('success')
     } catch (e) {
       setError(e instanceof ApiError ? e.message : "Une erreur inattendue est survenue.")
@@ -92,19 +217,49 @@ export default function App() {
     }
   }
 
+  async function handleSubmit() {
+    if (!user) {
+      setPendingSubmit(true)
+      setShowAuthModal(true)
+      return
+    }
+    await doSubmit()
+  }
+
   return (
     <div className="min-h-screen flex flex-col">
-      <Header datasetStatus={backendStatus} />
+      <Header
+        datasetStatus={backendStatus}
+        dpeInfo={dpeInfo}
+        user={user}
+        onOpenAuth={() => setShowAuthModal(true)}
+        onLogout={handleLogout}
+        darkMode={darkMode}
+        onToggleDark={() => setDarkMode((d) => !d)}
+      />
+      {showAuthModal && (
+        <AuthModal onSuccess={handleAuthSuccess} onClose={() => { setShowAuthModal(false); setPendingSubmit(false) }} />
+      )}
+      {toast && (
+        <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-ink text-white text-xs font-medium px-4 py-2.5 rounded-full shadow-lg pointer-events-none">
+          {toast}
+        </div>
+      )}
+
 
       {/* Barre de navigation onglets */}
       <nav className="border-b border-stone-100 bg-white sticky top-0 z-20">
         <div className="max-w-5xl mx-auto px-6">
-          <div className="flex gap-0">
+          <div className="flex gap-0 overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
             {TABS.map((tab) => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`px-5 py-4 text-sm font-medium border-b-2 transition-colors ${
+                onClick={() => {
+                  if (tab.protected && !user) { setShowAuthModal(true); return }
+                  setActiveTab(tab.id)
+                  if (tab.id === 'historique') setHistoryKey((k) => k + 1)
+                }}
+                className={`px-3 sm:px-5 py-4 text-sm font-medium border-b-2 shrink-0 transition-colors ${
                   activeTab === tab.id
                     ? 'border-seine text-seine'
                     : 'border-transparent text-ink-muted hover:text-ink hover:border-stone-100'
@@ -125,12 +280,12 @@ export default function App() {
         {/* ONGLET ESTIMATION */}
         {activeTab === 'estimation' && (
           <>
-            <div className="max-w-xl mb-10">
+            <div className="mb-10">
               <h1 className="font-[var(--font-display)] text-4xl sm:text-5xl text-ink leading-[1.05]">
                 Estimez la valeur de votre bien
               </h1>
-              <p className="text-ink-muted mt-4 leading-relaxed">
-                Modèle LightGBM entraîné sur 700 000 transactions DVF · Île-de-France · Géolocalisation BAN
+              <p className="text-sm text-ink-muted mt-3">
+                Basé sur {(modelInfo?.nTrain ?? modelInfo?.nTransactions)?.toLocaleString('fr-FR') ?? '—'} transactions immobilières récentes · Île-de-France
               </p>
             </div>
 
@@ -143,8 +298,35 @@ export default function App() {
                 communesLoading={communesLoading}
                 loading={status === 'loading'}
               />
-              <ResultPanel status={status} error={error} result={result} query={submittedQuery} />
+              <ResultPanel
+                status={status}
+                error={error}
+                result={result}
+                query={submittedQuery}
+                modelInfo={modelInfo}
+                onOpenFinancement={(prix, query) => {
+                  setFinancingDefaultPrix(Math.round(prix))
+                  const dep = query?.postal_code ? query.postal_code.slice(0, 2) : null
+                  setFinancingDefaultDep(dep)
+                  setActiveTab('financement')
+                }}
+              />
             </div>
+          </>
+        )}
+
+        {/* ONGLET FINANCEMENT */}
+        {activeTab === 'financement' && (
+          <>
+            <div className="max-w-xl mb-10">
+              <h1 className="font-[var(--font-display)] text-4xl sm:text-5xl text-ink leading-[1.05] whitespace-nowrap">
+                Simulez votre financement
+              </h1>
+              <p className="text-sm text-ink-muted mt-3 whitespace-nowrap">
+                Calcul basé sur les normes HCSF en vigueur · Taux d'effort, mensualité, score dossier.
+              </p>
+            </div>
+            <FinancingPanel defaultPrix={financingDefaultPrix} defaultDep={financingDefaultDep} />
           </>
         )}
 
@@ -152,11 +334,11 @@ export default function App() {
         {activeTab === 'carte' && (
           <>
             <div className="max-w-xl mb-8">
-              <h1 className="font-[var(--font-display)] text-4xl sm:text-5xl text-ink leading-[1.05]">
+              <h1 className="font-[var(--font-display)] text-4xl sm:text-5xl text-ink leading-[1.05] whitespace-nowrap">
                 Carte des prix par commune
               </h1>
-              <p className="text-ink-muted mt-4 leading-relaxed">
-                Prix médian au m² — 1 193 communes d&apos;Île-de-France · transactions 2022-2024
+              <p className="text-sm text-ink-muted mt-3 whitespace-nowrap">
+                Prix médian au m² — {datasetInfo?.nCommunes?.toLocaleString('fr-FR') ?? '—'} communes d&apos;Île-de-France{datasetInfo?.minYear && datasetInfo?.maxYear ? ` · transactions ${datasetInfo.minYear}–${datasetInfo.maxYear}` : ''}
               </p>
             </div>
             <PriceMap />
@@ -167,14 +349,46 @@ export default function App() {
         {activeTab === 'marche' && (
           <>
             <div className="max-w-xl mb-8">
-              <h1 className="font-[var(--font-display)] text-4xl sm:text-5xl text-ink leading-[1.05]">
+              <h1 className="font-[var(--font-display)] text-4xl sm:text-5xl text-ink leading-[1.05] whitespace-nowrap">
                 Référence du marché
               </h1>
-              <p className="text-ink-muted mt-4 leading-relaxed">
-                Évolution mensuelle du prix médian au m² par département, 2021-2025.
+              <p className="text-sm text-ink-muted mt-3 whitespace-nowrap">
+                Évolution mensuelle du prix médian au m² par département{datasetInfo?.minYear && datasetInfo?.maxYear ? `, ${datasetInfo.minYear}–${datasetInfo.maxYear}` : ''}.
               </p>
             </div>
             <MarketTrends />
+          </>
+        )}
+
+        {/* ONGLET HISTORIQUE */}
+        {activeTab === 'historique' && (
+          <>
+            <div className="max-w-xl mb-8">
+              <h1 className="font-[var(--font-display)] text-4xl sm:text-5xl text-ink leading-[1.05] whitespace-nowrap">
+                Historique
+              </h1>
+              <p className="text-sm text-ink-muted mt-3 whitespace-nowrap">
+                Vos 20 dernières estimations enregistrées.
+              </p>
+            </div>
+            <div className="max-w-2xl">
+              <History key={historyKey} onReEstimate={handleReEstimate} />
+            </div>
+          </>
+        )}
+
+        {/* ONGLET PROFIL */}
+        {activeTab === 'profil' && (
+          <>
+            <div className="max-w-xl mb-8">
+              <h1 className="font-[var(--font-display)] text-4xl sm:text-5xl text-ink leading-[1.05] whitespace-nowrap">
+                Mon profil
+              </h1>
+              <p className="text-sm text-ink-muted mt-3 whitespace-nowrap">
+                Paramètres de votre compte.
+              </p>
+            </div>
+            <ProfilePanel user={user} onLogout={handleLogout} />
           </>
         )}
 

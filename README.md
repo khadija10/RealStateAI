@@ -42,6 +42,13 @@ RealStateAI/
 └── requirements.txt
 ```
 
+## Architecture
+- FastAPI backend with DVF estimation, search history, and financing dossier endpoints
+- React/Vite frontend
+- PostgreSQL for production and SQLite for local tests
+- ML/MLOps pipeline with monitoring, retraining, and CI workflows
+- Docker Compose locally and Render deployment
+
 ## Prerequisites
 - Python 3.11+
 - Docker + Docker Compose

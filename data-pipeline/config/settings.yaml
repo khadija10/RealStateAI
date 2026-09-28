@@ -70,3 +70,24 @@ qualite:
   perte_lignes_max_nettoyage: 0.60    # alerte si le nettoyage retire > 60 %
   prix_m2_median_min: 1000            # plausibilité : une médiane hors de cette
   prix_m2_median_max: 20000           # plage signale une déduplication cassée
+
+# --- Enrichissement DPE (ADEME) -----------------------------------------------
+# Source : jeu "DPE Logements existants (depuis juillet 2021)", dpe03existant.
+# API libre, sans clé, limitée à 10 appels par seconde.
+enrichissement:
+  dpe_api: "https://data.ademe.fr/data-fair/api/v1/datasets/dpe03existant/lines"
+  dpe_taille_page: 5000
+  # L'API n'accepte de filtrer que par listes de valeurs (code_postal_ban_in).
+  # Nombre de codes postaux par lot. C'est aussi la GRANULARITÉ DE REPRISE :
+  # chaque lot est écrit sur disque dès qu'il est terminé. Une valeur basse
+  # rend le téléchargement interruptible à tout moment sans rien perdre.
+  dpe_codes_par_requete: 2
+  dpe_pause_s: 0.15                 # garde une marge sous la limite de 10 appels/s
+  # Écart relatif maximal entre surface vendue (DVF) et surface habitable (DPE)
+  # pour considérer qu'il s'agit du même logement. Les deux mesures ne sont
+  # pas strictement identiques : 10 % absorbe cette différence sans
+  # confondre deux appartements voisins de tailles différentes.
+  dpe_tolerance_surface: 0.10
+  # En dessous de ce nombre de DPE, la part de passoires d'un code postal
+  # n'est pas assez fiable pour servir d'indicateur.
+  dpe_min_diagnostics_zone: 30

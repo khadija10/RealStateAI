@@ -1,0 +1,94 @@
+name: CI/CD — Modèle ML + Déploiement
+
+on:
+  push:
+    branches: [main, feature/ml-mlops]
+  workflow_dispatch:
+
+env:
+  IMAGE_NAME: khdj0/realestateai-backend
+  IMAGE_TAG: v1.3
+
+jobs:
+  # ── 1. Tests backend ────────────────────────────────────────────────────────
+  test-backend:
+    name: Tests backend (pytest)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Installer les dépendances
+        run: pip install -r ../requirements.txt
+
+      - name: Lancer pytest
+        run: pytest tests/ -v --tb=short
+
+  # ── 2. Régression modèle ML ─────────────────────────────────────────────────
+  test-model-regression:
+    name: Régression modèle ML (MAPE gate)
+    runs-on: ubuntu-latest
+    needs: test-backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Installer les dépendances ML
+        run: pip install -r requirements.txt
+
+      - name: Vérification modèle (gate MAPE < 25 %)
+        run: python ml/tests/test_regression_model.py
+        env:
+          MODEL_PATH: Backend/models/price_model.pkl
+
+  # ── 3. Build Docker + push Docker Hub ───────────────────────────────────────
+  build-and-push:
+    name: Build Docker + Push Docker Hub
+    runs-on: ubuntu-latest
+    needs: [test-backend, test-model-regression]
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Build & push image backend
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+            ${{ env.IMAGE_NAME }}:latest
+
+  # ── 4. Déploiement Render ────────────────────────────────────────────────────
+  deploy:
+    name: Déploiement Render
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Déclencher le redéploiement Render
+        run: |
+          curl -s -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" \
+            -H "Accept: application/json" \
+            --fail
+        # RENDER_DEPLOY_HOOK_URL : Settings > Deploy Hook dans le dashboard Render

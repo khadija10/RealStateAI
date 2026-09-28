@@ -1,18 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { getMarketMap } from '../api/client'
 
-const PRICE_SCALE = [
-  { max: 3000, color: '#4ade80' },   // vert — moins de 3k €/m²
-  { max: 5000, color: '#a3e635' },
-  { max: 7000, color: '#facc15' },   // jaune
-  { max: 9000, color: '#fb923c' },   // orange
-  { max: 12000, color: '#f87171' },  // rouge clair
-  { max: Infinity, color: '#dc2626' }, // rouge foncé — Paris centre
-]
-
-function priceColor(prix) {
-  return (PRICE_SCALE.find((s) => prix <= s.max) ?? PRICE_SCALE.at(-1)).color
-}
+const DEPS = ['75', '77', '78', '91', '92', '93', '94', '95']
 
 const DEP_NAMES = {
   '75': 'Paris',
@@ -25,20 +14,56 @@ const DEP_NAMES = {
   '95': "Val-d'Oise",
 }
 
+// Vues fixes par département — évite le zoom trop large sur 77/78
+const DEP_VIEWS = {
+  '75': { center: [48.858, 2.347], zoom: 12 },
+  '77': { center: [48.620, 2.840], zoom: 10 },
+  '78': { center: [48.770, 1.900], zoom: 10 },
+  '91': { center: [48.530, 2.230], zoom: 10 },
+  '92': { center: [48.870, 2.235], zoom: 12 },
+  '93': { center: [48.916, 2.490], zoom: 12 },
+  '94': { center: [48.790, 2.472], zoom: 12 },
+  '95': { center: [49.050, 2.100], zoom: 11 },
+}
+
+const PRICE_SCALE = [
+  { max: 3000, color: '#4ade80' },
+  { max: 5000, color: '#a3e635' },
+  { max: 7000, color: '#facc15' },
+  { max: 9000, color: '#fb923c' },
+  { max: 12000, color: '#f87171' },
+  { max: Infinity, color: '#dc2626' },
+]
+
+function priceColor(prix) {
+  return (PRICE_SCALE.find((s) => prix <= s.max) ?? PRICE_SCALE.at(-1)).color
+}
+
+function normalize(str) {
+  return str
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .replace(/[-'’\s]+/g, ' ')
+    .trim()
+}
+
+const fmt = (n) => new Intl.NumberFormat('fr-FR').format(n)
+
 export default function PriceMap() {
   const mapRef = useRef(null)
   const leafletRef = useRef(null)
+  const geoLayerRef = useRef(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [activeDep, setActiveDep] = useState('all')
-  const [allData, setAllData] = useState([])
-  const [tooltip, setTooltip] = useState(null)
+  const [hovered, setHovered] = useState(null)
+  const [matchRate, setMatchRate] = useState(null)
 
   useEffect(() => {
-    let map = null
+    let cancelled = false
 
     async function init() {
-      // Charger Leaflet depuis le CDN
       if (!window.L) {
         await new Promise((resolve, reject) => {
           const s = document.createElement('script')
@@ -50,19 +75,51 @@ export default function PriceMap() {
       }
       const L = window.L
 
-      let data
-      try {
-        data = await getMarketMap()
-        setAllData(data)
-      } catch (e) {
-        setError('Impossible de charger les données cartographiques.')
-        setLoading(false)
-        return
+      const [priceData, ...geoResults] = await Promise.all([
+        getMarketMap(),
+        ...DEPS.map((dep) => {
+          // Paris: l'API retourne 1 commune (75056); on demande les arrondissements séparément
+          const type = dep === '75' ? '&type=arrondissement-municipal' : ''
+          return fetch(
+            `https://geo.api.gouv.fr/communes?codeDepartement=${dep}&fields=code,nom&format=geojson&geometry=contour${type}`
+          )
+            .then((r) => r.json())
+            .catch(() => null)
+        }),
+      ])
+
+      if (cancelled) return
+
+      // Build price lookup by normalized name
+      const priceByName = new Map()
+      for (const row of priceData) {
+        priceByName.set(normalize(row.nom_commune), row)
       }
 
-      if (!mapRef.current) return
+      // Merge GeoJSON features with price data
+      const features = []
+      let total = 0
+      let matched = 0
+      for (const geo of geoResults) {
+        if (!geo?.features) continue
+        for (const feature of geo.features) {
+          total++
+          const key = normalize(feature.properties.nom)
+          const price = priceByName.get(key)
+          if (price) {
+            matched++
+            feature.properties = { ...feature.properties, ...price }
+            features.push(feature)
+          }
+        }
+      }
+      setMatchRate(total > 0 ? Math.round((matched / total) * 100) : null)
 
-      map = L.map(mapRef.current, {
+      const geojson = { type: 'FeatureCollection', features }
+
+      if (!mapRef.current || cancelled) return
+
+      const map = L.map(mapRef.current, {
         center: [48.82, 2.35],
         zoom: 10,
         zoomControl: true,
@@ -72,64 +129,84 @@ export default function PriceMap() {
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '© OpenStreetMap contributors',
         maxZoom: 18,
+        opacity: 0.35,
       }).addTo(map)
 
-      data.forEach((row) => {
-        const color = priceColor(row.prix_m2_median)
-        const radius = Math.sqrt(row.n_transactions) * 0.8 + 4
-
-        const circle = L.circleMarker([row.lat, row.lon], {
-          radius: Math.min(radius, 22),
-          fillColor: color,
+      function polyStyle(feature) {
+        const prix = feature.properties.prix_m2_median
+        return {
+          fillColor: prix ? priceColor(prix) : '#d1d5db',
+          weight: 0.8,
+          opacity: 1,
           color: '#ffffff',
-          weight: 1,
-          opacity: 0.9,
-          fillOpacity: 0.75,
-        })
+          fillOpacity: 0.78,
+        }
+      }
 
-        circle.bindPopup(`
-          <div style="font-family: Inter, sans-serif; min-width: 160px">
-            <p style="font-weight:600; margin:0 0 4px">${row.nom_commune}</p>
-            <p style="margin:0; color:#6B6558; font-size:12px">Dept. ${row.code_departement} · ${row.n_transactions} ventes</p>
-            <p style="margin:6px 0 0; font-size:15px; font-weight:700; color:#1F1F1F">
-              ${new Intl.NumberFormat('fr-FR').format(row.prix_m2_median)} €/m²
-            </p>
-            <p style="margin:2px 0 0; font-size:11px; color:#8A8171">
-              Fourchette : ${new Intl.NumberFormat('fr-FR').format(row.prix_m2_q1)} – ${new Intl.NumberFormat('fr-FR').format(row.prix_m2_q3)} €/m²
-            </p>
-          </div>
-        `)
+      const geoLayer = L.geoJSON(geojson, {
+        style: polyStyle,
+        onEachFeature: (feature, layer) => {
+          const p = feature.properties
+          layer.on({
+            mouseover: () => {
+              layer.setStyle({ weight: 2, color: '#111827', fillOpacity: 0.95 })
+              layer.bringToFront()
+              setHovered({
+                nom: p.nom_commune,
+                dep: p.code_departement,
+                prix: p.prix_m2_median,
+                q1: p.prix_m2_q1,
+                q3: p.prix_m2_q3,
+                n: p.n_transactions,
+              })
+            },
+            mouseout: () => {
+              geoLayer.resetStyle(layer)
+              setHovered(null)
+            },
+            click: () => {
+              map.fitBounds(layer.getBounds(), { padding: [60, 60], maxZoom: 14 })
+            },
+          })
+        },
+      }).addTo(map)
 
-        circle.addTo(map)
-      })
-
+      geoLayerRef.current = geoLayer
       setLoading(false)
     }
 
-    init()
+    init().catch(() => {
+      if (!cancelled) {
+        setError('Impossible de charger les données cartographiques.')
+        setLoading(false)
+      }
+    })
 
     return () => {
+      cancelled = true
       if (leafletRef.current) {
         leafletRef.current.remove()
         leafletRef.current = null
+        geoLayerRef.current = null
       }
     }
   }, [])
 
-  // Filtre par département : re-centre la carte
+  // Re-centre on department filter change
   useEffect(() => {
     const map = leafletRef.current
-    if (!map || allData.length === 0) return
+    if (!map) return
+
     if (activeDep === 'all') {
       map.setView([48.82, 2.35], 10)
-    } else {
-      const pts = allData.filter((r) => r.code_departement === activeDep)
-      if (pts.length === 0) return
-      const avgLat = pts.reduce((s, r) => s + r.lat, 0) / pts.length
-      const avgLon = pts.reduce((s, r) => s + r.lon, 0) / pts.length
-      map.setView([avgLat, avgLon], 12)
+      return
     }
-  }, [activeDep, allData])
+
+    const view = DEP_VIEWS[activeDep]
+    if (view) {
+      map.setView(view.center, view.zoom, { animate: true })
+    }
+  }, [activeDep])
 
   return (
     <section>
@@ -160,20 +237,40 @@ export default function PriceMap() {
         ))}
       </div>
 
-      {/* Carte */}
-      <div className="relative rounded-2xl overflow-hidden border border-stone-100 shadow-[var(--shadow-card)]">
-        {loading && (
-          <div className="absolute inset-0 z-10 flex items-center justify-center bg-stone-50/80">
-            <div className="flex flex-col items-center gap-2">
-              <div className="h-6 w-6 rounded-full border-2 border-stone-100 border-t-seine animate-spin" />
-              <p className="text-sm text-ink-muted">Chargement de la carte…</p>
-            </div>
+      {/* Carte + tooltip dans un wrapper relatif sans overflow-hidden */}
+      <div className="relative">
+        {/* Tooltip hover — en dehors du overflow-hidden */}
+        {hovered && (
+          <div className="absolute top-3 left-3 z-[400] bg-white rounded-xl shadow-lg border border-stone-100 px-4 py-3 w-56 pointer-events-none" style={{ zIndex: 1000 }}>
+            <p className="text-sm font-semibold text-ink leading-tight">{hovered.nom}</p>
+            <p className="text-[11px] text-ink-muted mt-0.5">
+              Dept. {hovered.dep}{hovered.n != null ? ` · ${hovered.n.toLocaleString('fr-FR')} ventes` : ''}
+            </p>
+            <p className="text-2xl font-bold text-ink tabular-nums mt-2 leading-none">
+              {fmt(hovered.prix)} €/m²
+            </p>
+            {hovered.q1 && hovered.q3 && (
+              <p className="text-[11px] text-ink-muted mt-1.5">
+                Q1–Q3 : {fmt(hovered.q1)} – {fmt(hovered.q3)} €/m²
+              </p>
+            )}
           </div>
         )}
-        {error && (
-          <div className="flex items-center justify-center h-80 text-sm text-ink-muted">{error}</div>
-        )}
-        <div ref={mapRef} style={{ height: '480px', width: '100%' }} />
+
+        <div className="relative rounded-2xl overflow-hidden border border-stone-100 shadow-[var(--shadow-card)]">
+          {loading && (
+            <div className="absolute inset-0 flex items-center justify-center bg-stone-50/80" style={{ zIndex: 999 }}>
+              <div className="flex flex-col items-center gap-2">
+                <div className="h-6 w-6 rounded-full border-2 border-stone-100 border-t-seine animate-spin" />
+                <p className="text-sm text-ink-muted">Chargement des polygones…</p>
+              </div>
+            </div>
+          )}
+          {error && (
+            <div className="flex items-center justify-center h-80 text-sm text-ink-muted">{error}</div>
+          )}
+          <div ref={mapRef} style={{ height: '520px', width: '100%' }} />
+        </div>
       </div>
 
       {/* Légende */}
@@ -188,11 +285,15 @@ export default function PriceMap() {
           { label: '> 12 000 €', color: '#dc2626' },
         ].map((item) => (
           <div key={item.label} className="flex items-center gap-1.5">
-            <div className="h-3 w-3 rounded-full border border-white/80" style={{ backgroundColor: item.color }} />
+            <div className="h-3 w-3 rounded border border-white/80" style={{ backgroundColor: item.color }} />
             <span className="text-xs text-ink-muted">{item.label}</span>
           </div>
         ))}
-        <p className="text-xs text-ink-muted ml-auto">Cliquez sur un cercle pour les détails</p>
+        {matchRate != null && (
+          <p className="text-xs text-ink-muted ml-auto">
+            {matchRate} % des communes avec données · cliquer pour zoomer
+          </p>
+        )}
       </div>
     </section>
   )

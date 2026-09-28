@@ -17,7 +17,7 @@ import pandas as pd
 import pytest
 from fastapi.testclient import TestClient
 
-from main import app
+from main import app, _dvf_year_range
 from utils.address_parser import city_root, normalize_commune, parse_address
 from utils.dvf_search import (
     SearchConfig,
@@ -419,3 +419,208 @@ def test_mock_si_dataset_absent(client_without_dvf):
     ).json()
     assert body["model"] == "mock"
     assert body["price_range"]["low"] < body["estimated_price"] < body["price_range"]["high"]
+
+
+def test_search_history_persists_in_sqlite(tmp_path, monkeypatch):
+    db_url = f"sqlite:///{tmp_path / 'search_history.db'}"
+    monkeypatch.setenv("DATABASE_URL", db_url)
+
+    from database import SearchHistoryService
+
+    service = SearchHistoryService()
+    service.init_db()
+    service.add_search(
+        query="Paris 15",
+        commune="PARIS 15",
+        property_type="apartment",
+        area_m2=60.0,
+        estimated_price=500000.0,
+    )
+
+    entries = service.list_recent(limit=5)
+    assert len(entries) == 1
+    assert entries[0]["commune"] == "PARIS 15"
+    assert entries[0]["estimated_price"] == 500000.0
+
+
+def test_history_endpoint_returns_recent_searches(client):
+    client.post(
+        "/api/predictions/estimate",
+        json={"area_m2": 60, "rooms": 3, "property_type": "apartment", "commune": "PARIS 15"},
+    )
+
+    response = client.get("/api/search-history")
+    assert response.status_code == 200
+    payload = response.json()
+    assert isinstance(payload, list)
+    assert payload
+    assert payload[0]["commune"] == "PARIS 15"
+
+
+def test_financing_dossier_endpoint_uses_deterministic_module(client):
+    response = client.post(
+        "/api/financing/dossier",
+        json={
+            "profil": {
+                "revenus_nets_mensuels": 4200,
+                "apport": 45000,
+                "charges_credits_mensuelles": 250,
+                "nb_adultes": 2,
+                "nb_enfants": 1,
+                "loyer_actuel": 1100,
+                "primo_accedant": True,
+            },
+            "projet": {"prix_bien": 250000, "departement": "94"},
+            "charges_logement_previsionnelles": 250,
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["plan_financement"]["prix_bien"] == 250000
+    assert "conformite_hcsf" in body
+    assert "pieces_justificatives" in body
+
+
+# ==========================================================================
+#  UNITAIRES — _dvf_year_range
+# ==========================================================================
+
+
+def test_dvf_year_range_min_et_max():
+    info = {"train_years": [2021, 2022, 2023], "test_years": [2024, 2025]}
+    assert _dvf_year_range(info, "min") == 2021
+    assert _dvf_year_range(info, "max") == 2025
+
+
+def test_dvf_year_range_uniquement_train_years():
+    info = {"train_years": [2022, 2023, 2024]}
+    assert _dvf_year_range(info, "min") == 2022
+    assert _dvf_year_range(info, "max") == 2024
+
+
+def test_dvf_year_range_none_si_info_vide():
+    assert _dvf_year_range(None, "min") is None
+    assert _dvf_year_range({}, "max") is None
+
+
+def test_dvf_year_range_none_si_pas_de_cle_years():
+    assert _dvf_year_range({"mape": 18.7}, "min") is None
+
+
+# ==========================================================================
+#  ENDPOINTS — health : champs model_info
+# ==========================================================================
+
+
+def test_health_expose_model_n_transactions(client):
+    client.app.state.model_info = {
+        "mape": 18.7, "r2": 0.78, "trained_at": "2026-01-01T00:00:00",
+        "n_features": 19, "n_train": 500_000, "n_test": 130_000,
+        "train_years": [2021, 2022, 2023, 2024], "test_years": [2025],
+    }
+    body = client.get("/api/health").json()
+    assert body["model_n_transactions"] == 630_000
+
+
+def test_health_expose_dvf_year_range(client):
+    client.app.state.model_info = {
+        "n_train": 100, "n_test": 10,
+        "train_years": [2021, 2022], "test_years": [2023],
+    }
+    body = client.get("/api/health").json()
+    assert body["dvf_min_year"] == 2021
+    assert body["dvf_max_year"] == 2023
+
+
+def test_health_year_range_absent_si_model_info_none(client):
+    client.app.state.model_info = None
+    body = client.get("/api/health").json()
+    assert body.get("dvf_min_year") is None
+    assert body.get("dvf_max_year") is None
+
+
+# ==========================================================================
+#  HISTORIQUE — adresse complète
+# ==========================================================================
+
+
+def test_history_query_contient_adresse_et_code_postal(client):
+    """Le champ query doit contenir l'adresse complète (rue + CP + commune)."""
+    client.post(
+        "/api/predictions/estimate",
+        json={
+            "area_m2": 60, "rooms": 3, "property_type": "apartment",
+            "commune": "VERSAILLES",
+            "address": "3 avenue de Paris",
+            "postal_code": "78000",
+        },
+    )
+    entries = client.get("/api/search-history").json()
+    assert entries
+    query = entries[0]["query"]
+    assert "avenue" in query.lower()
+    assert "78000" in query
+
+
+def test_history_query_commune_seule_si_pas_adresse(client):
+    """Sans adresse ni CP, la commune seule est enregistrée comme query."""
+    client.post(
+        "/api/predictions/estimate",
+        json={"area_m2": 60, "rooms": 3, "property_type": "apartment", "commune": "MELUN"},
+    )
+    entries = client.get("/api/search-history").json()
+    assert entries
+    assert entries[0]["query"]  # non vide
+
+# ==========================================================================
+#  Persistance DPE dans l'historique
+# ==========================================================================
+
+def test_estimate_avec_dpe_persiste_dans_historique(client):
+    """dpe_classe et annee_construction sont sauvés après une estimation."""
+    client.post(
+        "/api/predictions/estimate",
+        json={
+            "area_m2": 65,
+            "rooms": 3,
+            "property_type": "apartment",
+            "commune": "PARIS 15",
+            "dpe_classe": "B",
+            "annee_construction": 2010,
+        },
+    )
+    entries = client.get("/api/search-history").json()
+    assert entries
+    assert entries[0]["dpe_classe"] == "B"
+    assert entries[0]["annee_construction"] == 2010
+
+
+def test_estimate_sans_dpe_laisse_champs_null(client):
+    """Sans DPE fourni, les champs sont null dans l'historique."""
+    client.post(
+        "/api/predictions/estimate",
+        json={"area_m2": 60, "rooms": 3, "property_type": "apartment", "commune": "PARIS 15"},
+    )
+    entries = client.get("/api/search-history").json()
+    assert entries
+    assert entries[0]["dpe_classe"] is None
+    assert entries[0]["annee_construction"] is None
+
+
+def test_estimate_dpe_g_persiste(client):
+    """Classe G (valeur extrême) est bien sauvegardée."""
+    client.post(
+        "/api/predictions/estimate",
+        json={
+            "area_m2": 80,
+            "rooms": 4,
+            "property_type": "apartment",
+            "commune": "VERSAILLES",
+            "dpe_classe": "G",
+            "annee_construction": 1960,
+        },
+    )
+    entries = client.get("/api/search-history").json()
+    assert entries[0]["dpe_classe"] == "G"
+    assert entries[0]["annee_construction"] == 1960

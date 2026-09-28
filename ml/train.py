@@ -30,6 +30,14 @@ def entrainer(config_path: str = "ml/config.yaml"):
     X_train, y_train = preparer_features(train_df, config, cat_dtypes)
     X_test, y_test = preparer_features(test_df, config, cat_dtypes)
 
+    # Pondération temporelle — réduit le biais dû au pic 2021-2022
+    sw_cfg = config.get("sample_weights", {})
+    if sw_cfg:
+        train_weights = train_df["annee"].map({int(k): v for k, v in sw_cfg.items()}).fillna(1.0).values
+        print(f"  Poids moyen par année : { {yr: round(train_df[train_df['annee']==yr].shape[0] * w / len(train_df), 3) for yr, w in [(y, sw_cfg.get(str(y), 1.0)) for y in sorted(train_df['annee'].unique())]} }")
+    else:
+        train_weights = None
+
     params = config["lightgbm"]
     early_stopping = params.pop("early_stopping_rounds", 50)
     verbose = params.pop("verbose", -1)
@@ -37,9 +45,12 @@ def entrainer(config_path: str = "ml/config.yaml"):
     with mlflow.start_run():
         mlflow.log_params(params)
         mlflow.log_param("train_years", config["split"]["train_years"])
-        mlflow.log_param("test_years", config["split"]["test_years"])
+        mlflow.log_param("test_years", config["split"].get("test_years", []))
+        mlflow.log_param("holdout_frac", config["split"].get("holdout_frac", None))
         mlflow.log_param("n_train", len(X_train))
         mlflow.log_param("n_test", len(X_test))
+        if sw_cfg:
+            mlflow.log_param("sample_weights", sw_cfg)
 
         print("\nEntraînement LightGBM...")
         t0 = time.time()
@@ -47,6 +58,7 @@ def entrainer(config_path: str = "ml/config.yaml"):
         model = lgb.LGBMRegressor(**params)
         model.fit(
             X_train, y_train,
+            sample_weight=train_weights,
             eval_set=[(X_test, y_test)],
             callbacks=[
                 lgb.early_stopping(early_stopping, verbose=False),
@@ -88,7 +100,62 @@ def entrainer(config_path: str = "ml/config.yaml"):
         }
         cat_path = model_path.parent / "categories.json"
         import json
+        from datetime import datetime as _dt
         cat_path.write_text(json.dumps(categories, ensure_ascii=False))
+
+        # Modèles quantile — fourchette per-prédiction (85 % CI : q7.5 – q92.5)
+        print("\nEntraînement modèles quantiles (q7.5 et q92.5)...")
+        params_q = {
+            **params,
+            "objective": "quantile",
+            "metric": "quantile",
+            "n_estimators": model.best_iteration_,
+            "verbose": -1,
+        }
+        model_q075 = lgb.LGBMRegressor(**{**params_q, "alpha": 0.075})
+        model_q075.fit(X_train, y_train)
+        joblib.dump(model_q075, model_path.parent / "lgb_q075.pkl")
+
+        model_q925 = lgb.LGBMRegressor(**{**params_q, "alpha": 0.925})
+        model_q925.fit(X_train, y_train)
+        joblib.dump(model_q925, model_path.parent / "lgb_q925.pkl")
+        print(f"  → lgb_q075.pkl / lgb_q925.pkl sauvegardés")
+
+        # MAPE locale par commune (sur le test set) → confiance per-prédiction
+        print("\nCalcul MAPE locale par commune...")
+        ape_series = np.abs(y_test.values - y_pred) / np.abs(y_pred) * 100
+        local_df = test_df[["code_commune"]].copy()
+        local_df["ape"] = ape_series
+        agg = local_df.groupby("code_commune")["ape"].agg(mape="median", n="count")
+        local_mape_dict = {
+            code: {"mape": round(row["mape"], 1), "n": int(row["n"])}
+            for code, row in agg.iterrows()
+            if row["n"] >= 5
+        }
+        local_mape_path = model_path.parent / "local_mape.json"
+        local_mape_path.write_text(json.dumps(local_mape_dict, ensure_ascii=False, indent=2))
+        print(f"  → MAPE locale : {len(local_mape_dict)} communes couvertes")
+
+        # Métriques persistées pour le backend (exposées via /api/health)
+        model_info = {
+            "mape": round(metriques["mape_m2"], 2),
+            "r2": round(metriques["r2_m2"], 4),
+            "mae": round(metriques["mae_m2"], 2),
+            "dans_10pct": round(metriques["dans_10pct"], 1),
+            "dans_20pct": round(metriques["dans_20pct"], 1),
+            "n_train": len(X_train),
+            "n_test": len(X_test),
+            "train_years": config["split"]["train_years"],
+            "test_years": config["split"].get("test_years", []),
+            "holdout_frac": config["split"].get("holdout_frac", None),
+            "n_features": len(X_train.columns),
+            "n_estimators": model.best_iteration_,
+            "trained_at": _dt.now().strftime("%Y-%m-%dT%H:%M:%S"),
+        }
+        info_path = model_path.parent / "model_info.json"
+        info_path.write_text(json.dumps(model_info, ensure_ascii=False, indent=2))
+        print(f"Métriques sauvegardées : {info_path}")
+
         mlflow.lightgbm.log_model(
             model, "model",
             skops_trusted_types=[

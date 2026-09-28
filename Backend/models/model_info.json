@@ -1,0 +1,21 @@
+{
+  "mape": 16.37,
+  "r2": 0.8188,
+  "mae": 900.47,
+  "dans_10pct": 46.2,
+  "dans_20pct": 73.9,
+  "n_train": 680980,
+  "n_test": 19292,
+  "train_years": [
+    2021,
+    2022,
+    2023,
+    2024,
+    2025
+  ],
+  "test_years": [],
+  "holdout_frac": 0.15,
+  "n_features": 28,
+  "n_estimators": 926,
+  "trained_at": "2026-09-28T16:25:52"
+}

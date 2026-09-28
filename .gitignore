@@ -251,3 +251,7 @@ data-pipeline/.venv/
 mlruns/
 
 # Modèles lourds (versionnés séparément si besoin)
+
+# Runtime & artefacts locaux
+Backend/search_history.db
+catboost_info/

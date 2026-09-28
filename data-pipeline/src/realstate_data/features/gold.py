@@ -23,6 +23,7 @@ import duckdb
 
 from realstate_data.cleaning.silver import ouvrir_connexion
 from realstate_data.config import Settings, charger_settings
+from realstate_data.enrichment.dpe import enrichir_dpe
 from realstate_data.logging_conf import configurer_logging
 
 log = configurer_logging()
@@ -176,6 +177,42 @@ def construire_gold(settings: Settings | None = None) -> dict:
         GROUP BY 1, 2, 3;
     """)
 
+    # --- 4b. Feature spatiale locale ~1 km ---------------------------------
+    # On arrondit lat/lon à 2 décimales (≈1,1 km × 0,7 km en IDF) pour créer
+    # des cellules géographiques. Le médian glissant 12 mois sur la cellule
+    # capture les micro-variations de prix que la commune ne voit pas
+    # (ex : deux rues séparées par une voie ferrée). Sans fuite temporelle :
+    # même fenêtre [m-12, m-1] que les agrégats commune/département.
+    con.execute("""
+        CREATE OR REPLACE TABLE mensuel_local AS
+        SELECT
+            ROUND(latitude, 2)  AS lat_cell,
+            ROUND(longitude, 2) AS lon_cell,
+            code_type_local, mois_index,
+            median(prix_m2) AS med, count(*) AS n
+        FROM base_propre
+        WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+        GROUP BY 1, 2, 3, 4;
+    """)
+    con.execute(f"""
+        CREATE OR REPLACE TABLE marche_local AS
+        SELECT g.lat_cell, g.lon_cell, g.code_type_local, g.mois_index,
+               median(h.med) AS prix_m2_median_local_12m
+        FROM (
+            SELECT DISTINCT ROUND(latitude, 2)  AS lat_cell,
+                            ROUND(longitude, 2) AS lon_cell,
+                            code_type_local, mois_index
+            FROM base_propre
+            WHERE latitude IS NOT NULL AND longitude IS NOT NULL
+        ) g
+        LEFT JOIN mensuel_local h
+               ON h.lat_cell = g.lat_cell
+              AND h.lon_cell = g.lon_cell
+              AND h.code_type_local = g.code_type_local
+              AND h.mois_index BETWEEN g.mois_index - {FENETRE_MOIS} AND g.mois_index - 1
+        GROUP BY 1, 2, 3, 4;
+    """)
+
     # --- 5. Assemblage du dataset final ------------------------------------
     # prix_m2_reference_12m : médiane communale si elle repose sur assez de
     # ventes, sinon médiane départementale. `source_reference_prix` trace le
@@ -187,15 +224,47 @@ def construire_gold(settings: Settings | None = None) -> dict:
             b.id_mutation,
             b.date_mutation,
             b.annee, b.mois, b.trimestre, b.mois_index,
+            -- Nature de la mutation : distingue une VEFA (logement neuf) d'une
+            -- vente dans l'ancien. Indispensable pour interpréter le DPE — un
+            -- logement neuf est classé A, B ou C par construction et se vend
+            -- avec une prime de neuf. Sans cette colonne, on attribue à
+            -- l'étiquette énergie un effet qui vient de l'ancienneté du bien.
+            b.nature_mutation,
+            b.nature_mutation = 'Vente en l''état futur d''achèvement' AS est_vefa,
             b.code_departement, b.code_commune, b.nom_commune, b.code_postal,
+            -- Paris, Lyon et Marseille sont découpés en arrondissements dans
+            -- DVF : le code INSEE n'est pas celui de la ville (75056) mais
+            -- celui de l'arrondissement (75101 à 75120). Les agrégats de
+            -- marché sont donc déjà calculés à cette maille fine.
+            -- On expose le numéro d'arrondissement en clair : sans cette
+            -- colonne, l'information reste noyée dans le code commune et
+            -- l'équipe ML ne peut pas s'en servir directement.
+            CASE
+                WHEN b.code_commune BETWEEN '75101' AND '75120'
+                    THEN CAST(substr(b.code_commune, 4, 2) AS INTEGER)
+                WHEN b.code_commune BETWEEN '69381' AND '69389'
+                    THEN CAST(substr(b.code_commune, 4, 2) AS INTEGER) - 80
+                WHEN b.code_commune BETWEEN '13201' AND '13216'
+                    THEN CAST(substr(b.code_commune, 4, 2) AS INTEGER)
+            END AS arrondissement,
+            CASE
+                WHEN b.code_commune BETWEEN '75101' AND '75120' THEN 'Paris'
+                WHEN b.code_commune BETWEEN '69381' AND '69389' THEN 'Lyon'
+                WHEN b.code_commune BETWEEN '13201' AND '13216' THEN 'Marseille'
+                ELSE b.nom_commune
+            END AS ville,
             b.latitude, b.longitude,
             b.type_local, b.code_type_local,
+            -- Adresse du logement : clé de jointure avec le DPE, et utile au
+            -- backend pour l'affichage.
+            b.adresse_numero, b.adresse_suffixe, b.adresse_nom_voie,
             b.surface_bati, b.nb_pieces, b.surface_terrain, b.nb_parcelles,
             b.valeur_fonciere, b.prix_m2,
             mc.prix_m2_median_commune_12m,
             mc.nb_ventes_commune_12m,
             md.prix_m2_median_dept_12m,
             md.nb_ventes_dept_12m,
+            ml.prix_m2_median_local_12m,
             CASE WHEN mc.nb_ventes_commune_12m >= {MIN_VENTES_COMMUNE}
                  THEN mc.prix_m2_median_commune_12m
                  ELSE md.prix_m2_median_dept_12m END AS prix_m2_reference_12m,
@@ -211,11 +280,21 @@ def construire_gold(settings: Settings | None = None) -> dict:
         LEFT JOIN marche_departement md
                ON md.code_departement = b.code_departement
               AND md.code_type_local = b.code_type_local
-              AND md.mois_index = b.mois_index;
+              AND md.mois_index = b.mois_index
+        LEFT JOIN marche_local ml
+               ON ml.lat_cell = ROUND(b.latitude, 2)
+              AND ml.lon_cell = ROUND(b.longitude, 2)
+              AND ml.code_type_local = b.code_type_local
+              AND ml.mois_index = b.mois_index;
     """)
 
     # Partitionné par année : l'équipe ML peut charger un seul millésime, et
     # découper train/test chronologiquement sans lire tout le dataset.
+    # --- 6. Enrichissement DPE ---------------------------------------------
+    # Colonnes toujours présentes : vides si les DPE n'ont pas été
+    # téléchargés, pour que le schéma du dataset ne varie jamais.
+    bilan_dpe = enrichir_dpe(con, settings)
+
     sortie = settings.chemins.processed / "gold_transactions"
     con.execute(f"""
         COPY gold TO '{sortie}'
@@ -235,8 +314,61 @@ def construire_gold(settings: Settings | None = None) -> dict:
         "sans_reference_marche": sans_ref,
         "part_sans_reference": round(sans_ref / n_final, 4) if n_final else None,
         "chemin": str(sortie),
+        "dpe": bilan_dpe,
     }
+    _ecrire_empreinte(con, settings, rapport)
     log.info("Gold écrit : %s (%d lignes, %d sans référence de marché)",
              sortie, n_final, sans_ref)
     con.close()
     return rapport
+
+
+def _ecrire_empreinte(con, settings: Settings, rapport: dict) -> None:
+    """
+    Écrit la carte d'identité du dataset produit.
+
+    POURQUOI : l'équipe régénère le dataset plutôt que de se le transmettre.
+    Sans empreinte, rien ne garantit que le data scientist a entraîné son
+    modèle sur exactement la même donnée que celle présentée au jury — une
+    ligne modifiée dans settings.yaml, ou une nouvelle publication DVF entre
+    deux exécutions, suffisent à créer un écart invisible.
+
+    L'empreinte capture la configuration, les volumétries et des statistiques
+    de contrôle. La commande `pipeline empreinte` la compare ensuite à la
+    version de référence versionnée dans docs/dataset_reference.json.
+    """
+    import hashlib
+    import json
+    from datetime import datetime, timezone
+
+    stats = con.execute("""
+        SELECT code_departement,
+               count(*)                AS n,
+               round(median(prix_m2))  AS prix_m2_median
+        FROM gold GROUP BY 1 ORDER BY 1
+    """).df()
+
+    config_signature = json.dumps({
+        "departements": list(settings.departements),
+        "millesimes": list(settings.millesimes),
+        "nettoyage": settings.nettoyage,
+    }, sort_keys=True, ensure_ascii=False)
+
+    empreinte = {
+        "genere_le": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+        "config_sha256": hashlib.sha256(config_signature.encode()).hexdigest()[:16],
+        "departements": list(settings.departements),
+        "millesimes": list(settings.millesimes),
+        "lignes_gold": rapport["lignes_gold"],
+        "sans_reference_marche": rapport["sans_reference_marche"],
+        "par_departement": {
+            str(r.code_departement): {"n": int(r.n),
+                                      "prix_m2_median": float(r.prix_m2_median)}
+            for r in stats.itertuples()
+        },
+    }
+    chemin = settings.chemins.processed / "_dataset_version.json"
+    chemin.write_text(json.dumps(empreinte, indent=2, ensure_ascii=False),
+                      encoding="utf-8")
+    log.info("Empreinte écrite : %s (config %s)",
+             chemin.name, empreinte["config_sha256"])

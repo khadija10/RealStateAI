@@ -232,19 +232,59 @@ Data samples (dans l'image) :
 | Maisons rares dans certains départements (< 50 transactions) | Modèle peu fiable type "house" zones peu denses | Moyenne |
 | Pas de filtre géographique sur l'entrée (biens hors IDF acceptés) | Résultat incohérent si commune hors IDF saisie | Moyenne |
 | Données 2025 limitées à S1 | Légère sous-représentation des prix 2025 | Basse |
-| Déploiement cloud absent | Demo uniquement en local | Basse |
+| Déploiement cloud absent | Demo uniquement en local | ✅ Résolu en v1.2 |
 
 ---
 
-## 8. ÉVOLUTIONS ENVISAGÉES (V1.3)
+## 8. DÉPLOIEMENT EN PRODUCTION
+
+L'application est déployée gratuitement sur **Render.com** depuis le 7 septembre 2026.
+
+| Composant | URL | Technologie |
+|-----------|-----|-------------|
+| **Frontend** | https://realestateai-frontend.onrender.com | Static Site (React build) |
+| **Backend API** | https://realestateai-backend.onrender.com | Docker Image (LightGBM) |
+| **Swagger docs** | https://realestateai-backend.onrender.com/docs | FastAPI auto-generated |
+
+**Architecture de déploiement :**
+
+```
+GitHub (khadija10/RealStateAI)
+    │
+    ├──► Render Static Site ──► https://realestateai-frontend.onrender.com
+    │    (npm ci && npm run build → dist/)
+    │
+    └──► Docker Hub (khdj0/realestateai-backend:v1.2)
+             │
+             └──► Render Web Service ──► https://realestateai-backend.onrender.com
+                  (LightGBM + BAN geocoding + gold parquet bakés dans l'image)
+```
+
+**Optimisations réalisées pour le déploiement :**
+
+- `.dockerignore` : exclut les 1.9 Go de données brutes DVF — contexte Docker réduit de 2 Go → 29 Mo
+- Gold parquet (28 Mo) baké dans l'image Docker — aucun volume externe nécessaire
+- Image finale : ~400 Mo (vs 4.9 Go sans optimisation)
+- `ALLOW_MOCK_FALLBACK=true` : le backend démarre sans le dataset DVF, le modèle ML prend le relais
+
+**Limites du free tier Render :**
+
+- Le backend s'endort après 15 min d'inactivité → premier réveil ~50 secondes
+- 512 Mo RAM (suffisant : modèle + gold parquet ≈ 200 Mo en mémoire)
+- Frontend static : toujours actif, aucun délai
+
+---
+
+## 9. ÉVOLUTIONS ENVISAGÉES (V1.3)
 
 1. **DPE (Diagnostic de Performance Énergétique)** : feature haute valeur, fortement corrélée au prix depuis la réforme 2021
 2. **Arrondissements Paris** : découper Paris en 20 codes INSEE distincts vs une seule commune
-3. **Déploiement cloud** : Render (backend) + Vercel (frontend) — coût ≈ 0 € pour usage démo
-4. **Historique d'estimations** : stockage localStorage ou base légère (SQLite)
-5. **Export PDF** : fiche d'estimation téléchargeable pour présentation en démo
+3. **Historique d'estimations** : stockage localStorage ou base légère (SQLite)
+4. **Export PDF** : fiche d'estimation téléchargeable pour présentation en démo
+5. **CI/CD** : redéploiement automatique sur Render à chaque push GitHub
 
 ---
 
 *Rapport rédigé le 7 septembre 2026 — Version v1.2*  
-*Dépôt : https://github.com/khadija10/RealStateAI — Branche : feature/ml-mlops*
+*Dépôt : https://github.com/khadija10/RealStateAI — Branche : main*  
+*Application : https://realestateai-frontend.onrender.com*

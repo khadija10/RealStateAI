@@ -11,6 +11,7 @@ from __future__ import annotations
 
 import os
 from dataclasses import dataclass, field
+from datetime import datetime
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
@@ -28,6 +29,11 @@ SETTINGS_PATH = REPO_ROOT / "data-pipeline" / "config" / "settings.yaml"
 
 # Départements attendus pour l'Île-de-France ; sert de garde-fou de saisie.
 DEPARTEMENTS_IDF = {"75", "77", "78", "91", "92", "93", "94", "95"}
+
+# Premier millésime publié en open data par la DGFiP. Avant cette date,
+# aucune donnée n'existe : autant le dire tout de suite plutôt que de laisser
+# l'utilisateur découvrir 40 erreurs 404 puis un plantage incompréhensible.
+MILLESIME_MIN = 2014
 
 
 @dataclass(frozen=True)
@@ -59,6 +65,7 @@ class Settings:
     execution: dict[str, Any] = field(default_factory=dict)
     nettoyage: dict[str, Any] = field(default_factory=dict)
     qualite: dict[str, Any] = field(default_factory=dict)
+    enrichissement: dict[str, Any] = field(default_factory=dict)
 
     def valider(self) -> None:
         """Échoue vite et bruyamment si la config est incohérente."""
@@ -72,6 +79,21 @@ class Settings:
             raise ValueError("Un code département doit être une chaîne de 2 chiffres.")
         if not self.millesimes:
             raise ValueError("Aucun millésime configuré.")
+
+        annee_courante = datetime.now().year
+        hors_plage = [m for m in self.millesimes
+                      if not (MILLESIME_MIN <= m <= annee_courante)]
+        if hors_plage:
+            raise ValueError(
+                f"Millésimes hors plage disponible : {hors_plage}. "
+                f"DVF est publié de {MILLESIME_MIN} à aujourd'hui. "
+                f"Note : le millésime de l'année en cours et souvent celui de "
+                f"l'année précédente ne sont pas encore publiés — la DGFiP "
+                f"diffuse en avril et octobre. Corrige 'millesimes' dans "
+                f"config/settings.yaml."
+            )
+        if not all(isinstance(m, int) for m in self.millesimes):
+            raise ValueError("Un millésime doit être un entier, sans guillemets.")
 
 
 @lru_cache(maxsize=1)
@@ -107,6 +129,7 @@ def charger_settings(chemin: Path | None = None) -> Settings:
         execution=brut.get("execution", {}),
         nettoyage=brut.get("nettoyage", {}),
         qualite=brut.get("qualite", {}),
+        enrichissement=brut.get("enrichissement", {}),
     )
     settings.valider()
     return settings

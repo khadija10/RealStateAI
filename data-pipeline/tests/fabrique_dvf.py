@@ -27,12 +27,25 @@ COLONNES = [
     "nombre_pieces_principales", "surface_terrain", "longitude", "latitude",
 ]
 
+# Codes INSEE réels : DVF découpe Paris par arrondissement (75101 à 75120),
+# et non sous le code global de la ville (75056).
 COMMUNES = {
-    "75056": ("Paris", "75", "75011", 11000, 2.37, 48.86),
+    "75111": ("Paris 11e Arrondissement", "75", "75011", 11000, 2.37, 48.86),
+    "75116": ("Paris 16e Arrondissement", "75", "75116", 14500, 2.27, 48.86),
     "92044": ("Issy-les-Moulineaux", "92", "92130", 8000, 2.27, 48.82),
     "93066": ("Saint-Denis", "93", "93200", 4200, 2.36, 48.94),
     "77288": ("Melun", "77", "77000", 2800, 2.66, 48.54),
 }
+
+
+# Voies au format DVF : majuscules, abréviations (AV, BD, ST...). C'est ce
+# format qu'il faudra rapprocher des adresses BAN du DPE, écrites en toutes
+# lettres ("Avenue de la République").
+VOIES = [
+    "RUE DE LA ROQUETTE", "BD VOLTAIRE", "AV DE LA REPUBLIQUE", "RUE ST MAUR",
+    "RUE OBERKAMPF", "AV PARMENTIER", "RUE DE CHARONNE", "PL LEON BLUM",
+    "RUE DE LA PAIX", "AV DU GAL LECLERC", "BD ST GERMAIN", "RUE DES MARTYRS",
+]
 
 
 def _ligne(**kwargs) -> str:
@@ -58,6 +71,9 @@ def generer(destination: Path, n_mutations: int = 1200, graine: int = 42,
         code_commune = rng.choice(list(COMMUNES))
         nom, dep, cp, prix_ref, lon, lat = COMMUNES[code_commune]
         jour = debut + timedelta(days=rng.randint(0, 4 * 365))
+        # Adresse fixée une fois par mutation : toutes ses lignes la partagent.
+        numero_voie = rng.randint(1, 120)
+        nom_voie = rng.choice(VOIES)
         id_mut = f"{prefixe}-{i:06d}"
 
         # 8 % de natures de mutation hors périmètre (échange, adjudication...)
@@ -102,8 +118,8 @@ def generer(destination: Path, n_mutations: int = 1200, graine: int = 42,
                     numero_disposition=1,
                     nature_mutation=nature,
                     valeur_fonciere=valeur,
-                    adresse_numero=rng.randint(1, 150),
-                    adresse_nom_voie="RUE DE LA PAIX",
+                    adresse_numero=numero_voie,
+                    adresse_nom_voie=nom_voie,
                     code_postal=cp,
                     code_commune=code_commune,
                     nom_commune=nom,

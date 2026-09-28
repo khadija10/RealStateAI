@@ -1,10 +1,215 @@
-import { useId } from 'react'
+import { useId, useState, useRef, useEffect, useMemo } from 'react'
 
 const PROPERTY_TYPES = [
   { value: 'apartment', label: 'Appartement' },
   { value: 'house', label: 'Maison' },
   { value: 'other', label: 'Autre' },
 ]
+
+function AddressAutocomplete({ value, onChange, onSelect, formId }) {
+  const [suggestions, setSuggestions] = useState([])
+  const [open, setOpen] = useState(false)
+  const [activeIdx, setActiveIdx] = useState(-1)
+  const debounceRef = useRef(null)
+  const wrapperRef = useRef(null)
+
+  useEffect(() => {
+    function onClickOutside(e) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setOpen(false)
+        setActiveIdx(-1)
+      }
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [])
+
+  function handleChange(e) {
+    const val = e.target.value
+    onChange(val)
+    setActiveIdx(-1)
+
+    if (debounceRef.current) clearTimeout(debounceRef.current)
+
+    if (val.trim().length < 3) {
+      setSuggestions([])
+      setOpen(false)
+      return
+    }
+
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch(
+          `https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(val)}&limit=6&autocomplete=1`
+        )
+        const data = await res.json()
+        const items = (data.features || []).map((f) => ({
+          label: f.properties.label,
+          name: f.properties.name,
+          postcode: f.properties.postcode ?? '',
+          city: f.properties.city ?? '',
+        }))
+        setSuggestions(items)
+        setOpen(items.length > 0)
+      } catch {
+        setSuggestions([])
+        setOpen(false)
+      }
+    }, 300)
+  }
+
+  function handleKeyDown(e) {
+    if (!open) return
+    if (e.key === 'ArrowDown') {
+      e.preventDefault()
+      setActiveIdx((i) => Math.min(i + 1, suggestions.length - 1))
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault()
+      setActiveIdx((i) => Math.max(i - 1, -1))
+    } else if (e.key === 'Enter' && activeIdx >= 0) {
+      e.preventDefault()
+      pick(suggestions[activeIdx])
+    } else if (e.key === 'Escape') {
+      setOpen(false)
+      setActiveIdx(-1)
+    }
+  }
+
+  function pick(s) {
+    onSelect(s)
+    setSuggestions([])
+    setOpen(false)
+    setActiveIdx(-1)
+  }
+
+  return (
+    <div ref={wrapperRef} className="relative">
+      <input
+        id={`${formId}-address`}
+        type="text"
+        value={value}
+        onChange={handleChange}
+        onKeyDown={handleKeyDown}
+        onFocus={() => suggestions.length > 0 && setOpen(true)}
+        placeholder="ex. 21 rue de Rivoli"
+        autoComplete="off"
+        aria-autocomplete="list"
+        aria-expanded={open}
+        className="w-full rounded-lg border border-stone-100 bg-stone-50/50 px-3 py-2.5 text-sm text-ink focus:border-seine focus:bg-white outline-none transition-colors"
+      />
+      {open && (
+        <ul
+          role="listbox"
+          className="absolute z-30 w-full mt-1 bg-white border border-stone-200 rounded-xl shadow-lg overflow-hidden"
+        >
+          {suggestions.map((s, i) => (
+            <li
+              key={i}
+              role="option"
+              aria-selected={i === activeIdx}
+              onMouseDown={() => pick(s)}
+              onMouseEnter={() => setActiveIdx(i)}
+              className={`px-3 py-2.5 cursor-pointer flex flex-col gap-0.5 transition-colors ${
+                i === activeIdx ? 'bg-stone-50' : 'hover:bg-stone-50/60'
+              } ${i > 0 ? 'border-t border-stone-100' : ''}`}
+            >
+              <span className="text-sm text-ink font-medium leading-snug">{s.name}</span>
+              <span className="text-xs text-ink-muted">{s.postcode} {s.city}</span>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
+function CommuneCombobox({ value, onChange, communes, required, formId, disabled }) {
+  const [open, setOpen] = useState(false)
+  const [activeIdx, setActiveIdx] = useState(-1)
+  const wrapperRef = useRef(null)
+
+  useEffect(() => {
+    function onClickOutside(e) {
+      if (wrapperRef.current && !wrapperRef.current.contains(e.target)) {
+        setOpen(false)
+        setActiveIdx(-1)
+      }
+    }
+    document.addEventListener('mousedown', onClickOutside)
+    return () => document.removeEventListener('mousedown', onClickOutside)
+  }, [])
+
+  const filtered = useMemo(() => {
+    if (!value || value.trim().length < 2) return []
+    const needle = value.trim().toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
+    return communes
+      .filter((c) => c.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').includes(needle))
+      .slice(0, 8)
+  }, [value, communes])
+
+  function handleChange(e) {
+    onChange(e.target.value)
+    setActiveIdx(-1)
+    setOpen(true)
+  }
+
+  function handleKeyDown(e) {
+    if (!open || filtered.length === 0) return
+    if (e.key === 'ArrowDown') { e.preventDefault(); setActiveIdx((i) => Math.min(i + 1, filtered.length - 1)) }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); setActiveIdx((i) => Math.max(i - 1, -1)) }
+    else if (e.key === 'Enter' && activeIdx >= 0) { e.preventDefault(); pick(filtered[activeIdx]) }
+    else if (e.key === 'Escape') { setOpen(false); setActiveIdx(-1) }
+  }
+
+  function pick(c) {
+    onChange(c)
+    setOpen(false)
+    setActiveIdx(-1)
+  }
+
+  const showDropdown = open && filtered.length > 0
+
+  return (
+    <div ref={wrapperRef} className="relative">
+      <input
+        id={`${formId}-commune`}
+        type="text"
+        value={value}
+        onChange={handleChange}
+        onFocus={() => filtered.length > 0 && setOpen(true)}
+        onKeyDown={handleKeyDown}
+        required={required}
+        disabled={disabled}
+        placeholder={disabled ? 'Chargement…' : 'ex. PARIS 04'}
+        autoComplete="off"
+        aria-autocomplete="list"
+        aria-expanded={showDropdown}
+        className="w-full rounded-lg border border-stone-100 bg-stone-50/50 px-3 py-2.5 text-sm text-ink focus:border-seine focus:bg-white outline-none transition-colors"
+      />
+      {showDropdown && (
+        <ul
+          role="listbox"
+          className="absolute z-30 w-full mt-1 bg-white border border-stone-200 rounded-xl shadow-lg overflow-hidden max-h-52 overflow-y-auto"
+        >
+          {filtered.map((c, i) => (
+            <li
+              key={c}
+              role="option"
+              aria-selected={i === activeIdx}
+              onMouseDown={() => pick(c)}
+              onMouseEnter={() => setActiveIdx(i)}
+              className={`px-3 py-2.5 cursor-pointer text-sm text-ink transition-colors ${
+                i === activeIdx ? 'bg-stone-50' : 'hover:bg-stone-50/60'
+              } ${i > 0 ? 'border-t border-stone-100' : ''}`}
+            >
+              {c}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
 
 export default function EstimationForm({ values, onChange, onSubmit, communes, loading, communesLoading }) {
   const formId = useId()
@@ -18,11 +223,19 @@ export default function EstimationForm({ values, onChange, onSubmit, communes, l
   function handleSubmit(e) {
     e.preventDefault()
     if (!values.property_type) {
-      // force le navigateur à signaler le champ manquant via l'input caché
       document.getElementById(`${formId}-type-required`)?.reportValidity()
       return
     }
     onSubmit()
+  }
+
+  function handleAddressSelect(s) {
+    onChange({
+      ...values,
+      address: s.name,
+      postal_code: s.postcode,
+      commune: s.city,
+    })
   }
 
   return (
@@ -54,14 +267,13 @@ export default function EstimationForm({ values, onChange, onSubmit, communes, l
         </div>
         <div>
           <label htmlFor={`${formId}-rooms`} className="block text-xs font-medium text-ink-muted mb-1.5">
-            Pièces <span className="text-seine font-semibold">*</span>
+            Pièces
           </label>
           <input
             id={`${formId}-rooms`}
             type="number"
             min="1"
             max="30"
-            required
             value={values.rooms}
             onChange={set('rooms')}
             placeholder="ex. 3"
@@ -94,7 +306,6 @@ export default function EstimationForm({ values, onChange, onSubmit, communes, l
             </button>
           ))}
         </div>
-        {/* Input caché pour déclencher la validation native si type manquant */}
         <input
           id={`${formId}-type-required`}
           type="text"
@@ -126,13 +337,11 @@ export default function EstimationForm({ values, onChange, onSubmit, communes, l
               ↑ active le modèle ML
             </span>
           </label>
-          <input
-            id={`${formId}-address`}
-            type="text"
+          <AddressAutocomplete
             value={values.address}
-            onChange={set('address')}
-            placeholder="ex. 21 rue de Rivoli"
-            className="w-full rounded-lg border border-stone-100 bg-stone-50/50 px-3 py-2.5 text-sm text-ink focus:border-seine focus:bg-white outline-none transition-colors"
+            onChange={(val) => onChange({ ...values, address: val })}
+            onSelect={handleAddressSelect}
+            formId={formId}
           />
         </div>
 
@@ -158,20 +367,14 @@ export default function EstimationForm({ values, onChange, onSubmit, communes, l
                 ? <span className="text-ink-muted/50 font-normal">optionnel</span>
                 : <span className="text-seine font-semibold">*</span>}
             </label>
-            <input
-              id={`${formId}-commune`}
-              list={`${formId}-communes-list`}
-              required={!hasAddress}
+            <CommuneCombobox
               value={values.commune}
-              onChange={set('commune')}
-              placeholder={communesLoading ? 'Chargement…' : 'ex. PARIS 04'}
-              className="w-full rounded-lg border border-stone-100 bg-stone-50/50 px-3 py-2.5 text-sm text-ink focus:border-seine focus:bg-white outline-none transition-colors"
+              onChange={(val) => onChange({ ...values, commune: val })}
+              communes={communes}
+              required={!hasAddress}
+              formId={formId}
+              disabled={communesLoading}
             />
-            <datalist id={`${formId}-communes-list`}>
-              {communes.map((c) => (
-                <option key={c} value={c} />
-              ))}
-            </datalist>
           </div>
         </div>
 
@@ -180,6 +383,61 @@ export default function EstimationForm({ values, onChange, onSubmit, communes, l
             ? 'Adresse détectée — géolocalisation BAN activée.'
             : <><span className="text-seine font-medium">*</span> Commune requise sans adresse.</>}
         </p>
+      </div>
+
+      {/* Performance énergétique */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <div className="h-px flex-1 bg-stone-100" />
+          <p className="text-[11px] uppercase tracking-[0.12em] text-ink-muted">Performance énergétique</p>
+          <div className="h-px flex-1 bg-stone-100" />
+        </div>
+        <p className="text-[11px] text-ink-muted -mt-1">Optionnel — améliore la précision si vous connaissez l'étiquette DPE.</p>
+
+        <div>
+          <label className="block text-xs font-medium text-ink-muted mb-1.5">Classe DPE</label>
+          <div className="flex gap-1.5">
+            {[
+              { label: 'A', color: '#16a34a', bg: '#dcfce7' },
+              { label: 'B', color: '#15803d', bg: '#bbf7d0' },
+              { label: 'C', color: '#65a30d', bg: '#ecfccb' },
+              { label: 'D', color: '#ca8a04', bg: '#fef9c3' },
+              { label: 'E', color: '#d97706', bg: '#fef3c7' },
+              { label: 'F', color: '#ea580c', bg: '#ffedd5' },
+              { label: 'G', color: '#dc2626', bg: '#fee2e2' },
+            ].map(({ label, color, bg }) => (
+              <button
+                type="button"
+                key={label}
+                onClick={() => onChange({ ...values, dpe_classe: values.dpe_classe === label ? '' : label })}
+                style={values.dpe_classe === label ? { background: bg, borderColor: color, color } : {}}
+                className={`flex-1 rounded-lg border py-2 text-sm font-semibold transition-all ${
+                  values.dpe_classe === label
+                    ? 'shadow-sm'
+                    : 'border-stone-100 text-stone-400 hover:border-stone-300 hover:text-ink'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label htmlFor={`${formId}-year`} className="block text-xs font-medium text-ink-muted mb-1.5">
+            Année de construction
+          </label>
+          <input
+            id={`${formId}-year`}
+            type="number"
+            min="1800"
+            max="2026"
+            value={values.annee_construction}
+            onChange={set('annee_construction')}
+            placeholder="ex. 1975"
+            className="w-full rounded-lg border border-stone-100 bg-stone-50/50 px-3 py-2.5 text-sm text-ink focus:border-seine focus:bg-white outline-none transition-colors"
+          />
+        </div>
       </div>
 
       <button

@@ -1,0 +1,182 @@
+name: Réentraînement automatique DVF
+
+# Déclenché :
+#   - Chaque année début mai (DVF N-1 publié en avril/mai)
+#   - Manuellement depuis l'interface GitHub Actions
+on:
+  schedule:
+    - cron: "0 6 1 5 *"   # 1er mai à 6h UTC
+  workflow_dispatch:
+    inputs:
+      annee_dvf:
+        description: "Année DVF à télécharger (ex: 2025)"
+        required: true
+        default: "2025"
+      skip_deploy:
+        description: "Ne pas déployer (test pipeline seulement)"
+        type: boolean
+        default: false
+
+env:
+  IMAGE_NAME: khdj0/realestateai-backend
+  IMAGE_TAG:  v1.3
+
+jobs:
+  # ── 1. Pipeline de données ───────────────────────────────────────────────────
+  pipeline-donnees:
+    name: "Pipeline DVF → Gold Parquet"
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Installer les dépendances data-pipeline
+        run: pip install -e data-pipeline/
+
+      - name: Télécharger les données DVF
+        run: |
+          ANNEE="${{ github.event.inputs.annee_dvf || '2025' }}"
+          echo "Téléchargement DVF $ANNEE depuis data.gouv.fr..."
+          mkdir -p data/raw
+          curl -L "https://files.data.gouv.fr/geo-dvf/latest/csv/${ANNEE}/full.csv.gz" \
+            -o "data/raw/ValeursFoncieres-${ANNEE}.csv.gz"
+
+      - name: Lancer le pipeline silver → gold
+        run: |
+          cd data-pipeline
+          python -m realstate_data.pipeline
+
+      - name: Uploader l'artefact gold (parquet)
+        uses: actions/upload-artifact@v4
+        with:
+          name: gold-parquet
+          path: data/processed/gold_transactions/
+          retention-days: 7
+
+  # ── 2. Entraînement + validation ─────────────────────────────────────────────
+  entrainement:
+    name: "Entraînement LightGBM + Gate MAPE"
+    runs-on: ubuntu-latest
+    needs: pipeline-donnees
+    outputs:
+      mape: ${{ steps.eval.outputs.mape }}
+      gate: ${{ steps.eval.outputs.gate }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+
+      - name: Installer les dépendances ML
+        run: pip install -r requirements.txt
+
+      - name: Télécharger le gold parquet
+        uses: actions/download-artifact@v4
+        with:
+          name: gold-parquet
+          path: data/processed/gold_transactions/
+
+      - name: Entraîner le modèle
+        run: |
+          cd $GITHUB_WORKSPACE
+          python ml/train.py
+
+      - name: Évaluer le modèle (gate MAPE < 22 %)
+        id: eval
+        run: |
+          python - <<'EOF'
+          import sys, json
+          from pathlib import Path
+          import joblib, numpy as np, pandas as pd
+          from ml.evaluate import calculer_metriques
+
+          model = joblib.load("Backend/models/price_model.pkl")
+          # Charger les données de test (année la plus récente du gold)
+          gold_root = Path("data/processed/gold_transactions")
+          annees = sorted([d for d in gold_root.iterdir() if d.is_dir()], reverse=True)
+          df_test = pd.read_parquet(annees[0])
+
+          from ml.features import preparer_features, charger_config, construire_cat_dtypes
+          config = charger_config("ml/config.yaml")
+          cat_dtypes = construire_cat_dtypes(df_test, config["features"])
+          X, y = preparer_features(df_test, config, cat_dtypes)
+          y_pred = model.predict(X)
+          surface = df_test["surface_bati"].values
+          m = calculer_metriques(y.values, y_pred, y.values * surface, y_pred * surface)
+
+          mape = m["mape_m2"]
+          gate = "PASS" if mape < 22.0 else "FAIL"
+          print(f"MAPE = {mape:.1f}% → {gate}")
+          print(f"mape={mape:.2f}", file=open("$GITHUB_OUTPUT", "a"))
+          print(f"gate={gate}",   file=open("$GITHUB_OUTPUT", "a"))
+          sys.exit(0 if gate == "PASS" else 1)
+          EOF
+
+      - name: Uploader le modèle entraîné
+        uses: actions/upload-artifact@v4
+        with:
+          name: model-pkl
+          path: Backend/models/
+          retention-days: 7
+
+  # ── 3. Build Docker + push ────────────────────────────────────────────────────
+  build-push:
+    name: "Build Docker → Docker Hub"
+    runs-on: ubuntu-latest
+    needs: entrainement
+    if: needs.entrainement.outputs.gate == 'PASS' && !inputs.skip_deploy
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Télécharger le modèle validé
+        uses: actions/download-artifact@v4
+        with:
+          name: model-pkl
+          path: Backend/models/
+
+      - name: Login Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Build & push image backend
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+            ${{ env.IMAGE_NAME }}:latest
+
+  # ── 4. Déploiement Render (avec gate humaine) ─────────────────────────────────
+  deploy:
+    name: "Déploiement Render"
+    runs-on: ubuntu-latest
+    needs: build-push
+    environment:
+      name: production
+      # La validation manuelle est configurée dans Settings > Environments > production
+    steps:
+      - name: Déclencher le redéploiement Render
+        run: |
+          curl -s -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" \
+            -H "Accept: application/json" \
+            --fail
+          echo "✅ Redéploiement Render déclenché avec succès"
+
+      - name: Résumé du réentraînement
+        run: |
+          echo "## Réentraînement terminé ✅" >> "$GITHUB_STEP_SUMMARY"
+          echo "- MAPE nouveau modèle : ${{ needs.entrainement.outputs.mape }}%" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Image Docker : ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- Déploiement Render : déclenché" >> "$GITHUB_STEP_SUMMARY"

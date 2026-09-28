@@ -1,0 +1,18 @@
+{
+  "name": "RealEstateAI",
+  "short_name": "RealEstateAI",
+  "description": "Estimation immobilière Île-de-France",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#F2EFEA",
+  "theme_color": "#2E86C1",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
