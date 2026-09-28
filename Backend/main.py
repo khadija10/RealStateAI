@@ -958,10 +958,6 @@ def estimate(
             }
             if req.commune and not req.address:
                 payload["adresse"] = req.commune
-            if req.dpe_classe:
-                payload["dpe_classe"] = req.dpe_classe
-            if req.annee_construction:
-                payload["annee_construction"] = req.annee_construction
             ml_result = ML_ESTIMATOR(**{k: v for k, v in payload.items() if v is not None})
             if ml_result is not None:
                 logger.info("Réponse renvoyée par le modèle ML")
