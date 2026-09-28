@@ -21,8 +21,6 @@ RUN pip install --no-cache-dir -r /tmp/requirements.txt \
 COPY Backend/ /app/
 COPY ml/ /app/ml/
 COPY data/samples/ /app/data/samples/
-# Gold parquet — features de marché pour LightGBM (28 Mo)
-COPY data/processed/gold_transactions/ /app/data/processed/gold_transactions/
 # Module financement — agent HCSF et génération de dossier
 COPY financement/ /opt/financement/
 RUN pip install --no-cache-dir -e "/opt/financement[agent]"
