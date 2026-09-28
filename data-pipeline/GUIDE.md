@@ -52,6 +52,24 @@ perimetre:
   millesimes: [2021, 2022, 2023, 2024, 2025]
 ```
 
+### Ce qui est disponible
+
+**Départements** — les 101 départements français, sauf trois exceptions :
+DVF ne couvre pas **le Bas-Rhin (67), le Haut-Rhin (68) et la Moselle (57)**,
+qui relèvent du livre foncier d'Alsace-Moselle, ni **Mayotte (976)**.
+
+Par sécurité, le pipeline n'accepte par défaut que les 8 départements
+franciliens. Pour élargir, voir la note ci-dessous.
+
+**Millésimes** — de **2014** à l'avant-dernière année environ.
+
+La DGFiP publie en **avril et octobre**, avec un décalage : l'année en cours
+n'est jamais disponible, et l'année précédente ne l'est qu'à partir d'avril.
+En pratique, en 2026, les millésimes exploitables vont de 2014 à 2025.
+
+Le pipeline refuse une année hors plage avec un message explicite, et signale
+proprement (`Non publié`) un millésime absent sans interrompre le traitement.
+
 ### Exemples
 
 **Paris seul, une année** — rapide, idéal pour tester une idée :
@@ -112,6 +130,9 @@ dont 30 secondes de traitement, le reste en téléchargement.
 | `pipeline silver` | Nettoie, dédoublonne, filtre |
 | `pipeline gold` | Calcule les features, écrit le dataset final |
 | `pipeline rapport` | Affiche le journal de perte étape par étape |
+| `pipeline qualite` | Contrôles qualité automatisés, code de sortie non nul en cas d'échec |
+| `pipeline dpe-test` | Vérifie l'API ADEME et ses champs, sur deux lignes |
+| `pipeline dpe` | Télécharge les DPE du périmètre (idempotent) |
 
 Pratique : après avoir modifié un seuil de nettoyage, `silver` et `gold`
 suffisent — inutile de retélécharger.
@@ -162,7 +183,34 @@ df = pd.concat(pd.read_parquet(f) for f in
 
 ---
 
-## 5. Modifier les règles de nettoyage
+## 5. Enrichissement DPE
+
+Le dataset peut être enrichi de l'étiquette énergie de chaque logement, issue
+de la base DPE de l'ADEME. Colonnes ajoutées : `dpe_classe`, `dpe_ges`,
+`dpe_qualite_appariement`, `zone_part_dpe_fg` et d'autres.
+
+```
+.\.venv\Scripts\python.exe -m realstate_data.pipeline dpe-test
+.\.venv\Scripts\python.exe -m realstate_data.pipeline dpe
+.\.venv\Scripts\python.exe -m realstate_data.pipeline gold
+.\.venv\Scripts\python.exe verif_dpe.py
+```
+
+**Toujours commencer par `dpe-test`** : il vérifie que l'API répond et que les
+champs attendus existent, avant de lancer un téléchargement long.
+
+Le téléchargement complet de l'Île-de-France prend du temps — plusieurs
+centaines de milliers de diagnostics, à 10 appels par seconde maximum. Il est
+reprenable : un département déjà téléchargé est ignoré.
+
+**Sans DPE téléchargés, les colonnes existent quand même, vides.** Le schéma
+du dataset ne change jamais, que l'enrichissement ait été lancé ou non.
+
+La couverture est partielle par nature : les DPE au nouveau format datent de
+juillet 2021. Méthode, résultats mesurés et limites dans
+`docs/enrichissement_dpe.md`.
+
+## 6. Modifier les règles de nettoyage
 
 Toujours dans `settings.yaml`, section `nettoyage`. Rien n'est codé en dur.
 
@@ -195,7 +243,7 @@ Deux scripts sont fournis pour justifier tes propres choix :
 
 ---
 
-## 6. Reproductibilité
+## 7. Reproductibilité
 
 À chaque exécution, le pipeline écrit `data/processed/_dataset_version.json` :
 configuration utilisée, empreinte de cette configuration, volumétries et prix
@@ -209,7 +257,7 @@ son URL, sa date et son empreinte SHA-256.
 
 ---
 
-## 7. Ce qui n'est pas versionné
+## 8. Ce qui n'est pas versionné
 
 Le dossier `data/` est exclu de Git : données brutes, intermédiaires et
 finales. Chacun régénère localement avec la commande ci-dessus.
