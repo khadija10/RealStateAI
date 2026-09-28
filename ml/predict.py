@@ -79,6 +79,19 @@ def predire(
     surface_moyenne_piece = surface_m2 / nb_pieces if nb_pieces else None
     arrondissement = _arrondissement_de(code_commune)
 
+    # Features engineerées — même calcul que features.py à l'entraînement
+    log_surface = np.log1p(surface_m2)
+    ratio_local_dept = (
+        (prix_m2_median_local_12m / prix_m2_median_dept_12m)
+        if prix_m2_median_local_12m is not None and prix_m2_median_dept_12m
+        else np.nan
+    )
+    densite_ventes = (
+        (nb_ventes_commune_12m / nb_ventes_dept_12m)
+        if nb_ventes_dept_12m
+        else np.nan
+    )
+
     X = pd.DataFrame([{
         "surface_bati": surface_m2,
         "nb_pieces": nb_pieces,
@@ -95,6 +108,9 @@ def predire(
         "trimestre": trimestre,
         "arrondissement": float(arrondissement) if arrondissement is not None else np.nan,
         "surface_terrain": float(surface_terrain) if surface_terrain is not None else np.nan,
+        "log_surface": log_surface,
+        "ratio_local_dept": ratio_local_dept,
+        "densite_ventes": densite_ventes,
         "code_type_local": str(code_type_local),
         "code_departement": str(code_departement),
         "code_commune": str(code_commune) if code_commune else "",

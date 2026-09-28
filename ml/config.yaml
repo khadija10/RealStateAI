@@ -24,6 +24,9 @@ features:
     - trimestre
     - arrondissement
     - surface_terrain
+    - log_surface
+    - ratio_local_dept
+    - densite_ventes
   categorical:
     - code_type_local
     - code_departement
