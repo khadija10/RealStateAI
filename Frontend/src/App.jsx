@@ -18,6 +18,8 @@ const EMPTY_FORM = {
   commune: '',
   address: '',
   postal_code: '',
+  dpe_classe: '',
+  annee_construction: '',
 }
 
 const TABS = [
@@ -65,6 +67,9 @@ function normalizeResult(raw) {
     confidenceLabel: raw.confidence_interval?.confidence ?? '85%',
     localMape: raw.local_mape ?? null,
     localMapeN: raw.local_mape_n ?? null,
+    dpeClasse: raw.dpe_classe ?? null,
+    anneeConstruction: raw.annee_construction ?? null,
+    dpeZoneFgPct: raw.dpe_zone_fg_pct ?? null,
   }
 }
 
@@ -88,6 +93,7 @@ export default function App() {
   const [pendingSubmit, setPendingSubmit] = useState(false)
   const [toast, setToast] = useState(null)
   const [historyKey, setHistoryKey] = useState(0)
+  const [dpeInfo, setDpeInfo] = useState(null)
   const [darkMode, setDarkMode] = useState(() => {
     try { return localStorage.getItem('reai_theme') === 'dark' } catch { return false }
   })
@@ -169,6 +175,9 @@ export default function App() {
           maxYear: h.dvf_max_year ?? null,
           nRows: h.n_rows ?? null,
         })
+        if (h.dpe_loaded) {
+          setDpeInfo({ coveragePct: h.dpe_coverage_pct, nZones: h.dpe_n_zones })
+        }
       })
       .catch(() => setBackendStatus('error'))
 
@@ -190,6 +199,8 @@ export default function App() {
         ...(f.commune ? { commune: f.commune } : {}),
         ...(f.address ? { address: f.address } : {}),
         ...(f.postal_code ? { postal_code: f.postal_code } : {}),
+        ...(f.dpe_classe ? { dpe_classe: f.dpe_classe } : {}),
+        ...(f.annee_construction ? { annee_construction: Number(f.annee_construction) } : {}),
       }
       const raw = await estimatePrice(payload)
       setResult(normalizeResult({ ...raw, area_m2: payload.area_m2 }))
@@ -214,6 +225,7 @@ export default function App() {
     <div className="min-h-screen flex flex-col">
       <Header
         datasetStatus={backendStatus}
+        dpeInfo={dpeInfo}
         user={user}
         onOpenAuth={() => setShowAuthModal(true)}
         onLogout={handleLogout}

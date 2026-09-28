@@ -172,6 +172,12 @@ class EstimationRequest(BaseModel):
     postal_code: str | None = Field(default=None, description="Code postal à 5 chiffres (ex : `75015`)")
     location_lat: float | None = Field(default=None, ge=-90, le=90, description="Latitude WGS84 (optionnel)")
     location_lng: float | None = Field(default=None, ge=-180, le=180, description="Longitude WGS84 (optionnel)")
+    dpe_classe: Literal["A", "B", "C", "D", "E", "F", "G"] | None = Field(
+        default=None, description="Classe DPE du bien (A à G, optionnel)"
+    )
+    annee_construction: int | None = Field(
+        default=None, ge=1800, le=2026, description="Année de construction (optionnel)"
+    )
 
     @model_validator(mode="after")
     def require_location(self):
@@ -261,6 +267,9 @@ class HealthResponse(BaseModel):
     model_n_transactions: int | None = None
     dvf_min_year: int | None = None
     dvf_max_year: int | None = None
+    dpe_loaded: bool = False
+    dpe_coverage_pct: float | None = None
+    dpe_n_zones: int = 0
 
 
 # ==========================================================================
@@ -319,6 +328,8 @@ async def lifespan(app: FastAPI):
     app.state.dvf_error = None
     app.state.dvf_path = None
     app.state.communes = []
+    app.state.dpe_zone = {}       # {code_postal: zone_part_dpe_fg}
+    app.state.dpe_coverage = 0.0  # fraction de transactions avec dpe_classe
     app.state.search_history = SearchHistoryService()
     app.state.search_history.init_db()
     app.state.model_info = _charger_model_info()
@@ -339,6 +350,27 @@ async def lifespan(app: FastAPI):
         except Exception as exc:  # noqa: BLE001 — on veut démarrer malgré tout
             app.state.dvf_error = f"{type(exc).__name__} : {exc}"
             logger.exception("Échec du chargement du dataset DVF")
+
+    # Enrichissement DPE : index zone automatiquement si les colonnes existent
+    if app.state.dvf is not None:
+        try:
+            dvf = app.state.dvf
+            if "dpe_classe" in dvf.columns:
+                app.state.dpe_coverage = round(float(dvf["dpe_classe"].notna().mean()), 4)
+                if "zone_part_dpe_fg" in dvf.columns and "code_postal" in dvf.columns:
+                    zone = dvf[["code_postal", "zone_part_dpe_fg"]].dropna(subset=["zone_part_dpe_fg"])
+                    zone = zone.drop_duplicates("code_postal")
+                    app.state.dpe_zone = dict(
+                        zip(zone["code_postal"].astype(str), zone["zone_part_dpe_fg"].astype(float))
+                    )
+                logger.info(
+                    "DPE : couverture %.1f %%, %d codes postaux avec indicateur de zone",
+                    app.state.dpe_coverage * 100, len(app.state.dpe_zone),
+                )
+            else:
+                logger.info("DPE : colonnes absentes du dataset — lance `pipeline dpe` puis `gold`")
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("Chargement index DPE échoué : %s", exc)
 
     yield
     app.state.dvf = None
@@ -783,6 +815,8 @@ def health(request: Request) -> HealthResponse:
     df = request.app.state.dvf
     loaded = df is not None
     info = request.app.state.model_info or {}
+    dpe_cov = getattr(request.app.state, "dpe_coverage", 0.0)
+    dpe_zones = getattr(request.app.state, "dpe_zone", {})
     return HealthResponse(
         status="healthy" if loaded else "degraded",
         dvf_loaded=loaded,
@@ -799,6 +833,9 @@ def health(request: Request) -> HealthResponse:
         model_n_transactions=(info.get("n_train", 0) + info.get("n_test", 0)) or None,
         dvf_min_year=_dvf_year_range(info, "min"),
         dvf_max_year=_dvf_year_range(info, "max"),
+        dpe_loaded=dpe_cov > 0,
+        dpe_coverage_pct=round(dpe_cov * 100, 1) if dpe_cov > 0 else None,
+        dpe_n_zones=len(dpe_zones),
     )
 
 
@@ -921,6 +958,10 @@ def estimate(
             }
             if req.commune and not req.address:
                 payload["adresse"] = req.commune
+            if req.dpe_classe:
+                payload["dpe_classe"] = req.dpe_classe
+            if req.annee_construction:
+                payload["annee_construction"] = req.annee_construction
             ml_result = ML_ESTIMATOR(**{k: v for k, v in payload.items() if v is not None})
             if ml_result is not None:
                 logger.info("Réponse renvoyée par le modèle ML")
@@ -931,6 +972,14 @@ def estimate(
                 normalized.local_mape_n = lm.get("n") if lm else None
                 if lm.get("mape"):
                     normalized.reliability = round(max(0.30, min(0.95, 1.0 - lm["mape"] / 100)), 2)
+                # Enrichissement DPE
+                if req.dpe_classe:
+                    normalized.dpe_classe = req.dpe_classe
+                if req.annee_construction:
+                    normalized.annee_construction = req.annee_construction
+                dpe_zone = getattr(request.app.state, "dpe_zone", {})
+                if req.postal_code and req.postal_code in dpe_zone:
+                    normalized.dpe_zone_fg_pct = round(float(dpe_zone[req.postal_code]) * 100, 1)
                 try:
                     _adresse_norm = ml_result.get("adresse_normalisee") if isinstance(ml_result, dict) else None
                     _full_query = _adresse_norm or " ".join(filter(None, [req.address, req.postal_code, req.commune])).strip() or ""
@@ -1061,6 +1110,14 @@ def estimate(
             notes=outcome.notes,
         ),
     )
+    # Enrichissement DPE
+    if req.dpe_classe:
+        response.dpe_classe = req.dpe_classe
+    if req.annee_construction:
+        response.annee_construction = req.annee_construction
+    dpe_zone = getattr(request.app.state, "dpe_zone", {})
+    if req.postal_code and req.postal_code in dpe_zone:
+        response.dpe_zone_fg_pct = round(float(dpe_zone[req.postal_code]) * 100, 1)
 
     try:
         request.app.state.search_history.add_search(

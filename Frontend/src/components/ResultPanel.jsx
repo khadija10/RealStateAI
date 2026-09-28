@@ -31,6 +31,8 @@ function exportPDF(result, query, modelInfo) {
   <tr><td>Bien</td><td>${lieu}</td></tr>
   <tr><td>Type</td><td>${typeLabel[query?.property_type] ?? '—'}</td></tr>
   <tr><td>Surface</td><td>${query?.area_m2 ? query.area_m2 + ' m²' : '—'}</td></tr>
+  ${result.dpeClasse ? `<tr><td>Classe DPE</td><td>${result.dpeClasse}</td></tr>` : ''}
+  ${result.anneeConstruction ? `<tr><td>Année de construction</td><td>${result.anneeConstruction}</td></tr>` : ''}
   <tr><td>Méthode</td><td>${result.model === 'ml' ? 'LightGBM (géolocalisé)' : 'Médiane DVF'}</td></tr>
 </table>
 <p class="price">${formatEUR(result.price)}</p>
@@ -98,6 +100,29 @@ function MetaRow({ label, value }) {
   )
 }
 
+const DPE_STYLE = {
+  A: { bg: '#dcfce7', color: '#15803d' },
+  B: { bg: '#bbf7d0', color: '#15803d' },
+  C: { bg: '#ecfccb', color: '#65a30d' },
+  D: { bg: '#fef9c3', color: '#a16207' },
+  E: { bg: '#fef3c7', color: '#b45309' },
+  F: { bg: '#ffedd5', color: '#c2410c' },
+  G: { bg: '#fee2e2', color: '#b91c1c' },
+}
+
+function DpeBadge({ classe }) {
+  if (!classe) return null
+  const s = DPE_STYLE[classe] ?? {}
+  return (
+    <span
+      style={{ background: s.bg, color: s.color, border: `1px solid ${s.color}40` }}
+      className="inline-flex items-center gap-1 text-xs font-semibold px-2 py-0.5 rounded"
+    >
+      DPE {classe}
+    </span>
+  )
+}
+
 function buildShareUrl(query) {
   if (!query) return null
   const p = new URLSearchParams()
@@ -107,6 +132,8 @@ function buildShareUrl(query) {
   if (query.address) p.set('address', query.address)
   if (query.postal_code) p.set('postal_code', query.postal_code)
   if (query.commune) p.set('commune', query.commune)
+  if (query.dpe_classe) p.set('dpe', query.dpe_classe)
+  if (query.annee_construction) p.set('year', query.annee_construction)
   return `${window.location.origin}${window.location.pathname}?${p.toString()}`
 }
 
@@ -220,7 +247,29 @@ export default function ResultPanel({ status, error, result, query, modelInfo, o
                 Fiabilité {reliabilityPct} %
               </span>
             )}
+            {result.dpeClasse && <DpeBadge classe={result.dpeClasse} />}
           </div>
+
+          {/* DPE zone indicator + décote warning */}
+          {(result.dpeZoneFgPct != null || (result.dpeClasse && ['F','G'].includes(result.dpeClasse))) && (
+            <div className="space-y-2">
+              {result.dpeZoneFgPct != null && (
+                <div className="flex items-center gap-2 text-xs text-ink-muted">
+                  <span className="h-1.5 w-1.5 rounded-full bg-orange-400 shrink-0" />
+                  <span>
+                    <span className="font-medium text-ink">{result.dpeZoneFgPct} %</span> de passoires thermiques (F+G) dans ce secteur postal
+                  </span>
+                </div>
+              )}
+              {result.dpeClasse && ['F','G'].includes(result.dpeClasse) && (
+                <div className="bg-orange-50 border border-orange-100 rounded-lg px-3 py-2">
+                  <p className="text-[11px] text-orange-700">
+                    <span className="font-semibold">Passoire thermique (classe {result.dpeClasse})</span> — les biens F et G se vendent en moyenne 2 à 5 % sous le prix du marché local depuis la loi Climat et Résilience. Ce bien sera interdit à la location d&apos;ici 2028.
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           {/* Fourchette */}
           <div>
@@ -308,6 +357,9 @@ export default function ResultPanel({ status, error, result, query, modelInfo, o
                 <div className="space-y-2">
                   {cfg?.description && <MetaRow label="Méthode" value={cfg.description} />}
                   {result.adresseNormalisee && <MetaRow label="Adresse BAN" value={result.adresseNormalisee} />}
+                  {result.dpeClasse && <MetaRow label="Classe DPE" value={result.dpeClasse} />}
+                  {result.anneeConstruction && <MetaRow label="Année de construction" value={result.anneeConstruction} />}
+                  {result.dpeZoneFgPct != null && <MetaRow label="Passoires F+G dans le secteur" value={`${result.dpeZoneFgPct} %`} />}
                   {result.model === 'ml' && result.localMape != null && (
                     <MetaRow
                       label={`Erreur médiane locale${result.localMapeN != null ? ` (${result.localMapeN} ventes)` : ''}`}

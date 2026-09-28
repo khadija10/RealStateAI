@@ -385,6 +385,61 @@ export default function EstimationForm({ values, onChange, onSubmit, communes, l
         </p>
       </div>
 
+      {/* Performance énergétique */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-2">
+          <div className="h-px flex-1 bg-stone-100" />
+          <p className="text-[11px] uppercase tracking-[0.12em] text-ink-muted">Performance énergétique</p>
+          <div className="h-px flex-1 bg-stone-100" />
+        </div>
+        <p className="text-[11px] text-ink-muted -mt-1">Optionnel — améliore la précision si vous connaissez l'étiquette DPE.</p>
+
+        <div>
+          <label className="block text-xs font-medium text-ink-muted mb-1.5">Classe DPE</label>
+          <div className="flex gap-1.5">
+            {[
+              { label: 'A', color: '#16a34a', bg: '#dcfce7' },
+              { label: 'B', color: '#15803d', bg: '#bbf7d0' },
+              { label: 'C', color: '#65a30d', bg: '#ecfccb' },
+              { label: 'D', color: '#ca8a04', bg: '#fef9c3' },
+              { label: 'E', color: '#d97706', bg: '#fef3c7' },
+              { label: 'F', color: '#ea580c', bg: '#ffedd5' },
+              { label: 'G', color: '#dc2626', bg: '#fee2e2' },
+            ].map(({ label, color, bg }) => (
+              <button
+                type="button"
+                key={label}
+                onClick={() => onChange({ ...values, dpe_classe: values.dpe_classe === label ? '' : label })}
+                style={values.dpe_classe === label ? { background: bg, borderColor: color, color } : {}}
+                className={`flex-1 rounded-lg border py-2 text-sm font-semibold transition-all ${
+                  values.dpe_classe === label
+                    ? 'shadow-sm'
+                    : 'border-stone-100 text-stone-400 hover:border-stone-300 hover:text-ink'
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div>
+          <label htmlFor={`${formId}-year`} className="block text-xs font-medium text-ink-muted mb-1.5">
+            Année de construction
+          </label>
+          <input
+            id={`${formId}-year`}
+            type="number"
+            min="1800"
+            max="2026"
+            value={values.annee_construction}
+            onChange={set('annee_construction')}
+            placeholder="ex. 1975"
+            className="w-full rounded-lg border border-stone-100 bg-stone-50/50 px-3 py-2.5 text-sm text-ink focus:border-seine focus:bg-white outline-none transition-colors"
+          />
+        </div>
+      </div>
+
       <button
         type="submit"
         disabled={loading}

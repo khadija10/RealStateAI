@@ -1,4 +1,4 @@
-export default function Header({ datasetStatus, user, onOpenAuth, onLogout, darkMode, onToggleDark }) {
+export default function Header({ datasetStatus, dpeInfo, user, onOpenAuth, onLogout, darkMode, onToggleDark }) {
   return (
     <header className="border-b border-stone-100 bg-white">
       <div className="max-w-5xl mx-auto px-6 py-6 flex items-center justify-between gap-4">
@@ -21,16 +21,26 @@ export default function Header({ datasetStatus, user, onOpenAuth, onLogout, dark
 
         <div className="flex items-center gap-4">
           {datasetStatus !== 'loading' && (
-            <div className="hidden sm:flex items-center gap-2 text-xs">
-              <span
-                className={`h-1.5 w-1.5 rounded-full ${
-                  datasetStatus === 'ready' ? 'bg-emerald-500' : 'bg-red-400'
-                }`}
-              />
-              <span className="text-[var(--color-ink-muted)]">
-                {datasetStatus === 'ready' && 'Données DVF chargées'}
-                {datasetStatus === 'error' && 'Backend indisponible'}
-              </span>
+            <div className="hidden sm:flex items-center gap-3 text-xs">
+              <div className="flex items-center gap-2">
+                <span
+                  className={`h-1.5 w-1.5 rounded-full ${
+                    datasetStatus === 'ready' ? 'bg-emerald-500' : 'bg-red-400'
+                  }`}
+                />
+                <span className="text-[var(--color-ink-muted)]">
+                  {datasetStatus === 'ready' && 'Données DVF'}
+                  {datasetStatus === 'error' && 'Backend indisponible'}
+                </span>
+              </div>
+              {dpeInfo && (
+                <div className="flex items-center gap-1.5">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  <span className="text-[var(--color-ink-muted)]">
+                    DPE {dpeInfo.coveragePct != null ? `${dpeInfo.coveragePct}%` : ''}
+                  </span>
+                </div>
+              )}
             </div>
           )}
 
