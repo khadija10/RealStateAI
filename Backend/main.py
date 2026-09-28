@@ -958,6 +958,10 @@ def estimate(
             }
             if req.commune and not req.address:
                 payload["adresse"] = req.commune
+            # zone_part_dpe_fg : feature DPE de zone, indexée par code postal
+            _dpe_zone = getattr(request.app.state, "dpe_zone", {})
+            if req.postal_code and req.postal_code in _dpe_zone:
+                payload["zone_part_dpe_fg"] = float(_dpe_zone[req.postal_code])
             ml_result = ML_ESTIMATOR(**{k: v for k, v in payload.items() if v is not None})
             if ml_result is not None:
                 logger.info("Réponse renvoyée par le modèle ML")

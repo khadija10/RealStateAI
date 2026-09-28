@@ -57,6 +57,7 @@ def estimer_prix(
     type_bien: str,
     a_terrain: bool = False,
     surface_terrain: float | None = None,
+    zone_part_dpe_fg: float | None = None,
 ) -> dict:
     """
     Estime le prix d'un bien immobilier à partir de son adresse.
@@ -102,6 +103,7 @@ def estimer_prix(
         code_commune=geo["code_commune"],
         surface_terrain=surface_terrain,
         prix_m2_median_local_12m=marche["prix_m2_median_local_12m"],
+        zone_part_dpe_fg=zone_part_dpe_fg,
     )
 
     return {

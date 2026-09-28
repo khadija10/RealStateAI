@@ -72,6 +72,7 @@ def predire(
     code_commune: str | None = None,
     surface_terrain: float | None = None,
     prix_m2_median_local_12m: float | None = None,
+    zone_part_dpe_fg: float | None = None,
 ) -> dict:
     import numpy as np
     model = charger_modele(model_path)
@@ -111,6 +112,7 @@ def predire(
         "log_surface": log_surface,
         "ratio_local_dept": ratio_local_dept,
         "densite_ventes": densite_ventes,
+        "zone_part_dpe_fg": float(zone_part_dpe_fg) if zone_part_dpe_fg is not None else np.nan,
         "code_type_local": str(code_type_local),
         "code_departement": str(code_departement),
         "code_commune": str(code_commune) if code_commune else "",

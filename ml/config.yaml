@@ -27,6 +27,7 @@ features:
     - log_surface
     - ratio_local_dept
     - densite_ventes
+    - zone_part_dpe_fg
   categorical:
     - code_type_local
     - code_departement
