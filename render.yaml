@@ -19,6 +19,8 @@ services:
         value: WARNING
       - key: CORS_ORIGINS
         value: '["https://realestateai-frontend.onrender.com","http://localhost:5173","http://127.0.0.1:5173"]'
+      - key: JWT_SECRET
+        generateValue: true   # Render génère un secret aléatoire sécurisé au premier deploy
       - key: DATABASE_URL
         fromDatabase:
           name: realestateai-db

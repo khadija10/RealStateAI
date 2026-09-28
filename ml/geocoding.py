@@ -44,11 +44,11 @@ def geocoder_adresse(adresse: str, code_postal: str | None = None) -> dict:
     Lève ValueError si aucun résultat trouvé.
     """
     query = adresse
+    params: dict = {"q": query, "limit": 1}
     if code_postal:
-        query = f"{adresse} {code_postal}"
-
-    params = urllib.parse.urlencode({"q": query, "limit": 1})
-    url = f"{BAN_URL}?{params}"
+        # postcode= restreint géographiquement les résultats (évite les homonymes hors-IDF)
+        params["postcode"] = code_postal
+    url = f"{BAN_URL}?{urllib.parse.urlencode(params)}"
 
     with urllib.request.urlopen(url, timeout=5) as resp:
         data = json.loads(resp.read())
@@ -64,6 +64,10 @@ def geocoder_adresse(adresse: str, code_postal: str | None = None) -> dict:
     code_commune = props.get("citycode", "")
     code_departement = code_commune[:2] if len(code_commune) >= 2 else ""
 
+    score = props.get("score", 0.0)
+    if score < 0.4:
+        raise ValueError(f"Adresse introuvable ou trop ambiguë : {adresse!r} (score BAN {score:.2f})")
+
     return {
         "latitude": coords[1],
         "longitude": coords[0],
@@ -71,7 +75,8 @@ def geocoder_adresse(adresse: str, code_postal: str | None = None) -> dict:
         "code_departement": code_departement,
         "nom_commune": props.get("city", ""),
         "adresse_normalisee": props.get("label", adresse),
-        "score": props.get("score", 0.0),
+        "score": score,
+        "score_bas": score < 0.6,
     }
 
 

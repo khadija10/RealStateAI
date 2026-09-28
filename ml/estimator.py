@@ -58,6 +58,8 @@ def estimer_prix(
     a_terrain: bool = False,
     surface_terrain: float | None = None,
     zone_part_dpe_fg: float | None = None,
+    dpe_classe: str | None = None,
+    annee_construction: int | None = None,
 ) -> dict:
     """
     Estime le prix d'un bien immobilier à partir de son adresse.
@@ -72,9 +74,17 @@ def estimer_prix(
       ValueError  : adresse introuvable par la BAN
       FileNotFoundError : dataset gold ou modèle absent
     """
+    _IDF_DEPS = {"75", "77", "78", "91", "92", "93", "94", "95"}
+
     code_type_local = TYPE_BIEN_MAP.get(type_bien, "2")
 
     geo = geocoder_adresse(adresse, code_postal)
+    if geo["code_departement"] not in _IDF_DEPS:
+        raise ValueError(
+            f"RealEstateAI couvre uniquement l'Île-de-France (départements 75–95). "
+            f"L'adresse géolocalisée correspond au département {geo['code_departement']} "
+            f"({geo['nom_commune']})."
+        )
     marche = recuperer_features_marche(
         code_commune=geo["code_commune"],
         code_departement=geo["code_departement"],
@@ -104,6 +114,8 @@ def estimer_prix(
         surface_terrain=surface_terrain,
         prix_m2_median_local_12m=marche["prix_m2_median_local_12m"],
         zone_part_dpe_fg=zone_part_dpe_fg,
+        dpe_classe=dpe_classe,
+        annee_construction=annee_construction,
     )
 
     return {
@@ -112,4 +124,5 @@ def estimer_prix(
         "commune": geo["nom_commune"],
         "code_commune": geo["code_commune"],
         "score_geocodage": geo["score"],
+        "geocodage_incertain": geo.get("score_bas", False),
     }

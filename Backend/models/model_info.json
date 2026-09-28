@@ -1,21 +1,21 @@
 {
-  "mape": 17.12,
-  "r2": 0.8122,
-  "mae": 933.45,
-  "dans_10pct": 42.2,
-  "dans_20pct": 71.6,
-  "n_train": 571661,
-  "n_test": 128611,
+  "mape": 16.37,
+  "r2": 0.8188,
+  "mae": 900.47,
+  "dans_10pct": 46.2,
+  "dans_20pct": 73.9,
+  "n_train": 680980,
+  "n_test": 19292,
   "train_years": [
     2021,
     2022,
     2023,
-    2024
-  ],
-  "test_years": [
+    2024,
     2025
   ],
-  "n_features": 23,
-  "n_estimators": 724,
-  "trained_at": "2026-09-28T14:32:19"
+  "test_years": [],
+  "holdout_frac": 0.15,
+  "n_features": 28,
+  "n_estimators": 926,
+  "trained_at": "2026-09-28T16:25:52"
 }

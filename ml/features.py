@@ -33,6 +33,9 @@ def _filtrer_outliers(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 
+_DPE_ORDINAL = {"A": 0, "B": 1, "C": 2, "D": 3, "E": 4, "F": 5, "G": 6}
+
+
 def construire_features_ingenierie(df: pd.DataFrame) -> pd.DataFrame:
     """Ajoute les features dérivées des colonnes existantes."""
     df = df.copy()
@@ -41,6 +44,16 @@ def construire_features_ingenierie(df: pd.DataFrame) -> pd.DataFrame:
     df["ratio_local_dept"] = df["prix_m2_median_local_12m"] / dept_safe
     dept_ventes_safe = df["nb_ventes_dept_12m"].replace(0, np.nan)
     df["densite_ventes"] = df["nb_ventes_commune_12m"] / dept_ventes_safe
+    # DPE ordinal — donne au modèle un signal ordonné A=0…G=6 en plus du signal catégoriel
+    if "dpe_classe" in df.columns:
+        df["dpe_score"] = df["dpe_classe"].map(_DPE_ORDINAL)
+    else:
+        df["dpe_score"] = np.nan
+    # Prime petite surface parisienne — studios et T1 < 35 m²
+    df["is_studio"] = df["surface_bati"] < 35
+    # Densité de pièces — nb_pieces / surface : capture les "haussmanniens coupés" vs T2 spacieux
+    surface_safe = df["surface_bati"].replace(0, np.nan)
+    df["densite_pieces"] = df["nb_pieces"] / surface_safe
     return df
 
 
@@ -85,9 +98,18 @@ def preparer_features(
 
 def split_chronologique(df: pd.DataFrame, config: dict) -> tuple:
     train_years = config["split"]["train_years"]
-    test_years = config["split"]["test_years"]
+    test_years  = config["split"].get("test_years", [])
+    holdout_frac = config["split"].get("holdout_frac", None)
+
+    if holdout_frac:
+        # Hold-out aléatoire sur l'année la plus récente du train
+        max_year = max(df[df["annee"].isin(train_years)]["annee"])
+        recent   = df[df["annee"] == max_year]
+        older    = df[(df["annee"].isin(train_years)) & (df["annee"] != max_year)]
+        test_df  = recent.sample(frac=holdout_frac, random_state=42)
+        train_df = pd.concat([older, recent.drop(test_df.index)], ignore_index=True)
+        return train_df, test_df
 
     train_mask = df["annee"].isin(train_years)
-    test_mask = df["annee"].isin(test_years)
-
+    test_mask  = df["annee"].isin(test_years)
     return df[train_mask], df[test_mask]

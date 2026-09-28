@@ -41,63 +41,13 @@ function exportPDF(result, query, modelInfo) {
   <div class="range-item"><p class="range-label">Fourchette basse</p><p class="range-val">${formatEUR(result.low)}</p></div>
   <div class="range-item"><p class="range-label">Fourchette haute</p><p class="range-val">${formatEUR(result.high)}</p></div>
 </div>
-<p class="footer">Estimation fournie à titre indicatif, sans valeur contractuelle. Modèle entraîné sur ${modelInfo?.nTransactions?.toLocaleString('fr-FR') ?? '700 000'} transactions DVF Île-de-France 2021–2024. Erreur médiane${result.localMape != null ? ' locale' : ''} : ${result.localMape ?? modelInfo?.mape ?? '—'} %.</p>
+<p class="footer">Estimation fournie à titre indicatif, sans valeur contractuelle. Modèle entraîné sur ${modelInfo?.nTrain?.toLocaleString('fr-FR') ?? '571 000'} transactions DVF Île-de-France 2021–2024, évalué sur ${modelInfo?.nTest?.toLocaleString('fr-FR') ?? '128 000'} ventes 2025. Erreur médiane${result.localMape != null ? ' locale' : ''} : ${result.localMape ?? modelInfo?.mape ?? '—'} %.</p>
 </body></html>`
   const w = window.open('', '_blank')
   w.document.write(html)
   w.document.close()
   w.focus()
   setTimeout(() => w.print(), 400)
-}
-
-const MODEL_CONFIG = {
-  ml: {
-    label: 'LightGBM · Modèle ML',
-    color: 'text-seine bg-seine/8 border-seine/20',
-    dot: 'bg-seine',
-    description: 'Prédiction géolocalisée via l\'API BAN.',
-    reliabilityLabel: 'Précision du modèle',
-  },
-  dvf: {
-    label: 'Données DVF',
-    color: 'text-limestone bg-limestone/8 border-limestone/20',
-    dot: 'bg-limestone',
-    description: 'Médiane calculée sur transactions comparables.',
-    reliabilityLabel: 'Représentativité des données',
-  },
-  mock: {
-    label: 'Estimation indicative',
-    color: 'text-ink-muted bg-stone-100 border-stone-200',
-    dot: 'bg-stone-400',
-    description: 'Backend hors ligne — données non représentatives.',
-    reliabilityLabel: 'Fiabilité',
-  },
-}
-
-function ReliabilityBar({ value }) {
-  const pct = Math.round((value ?? 0) * 100)
-  const color = pct >= 80 ? 'bg-emerald-500' : pct >= 60 ? 'bg-amber-400' : 'bg-red-400'
-  return (
-    <div className="flex items-center gap-3">
-      <div className="flex-1 h-1.5 bg-stone-100 rounded-full overflow-hidden">
-        <div
-          className={`h-full rounded-full transition-all duration-700 ${color}`}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-      <span className="text-xs font-medium text-ink tabular-nums w-8 text-right">{pct} %</span>
-    </div>
-  )
-}
-
-function MetaRow({ label, value }) {
-  if (value === null || value === undefined) return null
-  return (
-    <div className="flex justify-between items-baseline gap-2">
-      <span className="text-xs text-ink-muted">{label}</span>
-      <span className="text-xs font-medium text-ink text-right">{value}</span>
-    </div>
-  )
 }
 
 const DPE_STYLE = {
@@ -120,6 +70,31 @@ function DpeBadge({ classe }) {
     >
       DPE {classe}
     </span>
+  )
+}
+
+function ReliabilityRow({ value }) {
+  const pct = Math.round((value ?? 0) * 100)
+  const color = pct >= 80 ? 'bg-emerald-500' : pct >= 60 ? 'bg-amber-400' : 'bg-red-400'
+  const label = pct >= 80 ? 'Bonne fiabilité' : pct >= 60 ? 'Fiabilité moyenne' : 'Fiabilité limitée'
+  return (
+    <div className="flex items-center gap-3">
+      <div className="flex-1 h-1.5 bg-stone-100 rounded-full overflow-hidden">
+        <div className={`h-full rounded-full transition-all duration-700 ${color}`} style={{ width: `${pct}%` }} />
+      </div>
+      <span className="text-xs font-medium text-ink tabular-nums">{pct} %</span>
+      <span className="text-xs text-ink-muted">{label}</span>
+    </div>
+  )
+}
+
+function MetaRow({ label, value }) {
+  if (value === null || value === undefined) return null
+  return (
+    <div className="flex justify-between items-baseline gap-2">
+      <span className="text-xs text-ink-muted">{label}</span>
+      <span className="text-xs font-medium text-ink text-right">{value}</span>
+    </div>
   )
 }
 
@@ -149,19 +124,6 @@ export default function ResultPanel({ status, error, result, query, modelInfo, o
       setTimeout(() => setCopied(false), 2000)
     })
   }
-  const cfg = result?.model ? MODEL_CONFIG[result.model] ?? MODEL_CONFIG.dvf : null
-  const meta = result?.meta ?? null
-
-  const scopeLabel = meta?.scope === 'commune'
-    ? `Commune · ${meta.scope_value ?? ''}`
-    : meta?.scope === 'department'
-    ? `Département · ${meta.scope_value ?? ''}`
-    : meta?.scope === 'ml'
-    ? 'Modèle géolocalisé'
-    : null
-
-  const nTransactions = meta?.n_transactions > 0 ? meta.n_transactions : null
-  const reliabilityPct = result?.reliability != null ? Math.round(result.reliability * 100) : null
 
   return (
     <div className="bg-white rounded-2xl border border-stone-100 shadow-[var(--shadow-card)] p-6 sm:p-8 flex flex-col">
@@ -210,8 +172,6 @@ export default function ResultPanel({ status, error, result, query, modelInfo, o
       {status === 'success' && result && (
         <div className="flex-1 flex flex-col gap-5 animate-[fadeIn_0.4s_ease-out]">
 
-          {/* ── ESSENTIEL ── */}
-
           {/* Localisation */}
           <p className="text-xs uppercase tracking-[0.12em] text-ink-muted mt-1">
             {query.address
@@ -229,29 +189,38 @@ export default function ResultPanel({ status, error, result, query, modelInfo, o
             </p>
           </div>
 
-          {/* Badge modèle + fiabilité */}
-          <div className="flex items-center gap-3 flex-wrap">
-            {cfg && (
-              <div className="flex items-center gap-1.5">
-                <span className={`h-1.5 w-1.5 rounded-full ${cfg.dot}`} />
-                <span className={`text-[11px] font-medium px-2 py-0.5 rounded border ${cfg.color}`}>
-                  {cfg.label}
-                </span>
-              </div>
-            )}
-            {reliabilityPct != null && (
-              <span className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
-                reliabilityPct >= 80 ? 'bg-emerald-50 text-emerald-700' :
-                reliabilityPct >= 60 ? 'bg-amber-50 text-amber-700' : 'bg-red-50 text-red-600'
-              }`}>
-                Fiabilité {reliabilityPct} %
-              </span>
-            )}
-            {result.dpeClasse && <DpeBadge classe={result.dpeClasse} />}
-          </div>
+          {/* Avertissement géocodage incertain */}
+          {result.geocodingWarning && (
+            <div className="flex items-start gap-2 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none" className="text-amber-500 shrink-0 mt-0.5" aria-hidden="true">
+                <path d="M7 1L13 12H1L7 1Z" stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round"/>
+                <line x1="7" y1="5" x2="7" y2="8.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round"/>
+                <circle cx="7" cy="10.5" r="0.6" fill="currentColor"/>
+              </svg>
+              <p className="text-[11px] text-amber-700">{result.geocodingWarning}</p>
+            </div>
+          )}
 
-          {/* DPE zone indicator + décote warning */}
-          {(result.dpeZoneFgPct != null || (result.dpeClasse && ['F','G'].includes(result.dpeClasse))) && (
+          {/* Fiabilité — barre lisible par le client */}
+          {result.reliability != null && (
+            <div className="space-y-1">
+              <p className="text-xs text-ink-muted">Fiabilité de l'estimation</p>
+              <ReliabilityRow value={result.reliability} />
+            </div>
+          )}
+
+          {/* DPE badge */}
+          {result.dpeClasse && (
+            <div className="flex items-center gap-2">
+              <DpeBadge classe={result.dpeClasse} />
+              {result.anneeConstruction && (
+                <span className="text-xs text-ink-muted">construit en {result.anneeConstruction}</span>
+              )}
+            </div>
+          )}
+
+          {/* DPE zone + avertissement passoire */}
+          {(result.dpeZoneFgPct != null || (result.dpeClasse && ['F', 'G'].includes(result.dpeClasse))) && (
             <div className="space-y-2">
               {result.dpeZoneFgPct != null && (
                 <div className="flex items-center gap-2 text-xs text-ink-muted">
@@ -261,7 +230,7 @@ export default function ResultPanel({ status, error, result, query, modelInfo, o
                   </span>
                 </div>
               )}
-              {result.dpeClasse && ['F','G'].includes(result.dpeClasse) && (
+              {result.dpeClasse && ['F', 'G'].includes(result.dpeClasse) && (
                 <div className="bg-orange-50 border border-orange-100 rounded-lg px-3 py-2">
                   <p className="text-[11px] text-orange-700">
                     <span className="font-semibold">Passoire thermique (classe {result.dpeClasse})</span> — les biens F et G se vendent en moyenne 2 à 5 % sous le prix du marché local depuis la loi Climat et Résilience. Ce bien sera interdit à la location d&apos;ici 2028.
@@ -336,7 +305,7 @@ export default function ResultPanel({ status, error, result, query, modelInfo, o
               className="flex items-center justify-between w-full text-left group"
             >
               <span className="text-xs font-medium text-ink-muted group-hover:text-ink transition-colors">
-                Détails du modèle
+                Détails techniques
               </span>
               <svg
                 width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true"
@@ -347,54 +316,56 @@ export default function ResultPanel({ status, error, result, query, modelInfo, o
             </button>
 
             {detailsOpen && (
-              <div className="mt-4 space-y-3">
-                {result.reliability !== null && (
-                  <div className="space-y-1.5">
-                    <p className="text-xs text-ink-muted">{cfg?.reliabilityLabel}</p>
-                    <ReliabilityBar value={result.reliability} />
-                  </div>
+              <div className="mt-4 space-y-2">
+                <MetaRow
+                  label="Méthode"
+                  value={result.model === 'ml' ? 'LightGBM géolocalisé · API BAN' : 'Médiane DVF communale'}
+                />
+                {result.adresseNormalisee && (
+                  <MetaRow label="Adresse normalisée (BAN)" value={result.adresseNormalisee} />
                 )}
-                <div className="space-y-2">
-                  {cfg?.description && <MetaRow label="Méthode" value={cfg.description} />}
-                  {result.adresseNormalisee && <MetaRow label="Adresse BAN" value={result.adresseNormalisee} />}
-                  {result.dpeClasse && <MetaRow label="Classe DPE" value={result.dpeClasse} />}
-                  {result.anneeConstruction && <MetaRow label="Année de construction" value={result.anneeConstruction} />}
-                  {result.dpeZoneFgPct != null && <MetaRow label="Passoires F+G dans le secteur" value={`${result.dpeZoneFgPct} %`} />}
-                  {result.model === 'ml' && result.localMape != null && (
-                    <MetaRow
-                      label={`Erreur médiane locale${result.localMapeN != null ? ` (${result.localMapeN} ventes)` : ''}`}
-                      value={`${result.localMape} %`}
-                    />
-                  )}
-                  {result.model === 'ml' && result.localMape == null && modelInfo?.mape != null && (
-                    <MetaRow label="Erreur médiane (modèle global)" value={`${modelInfo.mape} %`} />
-                  )}
-                  {result.model === 'ml' && (
-                    <MetaRow label="Fourchette" value="Modèle quantile (q7.5–q92.5)" />
-                  )}
-                  {result.model === 'ml' && modelInfo?.r2 != null && (
-                    <MetaRow label="R² (test 2025)" value={modelInfo.r2.toFixed(4)} />
-                  )}
-                  {result.model === 'ml' && modelInfo?.nFeatures != null && (
-                    <MetaRow label="Features" value={`${modelInfo.nFeatures} variables`} />
-                  )}
-                  {result.model === 'ml' && modelInfo?.trainedAt && (
-                    <MetaRow label="Entraîné le" value={new Date(modelInfo.trainedAt).toLocaleDateString('fr-FR')} />
-                  )}
-                  {scopeLabel && <MetaRow label="Périmètre" value={scopeLabel} />}
-                  {nTransactions && (
-                    <MetaRow label="Transactions utilisées" value={`${nTransactions.toLocaleString('fr-FR')} ventes`} />
-                  )}
-                  {meta?.dispersion > 0 && (
-                    <MetaRow label="Dispersion des prix" value={`${Math.round(meta.dispersion * 100)} %`} />
-                  )}
-                  {result.model === 'ml' && modelInfo?.nTransactions != null && (
-                    <MetaRow label="Entraîné sur" value={`${modelInfo.nTransactions.toLocaleString('fr-FR')} transactions DVF 2021–2024`} />
-                  )}
-                </div>
-                {meta?.notes?.length > 0 && result.model !== 'ml' && (
-                  <div className="bg-stone-50 rounded-lg px-3 py-2">
-                    {meta.notes.map((n, i) => (
+                {result.model === 'ml' && result.localMape != null && (
+                  <MetaRow
+                    label={`Erreur médiane locale${result.localMapeN != null ? ` (${result.localMapeN?.toLocaleString('fr-FR')} ventes)` : ''}`}
+                    value={`${result.localMape} %`}
+                  />
+                )}
+                {result.model === 'ml' && result.localMape == null && modelInfo?.mape != null && (
+                  <MetaRow label="Erreur médiane (modèle global)" value={`${modelInfo.mape} %`} />
+                )}
+                {result.model === 'ml' && (
+                  <MetaRow label="Fourchette" value="Modèle quantile (q7.5 – q92.5)" />
+                )}
+                {result.model === 'ml' && modelInfo?.r2 != null && (
+                  <MetaRow label="R² (test 2025)" value={modelInfo.r2.toFixed(4)} />
+                )}
+                {result.model === 'ml' && modelInfo?.nFeatures != null && (
+                  <MetaRow label="Variables" value={`${modelInfo.nFeatures}`} />
+                )}
+                {result.model === 'ml' && modelInfo?.trainedAt && (
+                  <MetaRow label="Entraîné le" value={new Date(modelInfo.trainedAt).toLocaleDateString('fr-FR')} />
+                )}
+                {result.model === 'ml' && modelInfo?.nTrain != null && (
+                  <MetaRow
+                    label="Données d'entraînement"
+                    value={`${modelInfo.nTrain.toLocaleString('fr-FR')} transactions DVF 2021–2024`}
+                  />
+                )}
+                {result.model === 'ml' && modelInfo?.nTest != null && (
+                  <MetaRow
+                    label="Données de test"
+                    value={`${modelInfo.nTest.toLocaleString('fr-FR')} transactions DVF 2025`}
+                  />
+                )}
+                {result.model !== 'ml' && result.meta?.n_transactions > 0 && (
+                  <MetaRow
+                    label="Transactions comparables"
+                    value={`${result.meta.n_transactions.toLocaleString('fr-FR')} ventes`}
+                  />
+                )}
+                {result.meta?.notes?.length > 0 && result.model !== 'ml' && (
+                  <div className="bg-stone-50 rounded-lg px-3 py-2 mt-2">
+                    {result.meta.notes.map((n, i) => (
                       <p key={i} className="text-[11px] text-ink-muted">{n}</p>
                     ))}
                   </div>

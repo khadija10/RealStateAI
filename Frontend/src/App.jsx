@@ -70,6 +70,7 @@ function normalizeResult(raw) {
     dpeClasse: raw.dpe_classe ?? null,
     anneeConstruction: raw.annee_construction ?? null,
     dpeZoneFgPct: raw.dpe_zone_fg_pct ?? null,
+    geocodingWarning: raw.geocoding_warning ?? null,
   }
 }
 
@@ -141,6 +142,8 @@ export default function App() {
       commune: item.commune || (!item.address ? item.query : '') || '',
       address: item.adresse_normalisee || item.address || '',
       postal_code: item.postal_code ?? '',
+      dpe_classe: item.dpe_classe ?? '',
+      annee_construction: item.annee_construction ?? '',
     }
     setForm(newForm)
     setResult(null)
@@ -167,6 +170,8 @@ export default function App() {
             trainedAt: h.model_trained_at,
             nFeatures: h.model_n_features,
             nTransactions: h.model_n_transactions,
+            nTrain: h.model_n_train,
+            nTest: h.model_n_test,
           })
         }
         setDatasetInfo({
@@ -241,14 +246,16 @@ export default function App() {
         </div>
       )}
 
+
       {/* Barre de navigation onglets */}
       <nav className="border-b border-stone-100 bg-white sticky top-0 z-20">
         <div className="max-w-5xl mx-auto px-6">
           <div className="flex gap-0 overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
-            {TABS.filter((tab) => !tab.protected || user).map((tab) => (
+            {TABS.map((tab) => (
               <button
                 key={tab.id}
                 onClick={() => {
+                  if (tab.protected && !user) { setShowAuthModal(true); return }
                   setActiveTab(tab.id)
                   if (tab.id === 'historique') setHistoryKey((k) => k + 1)
                 }}
@@ -274,11 +281,11 @@ export default function App() {
         {activeTab === 'estimation' && (
           <>
             <div className="mb-10">
-              <h1 className="font-[var(--font-display)] text-4xl sm:text-5xl text-ink leading-[1.05] whitespace-nowrap">
+              <h1 className="font-[var(--font-display)] text-4xl sm:text-5xl text-ink leading-[1.05]">
                 Estimez la valeur de votre bien
               </h1>
-              <p className="text-sm text-ink-muted mt-3 whitespace-nowrap">
-                Modèle LightGBM entraîné sur {modelInfo?.nTransactions?.toLocaleString('fr-FR') ?? '—'} transactions DVF · Île-de-France · Géolocalisation BAN
+              <p className="text-sm text-ink-muted mt-3">
+                Basé sur {(modelInfo?.nTrain ?? modelInfo?.nTransactions)?.toLocaleString('fr-FR') ?? '—'} transactions immobilières récentes · Île-de-France
               </p>
             </div>
 

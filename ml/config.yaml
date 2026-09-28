@@ -4,8 +4,8 @@ data:
   mlflow_uri: "sqlite:///mlruns/mlflow.db"
 
 split:
-  train_years: [2021, 2022, 2023, 2024]
-  test_years: [2025]
+  train_years: [2021, 2022, 2023, 2024, 2025]
+  holdout_frac: 0.15   # 15% de 2025 réservés comme test set
 
 features:
   numeric:
@@ -28,14 +28,28 @@ features:
     - ratio_local_dept
     - densite_ventes
     - zone_part_dpe_fg
+    - annee_construction
+    - dpe_score
+    - densite_pieces
   categorical:
     - code_type_local
     - code_departement
     - code_commune
+    - dpe_classe
   boolean:
     - a_terrain
+    - is_studio
 
 target: prix_m2
+
+# Pondération temporelle — donne plus de poids aux années récentes
+# pour réduire le biais dû au pic 2021-2022
+sample_weights:
+  2021: 0.55
+  2022: 0.65
+  2023: 0.90
+  2024: 1.15
+  2025: 1.30
 
 lightgbm:
   n_estimators: 2000

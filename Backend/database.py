@@ -69,6 +69,8 @@ class SearchHistoryService:
                         address TEXT,
                         postal_code TEXT,
                         adresse_normalisee TEXT,
+                        dpe_classe TEXT,
+                        annee_construction INTEGER,
                         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                     )
                     """
@@ -80,6 +82,8 @@ class SearchHistoryService:
                     ("address", "TEXT"),
                     ("postal_code", "TEXT"),
                     ("adresse_normalisee", "TEXT"),
+                    ("dpe_classe", "TEXT"),
+                    ("annee_construction", "INTEGER"),
                 ]:
                     try:
                         conn.execute(f"ALTER TABLE search_history ADD COLUMN {_col} {_typ}")
@@ -202,6 +206,8 @@ class SearchHistoryService:
         address: str | None = None,
         postal_code: str | None = None,
         adresse_normalisee: str | None = None,
+        dpe_classe: str | None = None,
+        annee_construction: int | None = None,
     ) -> dict[str, Any]:
         created_at = datetime.now(timezone.utc).isoformat()
 
@@ -211,8 +217,8 @@ class SearchHistoryService:
                 cursor = conn.execute(
                     """
                     INSERT INTO search_history
-                        (user_id, query, commune, property_type, area_m2, estimated_price, rooms, address, postal_code, adresse_normalisee, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        (user_id, query, commune, property_type, area_m2, estimated_price, rooms, address, postal_code, adresse_normalisee, dpe_classe, annee_construction, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         user_id,
@@ -225,6 +231,8 @@ class SearchHistoryService:
                         address,
                         postal_code,
                         adresse_normalisee,
+                        dpe_classe,
+                        annee_construction,
                         created_at,
                     ),
                 )
@@ -244,6 +252,8 @@ class SearchHistoryService:
                 "address": address,
                 "postal_code": postal_code,
                 "adresse_normalisee": adresse_normalisee,
+                "dpe_classe": dpe_classe,
+                "annee_construction": annee_construction,
                 "created_at": created_at,
             }
 
@@ -259,8 +269,8 @@ class SearchHistoryService:
                 cur.execute(
                     """
                     INSERT INTO search_history
-                        (user_id, query, commune, property_type, area_m2, estimated_price, rooms, address, postal_code, adresse_normalisee, created_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        (user_id, query, commune, property_type, area_m2, estimated_price, rooms, address, postal_code, adresse_normalisee, dpe_classe, annee_construction, created_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING id
                     """,
                     (
@@ -274,6 +284,8 @@ class SearchHistoryService:
                         address,
                         postal_code,
                         adresse_normalisee,
+                        dpe_classe,
+                        annee_construction,
                         created_at,
                     ),
                 )
@@ -292,6 +304,8 @@ class SearchHistoryService:
             "address": address,
             "postal_code": postal_code,
             "adresse_normalisee": adresse_normalisee,
+            "dpe_classe": dpe_classe,
+            "annee_construction": annee_construction,
             "created_at": created_at,
         }
 
@@ -304,7 +318,7 @@ class SearchHistoryService:
                     rows = conn.execute(
                         """
                         SELECT id, user_id, query, commune, property_type, area_m2, estimated_price,
-                               rooms, address, postal_code, adresse_normalisee, created_at
+                               rooms, address, postal_code, adresse_normalisee, dpe_classe, annee_construction, created_at
                         FROM search_history WHERE user_id = ?
                         ORDER BY id DESC LIMIT ?
                         """,
@@ -314,7 +328,7 @@ class SearchHistoryService:
                     rows = conn.execute(
                         """
                         SELECT id, user_id, query, commune, property_type, area_m2, estimated_price,
-                               rooms, address, postal_code, adresse_normalisee, created_at
+                               rooms, address, postal_code, adresse_normalisee, dpe_classe, annee_construction, created_at
                         FROM search_history WHERE user_id IS NULL
                         ORDER BY id DESC LIMIT ?
                         """,
@@ -337,7 +351,7 @@ class SearchHistoryService:
                     cur.execute(
                         """
                         SELECT id, user_id, query, commune, property_type, area_m2, estimated_price,
-                               rooms, address, postal_code, adresse_normalisee, created_at
+                               rooms, address, postal_code, adresse_normalisee, dpe_classe, annee_construction, created_at
                         FROM search_history WHERE user_id = %s
                         ORDER BY created_at DESC LIMIT %s
                         """,
@@ -347,7 +361,7 @@ class SearchHistoryService:
                     cur.execute(
                         """
                         SELECT id, user_id, query, commune, property_type, area_m2, estimated_price,
-                               rooms, address, postal_code, adresse_normalisee, created_at
+                               rooms, address, postal_code, adresse_normalisee, dpe_classe, annee_construction, created_at
                         FROM search_history WHERE user_id IS NULL
                         ORDER BY created_at DESC LIMIT %s
                         """,

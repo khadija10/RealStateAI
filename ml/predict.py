@@ -73,12 +73,16 @@ def predire(
     surface_terrain: float | None = None,
     prix_m2_median_local_12m: float | None = None,
     zone_part_dpe_fg: float | None = None,
+    dpe_classe: str | None = None,
+    annee_construction: int | None = None,
 ) -> dict:
     import numpy as np
     model = charger_modele(model_path)
 
     surface_moyenne_piece = surface_m2 / nb_pieces if nb_pieces else None
     arrondissement = _arrondissement_de(code_commune)
+
+    _DPE_ORDINAL = {"A": 0, "B": 1, "C": 2, "D": 3, "E": 4, "F": 5, "G": 6}
 
     # Features engineerées — même calcul que features.py à l'entraînement
     log_surface = np.log1p(surface_m2)
@@ -92,6 +96,9 @@ def predire(
         if nb_ventes_dept_12m
         else np.nan
     )
+    dpe_score = _DPE_ORDINAL.get(dpe_classe, np.nan) if dpe_classe else np.nan
+    is_studio = surface_m2 < 35
+    densite_pieces = nb_pieces / surface_m2 if surface_m2 else np.nan
 
     X = pd.DataFrame([{
         "surface_bati": surface_m2,
@@ -113,10 +120,15 @@ def predire(
         "ratio_local_dept": ratio_local_dept,
         "densite_ventes": densite_ventes,
         "zone_part_dpe_fg": float(zone_part_dpe_fg) if zone_part_dpe_fg is not None else np.nan,
+        "annee_construction": float(annee_construction) if annee_construction is not None else np.nan,
+        "dpe_score": float(dpe_score) if not (isinstance(dpe_score, float) and np.isnan(dpe_score)) else np.nan,
+        "dpe_classe": str(dpe_classe) if dpe_classe is not None else None,
         "code_type_local": str(code_type_local),
         "code_departement": str(code_departement),
         "code_commune": str(code_commune) if code_commune else "",
         "a_terrain": a_terrain,
+        "is_studio": is_studio,
+        "densite_pieces": densite_pieces,
     }])
     # Appliquer le dtype Categorical après construction (pandas ne le préserve pas via dict)
     for col, cats in _CATEGORIES.items():

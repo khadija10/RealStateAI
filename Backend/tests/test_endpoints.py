@@ -572,3 +572,55 @@ def test_history_query_commune_seule_si_pas_adresse(client):
     entries = client.get("/api/search-history").json()
     assert entries
     assert entries[0]["query"]  # non vide
+
+# ==========================================================================
+#  Persistance DPE dans l'historique
+# ==========================================================================
+
+def test_estimate_avec_dpe_persiste_dans_historique(client):
+    """dpe_classe et annee_construction sont sauvés après une estimation."""
+    client.post(
+        "/api/predictions/estimate",
+        json={
+            "area_m2": 65,
+            "rooms": 3,
+            "property_type": "apartment",
+            "commune": "PARIS 15",
+            "dpe_classe": "B",
+            "annee_construction": 2010,
+        },
+    )
+    entries = client.get("/api/search-history").json()
+    assert entries
+    assert entries[0]["dpe_classe"] == "B"
+    assert entries[0]["annee_construction"] == 2010
+
+
+def test_estimate_sans_dpe_laisse_champs_null(client):
+    """Sans DPE fourni, les champs sont null dans l'historique."""
+    client.post(
+        "/api/predictions/estimate",
+        json={"area_m2": 60, "rooms": 3, "property_type": "apartment", "commune": "PARIS 15"},
+    )
+    entries = client.get("/api/search-history").json()
+    assert entries
+    assert entries[0]["dpe_classe"] is None
+    assert entries[0]["annee_construction"] is None
+
+
+def test_estimate_dpe_g_persiste(client):
+    """Classe G (valeur extrême) est bien sauvegardée."""
+    client.post(
+        "/api/predictions/estimate",
+        json={
+            "area_m2": 80,
+            "rooms": 4,
+            "property_type": "apartment",
+            "commune": "VERSAILLES",
+            "dpe_classe": "G",
+            "annee_construction": 1960,
+        },
+    )
+    entries = client.get("/api/search-history").json()
+    assert entries[0]["dpe_classe"] == "G"
+    assert entries[0]["annee_construction"] == 1960

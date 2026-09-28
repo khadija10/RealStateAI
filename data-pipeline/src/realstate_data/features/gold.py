@@ -257,9 +257,7 @@ def construire_gold(settings: Settings | None = None) -> dict:
             b.type_local, b.code_type_local,
             -- Adresse du logement : clé de jointure avec le DPE, et utile au
             -- backend pour l'affichage.
-            CAST(NULL AS VARCHAR) AS adresse_numero,
-            CAST(NULL AS VARCHAR) AS adresse_suffixe,
-            CAST(NULL AS VARCHAR) AS adresse_nom_voie,
+            b.adresse_numero, b.adresse_suffixe, b.adresse_nom_voie,
             b.surface_bati, b.nb_pieces, b.surface_terrain, b.nb_parcelles,
             b.valeur_fonciere, b.prix_m2,
             mc.prix_m2_median_commune_12m,

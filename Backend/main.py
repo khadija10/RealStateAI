@@ -265,6 +265,8 @@ class HealthResponse(BaseModel):
     model_trained_at: str | None = None
     model_n_features: int | None = None
     model_n_transactions: int | None = None
+    model_n_train: int | None = None
+    model_n_test: int | None = None
     dvf_min_year: int | None = None
     dvf_max_year: int | None = None
     dpe_loaded: bool = False
@@ -831,6 +833,8 @@ def health(request: Request) -> HealthResponse:
         model_trained_at=info.get("trained_at"),
         model_n_features=info.get("n_features"),
         model_n_transactions=(info.get("n_train", 0) + info.get("n_test", 0)) or None,
+        model_n_train=info.get("n_train") or None,
+        model_n_test=info.get("n_test") or None,
         dvf_min_year=_dvf_year_range(info, "min"),
         dvf_max_year=_dvf_year_range(info, "max"),
         dpe_loaded=dpe_cov > 0,
@@ -962,6 +966,10 @@ def estimate(
             _dpe_zone = getattr(request.app.state, "dpe_zone", {})
             if req.postal_code and req.postal_code in _dpe_zone:
                 payload["zone_part_dpe_fg"] = float(_dpe_zone[req.postal_code])
+            if req.dpe_classe:
+                payload["dpe_classe"] = req.dpe_classe
+            if req.annee_construction:
+                payload["annee_construction"] = req.annee_construction
             ml_result = ML_ESTIMATOR(**{k: v for k, v in payload.items() if v is not None})
             if ml_result is not None:
                 logger.info("Réponse renvoyée par le modèle ML")
@@ -972,6 +980,13 @@ def estimate(
                 normalized.local_mape_n = lm.get("n") if lm else None
                 if lm.get("mape"):
                     normalized.reliability = round(max(0.30, min(0.95, 1.0 - lm["mape"] / 100)), 2)
+                # Score géocodage BAN
+                score_geocodage = ml_result.get("score_geocodage") if isinstance(ml_result, dict) else None
+                if score_geocodage is not None and score_geocodage < 0.6:
+                    normalized.geocoding_warning = (
+                        f"Adresse localisée avec une confiance faible ({score_geocodage:.0%}) "
+                        "— vérifiez que l'adresse est correcte."
+                    )
                 # Enrichissement DPE
                 if req.dpe_classe:
                     normalized.dpe_classe = req.dpe_classe
@@ -994,10 +1009,21 @@ def estimate(
                         address=req.address,
                         postal_code=req.postal_code,
                         adresse_normalisee=_adresse_norm,
+                        dpe_classe=req.dpe_classe,
+                        annee_construction=req.annee_construction,
                     )
                 except Exception as exc:  # pragma: no cover - la persistance ne doit pas casser la réponse
                     logger.warning("Historique de recherche non inscrit : %s", exc)
                 return normalized
+        except ValueError as exc:
+            # Erreur métier lisible (adresse introuvable, hors périmètre IDF…)
+            msg = str(exc)
+            if "introuvable" in msg.lower():
+                raise HTTPException(
+                    422,
+                    "Adresse introuvable — vérifiez l'orthographe ou précisez la commune (ex : Neuilly-sur-Seine).",
+                ) from exc
+            raise HTTPException(422, msg) from exc
         except Exception as exc:  # pragma: no cover - dépend du module ML réel
             logger.warning("Erreur modèle ML, fallback vers DVF : %s", exc)
 
@@ -1017,6 +1043,8 @@ def estimate(
                 rooms=req.rooms,
                 address=req.address,
                 postal_code=req.postal_code,
+                dpe_classe=req.dpe_classe,
+                annee_construction=req.annee_construction,
             )
         except Exception as exc:  # pragma: no cover - la persistance ne doit pas casser la réponse
             logger.warning("Historique de recherche non inscrit : %s", exc)
@@ -1130,6 +1158,8 @@ def estimate(
             rooms=req.rooms,
             address=req.address,
             postal_code=req.postal_code,
+            dpe_classe=req.dpe_classe,
+            annee_construction=req.annee_construction,
         )
     except Exception as exc:  # pragma: no cover - la persistance ne doit pas casser l'estimation
         logger.warning("Historique de recherche non inscrit : %s", exc)

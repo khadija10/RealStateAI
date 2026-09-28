@@ -109,6 +109,7 @@ export default function History({ onReEstimate }) {
   const [selected, setSelected] = useState([]) // max 2 ids
   const [page, setPage] = useState(0)
   const [deleting, setDeleting] = useState(null)
+  const [confirmDeleteId, setConfirmDeleteId] = useState(null)
   const [clearing, setClearing] = useState(false)
   const [confirmClear, setConfirmClear] = useState(false)
   const [search, setSearch] = useState('')
@@ -123,6 +124,11 @@ export default function History({ onReEstimate }) {
   async function handleDelete(e, item) {
     e.stopPropagation()
     if (deleting === item.id) return
+    if (confirmDeleteId !== item.id) {
+      setConfirmDeleteId(item.id)
+      return
+    }
+    setConfirmDeleteId(null)
     setDeleting(item.id)
     try {
       await deleteHistoryItem(item.id)
@@ -136,9 +142,12 @@ export default function History({ onReEstimate }) {
   }
 
   async function handleClearAll() {
-    if (!confirmClear) { setConfirmClear(true); return }
-    setClearing(true)
+    setConfirmClear(true)
+  }
+
+  async function confirmClearAll() {
     setConfirmClear(false)
+    setClearing(true)
     try {
       await clearHistory()
       setItems([])
@@ -228,6 +237,29 @@ export default function History({ onReEstimate }) {
   }
 
   return (
+    <>
+    {confirmClear && (
+      <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setConfirmClear(false)}>
+        <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full mx-4" onClick={(e) => e.stopPropagation()}>
+          <h2 className="text-base font-semibold text-ink mb-2">Vider l'historique ?</h2>
+          <p className="text-sm text-ink-muted mb-5">Toutes vos estimations seront supprimées définitivement.</p>
+          <div className="flex gap-3 justify-end">
+            <button
+              onClick={() => setConfirmClear(false)}
+              className="px-4 py-2 text-sm font-medium text-ink-muted hover:text-ink border border-stone-200 rounded-xl transition-colors"
+            >
+              Annuler
+            </button>
+            <button
+              onClick={confirmClearAll}
+              className="px-4 py-2 text-sm font-medium text-white bg-red-500 hover:bg-red-600 rounded-xl transition-colors"
+            >
+              Vider tout
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
     <div className="space-y-4">
       {/* Barre de recherche + actions */}
       <div className="flex items-center gap-3">
@@ -256,7 +288,7 @@ export default function History({ onReEstimate }) {
                 <path fill="currentColor" className="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
               </svg>
             ) : null}
-            {confirmClear ? 'Confirmer ?' : 'Vider tout'}
+            Vider tout
           </button>
         )}
       </div>
@@ -289,7 +321,7 @@ export default function History({ onReEstimate }) {
             <div
               key={item.id ?? i}
               data-testid="history-item"
-              onClick={() => item.estimated_price && toggleSelect(item)}
+              onClick={() => { if (confirmDeleteId) { setConfirmDeleteId(null); return }; item.estimated_price && toggleSelect(item) }}
               className={`flex items-center gap-4 px-5 py-4 transition-colors ${item.estimated_price ? 'cursor-pointer' : ''} ${isSelected ? 'bg-stone-50' : 'hover:bg-stone-50/60'}`}
             >
               {/* Badge sélection */}
@@ -334,23 +366,40 @@ export default function History({ onReEstimate }) {
                     Ré-estimer
                   </button>
                 )}
-                <button
-                  onClick={(e) => handleDelete(e, item)}
-                  disabled={deleting === item.id}
-                  className="mt-1 text-ink-muted hover:text-red-500 transition-colors disabled:opacity-40"
-                  title="Supprimer"
-                >
-                  {deleting === item.id ? (
-                    <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-                      <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25" />
-                      <path fill="currentColor" className="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                    </svg>
-                  ) : (
-                    <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
-                      <path d="M2 3h8M5 3V2h2v1M3.5 3l.5 7h4l.5-7" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
-                    </svg>
-                  )}
-                </button>
+                {confirmDeleteId === item.id ? (
+                  <div className="flex items-center gap-2 mt-1" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null) }}
+                      className="text-[11px] text-ink-muted hover:text-ink transition-colors"
+                    >
+                      Annuler
+                    </button>
+                    <button
+                      onClick={(e) => handleDelete(e, item)}
+                      className="text-[11px] font-medium text-red-500 hover:text-red-600 transition-colors"
+                    >
+                      Supprimer
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={(e) => handleDelete(e, item)}
+                    disabled={deleting === item.id}
+                    className="mt-1 text-ink-muted hover:text-red-500 transition-colors disabled:opacity-40"
+                    title="Supprimer"
+                  >
+                    {deleting === item.id ? (
+                      <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                        <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" className="opacity-25" />
+                        <path fill="currentColor" className="opacity-75" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                      </svg>
+                    ) : (
+                      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" aria-hidden="true">
+                        <path d="M2 3h8M5 3V2h2v1M3.5 3l.5 7h4l.5-7" stroke="currentColor" strokeWidth="1.1" strokeLinecap="round" strokeLinejoin="round" />
+                      </svg>
+                    )}
+                  </button>
+                )}
               </div>
             </div>
           )
@@ -397,5 +446,6 @@ export default function History({ onReEstimate }) {
         <ComparisonSummary a={selA} b={selB} onClear={() => setSelected([])} />
       )}
     </div>
+    </>
   )
 }

@@ -1,7 +1,12 @@
 # Données brutes DVF — 1.9 Go, inutiles dans l'image
 Backend/Data pipeline/Data/
 Backend/Data pipeline/outputs/
-data
+# Exclure tout data/ sauf le gold parquet et les samples
+data/raw/
+data/interim/
+data/external/
+data/dvf_raw*/
+data-pipeline/
 
 # Environnements Python virtuels
 data_env/
