@@ -54,41 +54,8 @@ jobs:
         env:
           MODEL_PATH: Backend/models/price_model.pkl
 
-  # ── 3. Build Docker + push Docker Hub ───────────────────────────────────────
-  build-and-push:
-    name: Build Docker + Push Docker Hub
-    runs-on: ubuntu-latest
-    needs: [test-backend, test-model-regression]
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Login Docker Hub
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_HUB_USERNAME }}
-          password: ${{ secrets.DOCKER_HUB_TOKEN }}
-
-      - name: Build & push image backend
-        uses: docker/build-push-action@v5
-        with:
-          context: .
-          file: Backend/Dockerfile
-          push: true
-          tags: |
-            ${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
-            ${{ env.IMAGE_NAME }}:latest
-
-  # ── 4. Déploiement Render ────────────────────────────────────────────────────
-  deploy:
-    name: Déploiement Render
-    runs-on: ubuntu-latest
-    needs: build-and-push
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - name: Déclencher le redéploiement Render
-        run: |
-          curl -s -X POST "${{ secrets.RENDER_DEPLOY_HOOK_URL }}" \
-            -H "Accept: application/json" \
-            --fail
-        # RENDER_DEPLOY_HOOK_URL : Settings > Deploy Hook dans le dashboard Render
+  # ── 3. Build Docker — fait en local (modèles .pkl non versionnés) ────────────
+  # L'image de production est construite localement (où les .pkl existent),
+  # puis poussée manuellement sur Docker Hub. Render tire cette image via
+  # runtime: image dans render.yaml. Le CI ne peut pas reconstruire l'image
+  # car les fichiers modèles sont dans .gitignore.
