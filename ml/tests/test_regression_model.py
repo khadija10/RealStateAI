@@ -215,8 +215,15 @@ if __name__ == "__main__":
     print("TESTS DE RÉGRESSION MODÈLE — RealEstateAI")
     print("=" * 60)
 
-    ok_seuils = test_seuils_sur_sample()
-    ok_cas    = test_cas_reference()
+    try:
+        ok_seuils = test_seuils_sur_sample()
+        ok_cas    = test_cas_reference()
+    except BaseException as _exc:
+        # pytest.skip() lève Skipped (sous-classe de BaseException) hors contexte pytest.
+        if type(_exc).__name__ == "Skipped":
+            print(f"\n[GATE IGNORÉE] {_exc} (normal en CI sans artefact).")
+            sys.exit(0)
+        raise
 
     print("\n" + "=" * 60)
     if ok_seuils and ok_cas:
