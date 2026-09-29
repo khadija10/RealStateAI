@@ -116,6 +116,17 @@ class SearchHistoryService:
                 )
                 cur.execute(
                     """
+                    CREATE TABLE IF NOT EXISTS password_reset_tokens (
+                        id SERIAL PRIMARY KEY,
+                        user_id INTEGER NOT NULL REFERENCES users(id),
+                        token TEXT NOT NULL UNIQUE,
+                        expires_at TIMESTAMPTZ NOT NULL,
+                        used INTEGER NOT NULL DEFAULT 0
+                    )
+                    """
+                )
+                cur.execute(
+                    """
                     CREATE TABLE IF NOT EXISTS search_history (
                         id SERIAL PRIMARY KEY,
                         user_id INTEGER REFERENCES users(id),
@@ -124,14 +135,30 @@ class SearchHistoryService:
                         property_type TEXT,
                         area_m2 DOUBLE PRECISION,
                         estimated_price DOUBLE PRECISION,
+                        rooms INTEGER,
+                        address TEXT,
+                        postal_code TEXT,
+                        adresse_normalisee TEXT,
+                        dpe_classe TEXT,
+                        annee_construction INTEGER,
                         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
                     )
                     """
                 )
-                try:
-                    cur.execute("ALTER TABLE search_history ADD COLUMN IF NOT EXISTS user_id INTEGER REFERENCES users(id)")
-                except Exception:
-                    pass
+                # Migrations : colonnes ajoutées progressivement (idempotentes)
+                for _col, _typ in [
+                    ("user_id", "INTEGER REFERENCES users(id)"),
+                    ("rooms", "INTEGER"),
+                    ("address", "TEXT"),
+                    ("postal_code", "TEXT"),
+                    ("adresse_normalisee", "TEXT"),
+                    ("dpe_classe", "TEXT"),
+                    ("annee_construction", "INTEGER"),
+                ]:
+                    try:
+                        cur.execute(f"ALTER TABLE search_history ADD COLUMN IF NOT EXISTS {_col} {_typ}")
+                    except Exception:
+                        pass
                 conn.commit()
 
     # ── Utilisateurs ─────────────────────────────────────────────────────────

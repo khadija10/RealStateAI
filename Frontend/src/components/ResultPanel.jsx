@@ -41,7 +41,7 @@ function exportPDF(result, query, modelInfo) {
   <div class="range-item"><p class="range-label">Fourchette basse</p><p class="range-val">${formatEUR(result.low)}</p></div>
   <div class="range-item"><p class="range-label">Fourchette haute</p><p class="range-val">${formatEUR(result.high)}</p></div>
 </div>
-<p class="footer">Estimation fournie à titre indicatif, sans valeur contractuelle. Modèle entraîné sur ${modelInfo?.nTrain?.toLocaleString('fr-FR') ?? '571 000'} transactions DVF Île-de-France 2021–2024, évalué sur ${modelInfo?.nTest?.toLocaleString('fr-FR') ?? '128 000'} ventes 2025. Erreur médiane${result.localMape != null ? ' locale' : ''} : ${result.localMape ?? modelInfo?.mape ?? '—'} %.</p>
+<p class="footer">Estimation fournie à titre indicatif, sans valeur contractuelle. Modèle entraîné sur ${modelInfo?.nTrain?.toLocaleString('fr-FR') ?? '571 000'} transactions DVF Île-de-France 2021–2025, évalué sur ${modelInfo?.nTest?.toLocaleString('fr-FR') ?? '128 000'} ventes 2025. Erreur médiane${result.localMape != null ? ' locale' : ''} : ${result.localMape ?? modelInfo?.mape ?? '—'} %.</p>
 </body></html>`
   const w = window.open('', '_blank')
   w.document.write(html)
@@ -337,7 +337,7 @@ export default function ResultPanel({ status, error, result, query, modelInfo, o
                   <MetaRow label="Fourchette" value="Modèle quantile (q7.5 – q92.5)" />
                 )}
                 {result.model === 'ml' && modelInfo?.r2 != null && (
-                  <MetaRow label="R² (test 2025)" value={modelInfo.r2.toFixed(4)} />
+                  <MetaRow label="R² (validation interne)" value={modelInfo.r2.toFixed(4)} />
                 )}
                 {result.model === 'ml' && modelInfo?.nFeatures != null && (
                   <MetaRow label="Variables" value={`${modelInfo.nFeatures}`} />
@@ -348,7 +348,7 @@ export default function ResultPanel({ status, error, result, query, modelInfo, o
                 {result.model === 'ml' && modelInfo?.nTrain != null && (
                   <MetaRow
                     label="Données d'entraînement"
-                    value={`${modelInfo.nTrain.toLocaleString('fr-FR')} transactions DVF 2021–2024`}
+                    value={`${modelInfo.nTrain.toLocaleString('fr-FR')} transactions DVF 2021–2025`}
                   />
                 )}
                 {result.model === 'ml' && modelInfo?.nTest != null && (
