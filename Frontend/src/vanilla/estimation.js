@@ -48,10 +48,10 @@ export const html = `
     <h2>Un modèle entraîné sur <em>toutes</em> les ventes notariées d'Île-de-France,
       et dont nous publions <em>l'erreur réelle</em>, quartier par quartier.</h2>
     <div class="stats">
-      <div class="stat"><b>721 675</b><span>Transactions analysées</span></div>
-      <div class="stat"><b>28</b><span>Variables du modèle</span></div>
-      <div class="stat"><b>0,82</b><span>Coefficient de détermination</span></div>
-      <div class="stat"><b>3,5 M</b><span>Diagnostics énergie</span></div>
+      <div class="stat"><b id="rsai-stat-ventes">—</b><span>Transactions analysées</span></div>
+      <div class="stat"><b id="rsai-stat-variables">—</b><span>Variables du modèle</span></div>
+      <div class="stat"><b id="rsai-stat-mape">—</b><span id="rsai-stat-mape-lib">Erreur moyenne mesurée</span></div>
+      <div class="stat"><b id="rsai-stat-20">—</b><span>Estimations à moins de 20 % du prix réel</span></div>
     </div>
   </div>
 </section>
@@ -112,7 +112,7 @@ export const html = `
 <button class="charger" id="rsai-charger">Voir plus de secteurs</button>
 
 <div class="bas">
-  <span>Données : DVF — DGFiP / Etalab · DPE — ADEME · Modèle LightGBM, 28 variables</span>
+  <span>Données : DVF — DGFiP / Etalab · DPE — ADEME · IRIS — INSEE · BDNB — CSTB · Modèle LightGBM<span id="rsai-pied-variables"></span></span>
   <span>Estimation indicative, ne constitue pas une expertise immobilière.</span>
 </div>
 `
@@ -217,6 +217,7 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
     COMMUNES: '/api/metadata/communes',
     ESTIMER: '/api/predictions/estimate',
     SANTE: '/api/health',
+    SECTEURS: '/api/market/secteurs',
   }
   const $ = (sel) => root.querySelector(sel)
   const $$ = (sel) => root.querySelectorAll(sel)
@@ -250,12 +251,38 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
       }
       modelInfo = {
         mape: d.model_mape, r2: d.model_r2, nFeatures: d.model_n_features,
-        trainedAt: d.model_trained_at, nTrain: d.model_n_train, nTest: d.model_n_test,
+        trainedAt: d.model_trained_at, nTrain: d.model_n_train,
+        nVentes: d.n_rows, validation: d.model_validation,
       }
+      afficherStats()
       if (dernierBien) afficher(dernierBien.r, dernierBien.s, dernierBien.adresse, dernierBien.surface, dernierBien.pieces, dernierBien.type)
     } catch {
       badge.innerHTML = `<i></i><span>Backend injoignable — démonstration</span>`
     }
+  }
+
+  // Chiffres de la section « Notre approche » : servis par le backend, jamais
+  // écrits en dur — l'erreur affichée est celle de la validation officielle
+  // (docs/protocole_evaluation.md), mesurée une fois sur un test jamais vu.
+  function afficherStats() {
+    const mi = modelInfo || {}, v = mi.validation
+    const pct = (x) => String(x).replace('.', ',') + ' %'
+    if (mi.nVentes) $('#rsai-stat-ventes').textContent = nb(mi.nVentes)
+    if (mi.nFeatures) {
+      $('#rsai-stat-variables').textContent = mi.nFeatures
+      $('#rsai-pied-variables').textContent = `, ${mi.nFeatures} variables`
+    }
+    if (v) {
+      $('#rsai-stat-mape').textContent = pct(v.mape)
+      $('#rsai-stat-mape-lib').textContent = `Erreur moyenne, test ${periode(v.periode_test)}`
+      $('#rsai-stat-20').textContent = pct(v.dans_20pct)
+    }
+  }
+  const MOIS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.']
+  function periode(p) {
+    if (!p) return ''
+    const [a, b] = p.map((x) => x.split('-'))
+    return `${MOIS[+a[1] - 1]}–${MOIS[+b[1] - 1]} ${b[0]}`
   }
 
   async function chargerCommunes() {
@@ -303,7 +330,9 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
     if (!r) r = demonstration(secteur, surface, pieces, type)
 
     bouton.disabled = false; bouton.textContent = 'Estimer'
-    afficher(r, secteur, adresse, surface, pieces, type)
+    // Statistiques du secteur calculées par le backend sur le dataset ; le
+    // tableau SECTEURS ne sert plus qu'en démonstration (backend injoignable).
+    afficher(r, r.secteur || secteur, adresse, surface, pieces, type)
     memoriser({ query: adresse || secteur.nom, area_m2: surface, prix: r.valeur })
     if (defiler) $('#rsai-resultat').scrollIntoView({ behavior: 'smooth' })
   }
@@ -320,6 +349,7 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
       mape: d.local_mape, mape_n: d.local_mape_n,
       modele: d.model, adresse: d.meta?.adresse_normalisee,
       meta: d.meta, reel: true,
+      secteur: d.secteur ? { ...d.secteur, eco: (d.secteur.eco || []).filter((x) => x != null) } : null,
     }
   }
 
@@ -352,10 +382,13 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
     const fiab = r.fiabilite ?? (r.reel ? null : 1 - MAPE_MODELE)
     $('#rsai-anneau').innerHTML = anneau(fiab)
     $('#rsai-src-modele').innerHTML = `<span class="puce ${r.reel ? '' : 'claire'}">${r.reel ? 'Modèle ' + (r.modele || 'ml') : 'Démonstration'}</span>`
+    const val = modelInfo?.validation
     $('#rsai-fiab-txt').innerHTML =
       (r.mape != null
         ? `Sur ce secteur, le modèle se trompe en moyenne de <b>${String(r.mape).replace('.', ',')} %</b>${r.mape_n ? `, mesuré sur <b>${nb(r.mape_n)}</b> ventes de contrôle` : ''}.`
-        : `Erreur moyenne du modèle sur l'ensemble du jeu de test : <b>16,4 %</b>. 46 % des estimations tombent à moins de 10 % du prix réel, 74 % à moins de 20 %.`) +
+        : val
+          ? `Erreur moyenne du modèle, mesurée sur ${nb(val.n_test)} ventes jamais vues (${periode(val.periode_test)}) : <b>${String(val.mape).replace('.', ',')} %</b>. ${String(val.dans_10pct).replace('.', ',')} % des estimations tombent à moins de 10 % du prix réel, ${String(val.dans_20pct).replace('.', ',')} % à moins de 20 %.`
+          : '') +
       (r.meta?.n_transactions ? `<br>Secteur documenté par <b>${nb(r.meta.n_transactions)}</b> transactions.` : '') +
       (r.reel ? '' : `<br><span style="color:var(--ambre)">Backend non connecté : estimation calculée à partir des médianes du pipeline.</span>`)
 
@@ -371,32 +404,29 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
 
     $('#rsai-detail').innerHTML = r.reel
       ? `<tr><td>Prix au m² estimé</td><td class="n">${nb(r.prix_m2)} €</td></tr>
-         <tr><td>Médiane du secteur, 2025</td><td class="n">${nb(s.med)} €/m²</td></tr>
+         <tr><td>Médiane du secteur, ${s.annee || 2025}</td><td class="n">${nb(s.med)} €/m²</td></tr>
          <tr><td>Surface retenue</td><td class="n">${surface} m²</td></tr>
-         <tr><td>Modèle</td><td class="n">LightGBM · 28 variables</td></tr>
+         <tr><td>Modèle</td><td class="n">LightGBM${modelInfo?.nFeatures ? ` · ${modelInfo.nFeatures} variables` : ''}</td></tr>
          <tr><td><em style="font-size:17px">Valeur estimée</em></td><td class="n"><b>${euro(r.valeur)}</b></td></tr>`
       : `<tr><td>Médiane du secteur, 2025</td><td class="n">${nb(r.base)} €/m²</td></tr>` +
         (r.facteurs || []).map(([l, f]) => `<tr><td>${l}</td><td class="n">${f >= 1 ? '+' : ''}${Math.round((f - 1) * 100)} %</td></tr>`).join('') +
         `<tr><td><em style="font-size:17px">Prix au m² retenu</em></td><td class="n"><b>${nb(r.prix_m2)} €</b></td></tr>`
 
     // Détails techniques — repris de l'ancien frontend (ResultPanel.jsx).
-    // Repli : quand le backend est totalement injoignable (modelInfo jamais
-    // reçu), on affiche les chiffres publiés ailleurs sur la page (section
-    // "Notre approche") plutôt qu'une colonne quasi vide.
-    const repli = { mape: 16.4, r2: 0.82, nFeatures: 28, nTrain: 721675 }
+    // Uniquement des valeurs servies par le backend : une ligne sans donnée
+    // est omise plutôt que remplie par un chiffre écrit en dur.
     const mi = modelInfo || {}
 
     const tech = []
     tech.push(['Méthode', r.reel ? `${r.modele === 'ml' ? 'LightGBM géolocalisé · API BAN' : 'Médiane DVF communale'}` : 'Démonstration (médianes du pipeline)'])
     if (r.adresse) tech.push(['Adresse normalisée (BAN)', r.adresse])
-    if (r.mape != null) tech.push([`Erreur médiane locale${r.mape_n ? ` (${nb(r.mape_n)} ventes)` : ''}`, `${String(r.mape).replace('.', ',')} %`])
-    else tech.push(['Erreur médiane (modèle global)', `${String(mi.mape ?? repli.mape).replace('.', ',')} %`])
-    tech.push(['Fourchette', r.reel ? `Intervalle de confiance ${r.confiance || '85 %'}` : 'Estimation ± 16,4 % (médianes du pipeline)'])
-    tech.push(['R² (validation interne)', (mi.r2 ?? repli.r2).toFixed(4)])
-    tech.push(['Variables', String(mi.nFeatures ?? repli.nFeatures)])
+    if (r.mape != null) tech.push([`Erreur moyenne locale${r.mape_n ? ` (${nb(r.mape_n)} ventes)` : ''}`, `${String(r.mape).replace('.', ',')} %`])
+    if (mi.validation) tech.push([`Erreur moyenne validée (${periode(mi.validation.periode_test)})`, `${String(mi.validation.mape).replace('.', ',')} %`])
+    tech.push(['Fourchette', r.reel ? `Intervalle à ${r.confiance || '85 %'}, calibré` : `Estimation ± ${Math.round(100 * MAPE_MODELE)} % (démonstration)`])
+    if (mi.nFeatures) tech.push(['Variables', String(mi.nFeatures)])
     if (mi.trainedAt) tech.push(['Entraîné le', new Date(mi.trainedAt).toLocaleDateString('fr-FR')])
-    tech.push(["Données d'entraînement", `${nb(mi.nTrain ?? repli.nTrain)} transactions DVF 2021–2025`])
-    if (mi.nTest != null) tech.push(['Données de test', `${nb(mi.nTest)} transactions DVF 2025`])
+    if (mi.nTrain) tech.push(["Données d'entraînement", `${nb(mi.nTrain)} transactions DVF 2021–2025`])
+    if (mi.validation) tech.push(['Données de test', `${nb(mi.validation.n_test)} ventes jamais vues, ${periode(mi.validation.periode_test)}`])
     if (!r.reel && r.meta?.n_transactions) tech.push(['Transactions comparables', `${nb(r.meta.n_transactions)} ventes`])
     $('#rsai-detail-tech').innerHTML = tech.map(([l, v]) => `<tr><td>${l}</td><td class="n">${v}</td></tr>`).join('')
 
@@ -450,9 +480,21 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
     } catch { /* navigation privée */ }
   }
 
-  const ordre = Object.entries(SECTEURS).sort((a, b) => b[1].med - a[1].med)
+  let ordre = Object.entries(SECTEURS).sort((a, b) => b[1].med - a[1].med)
   const vignettes = [heroTour, heroVilla, heroBois, heroInterieur]
   let affiches = 0
+  async function chargerSecteursApi() {
+    try {
+      const r = await fetch(API.BASE + API.SECTEURS, { signal: AbortSignal.timeout(8000) })
+      if (!r.ok) return
+      const liste = await r.json()
+      if (!Array.isArray(liste) || !liste.length) return
+      ordre = liste.map((s) => [s.code, { ...s, eco: (s.eco || []).filter((x) => x != null) }])
+      $('#rsai-grille-marche').innerHTML = ''; affiches = 0
+      $('#rsai-charger').style.display = ''
+      chargerSecteurs()
+    } catch { /* on garde les secteurs de démonstration */ }
+  }
   function chargerSecteurs() {
     const grille = $('#rsai-grille-marche')
     ordre.slice(affiches, affiches + 8).forEach(([code, s], i) => {
@@ -464,6 +506,7 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
           <span class="puce">${v > 0 ? '+' : ''}${v.toFixed(1).replace('.', ',')} % depuis 2021</span></div>`
       b.addEventListener('click', () => {
         if ([...selecteur.options].some((o) => o.value === code)) selecteur.value = code
+        else if ([...selecteur.options].some((o) => o.value === s.nom)) selecteur.value = s.nom
         secteurCourant = code; $('#rsai-adresse').value = ''; estimer(true)
       })
       grille.appendChild(b)
@@ -502,7 +545,7 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
   if (params.get('secteur') && SECTEURS[params.get('secteur')]) selecteur.value = params.get('secteur')
   if ([...params.keys()].length) window.history.replaceState({}, '', window.location.pathname)
 
-  chargerSecteurs(); estimer(false); verifierApi()
+  chargerSecteurs(); estimer(false); verifierApi(); chargerSecteursApi()
 
   return () => { /* rien à nettoyer : le démontage du conteneur suffit */ }
 }
