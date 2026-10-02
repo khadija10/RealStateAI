@@ -10,6 +10,7 @@ Usage :
     python -m realstate_data.pipeline dpe         # télécharge les DPE du périmètre
     python -m realstate_data.pipeline iris-diagnostic  # vérifie le format des sources IRIS/INSEE
     python -m realstate_data.pipeline iris        # télécharge contours + statistiques IRIS
+    python -m realstate_data.pipeline bdnb        # télécharge et agrège la BDNB par parcelle
     python -m realstate_data.pipeline run         # les trois d'affilée
     python -m realstate_data.pipeline rapport     # journal de perte lisible
 """
@@ -63,7 +64,7 @@ def main(argv: list[str] | None = None) -> int:
         "commande",
         choices=["ingest", "silver", "gold", "qualite", "run", "rapport",
                  "dpe", "dpe-test", "dpe-diagnostic",
-                 "iris", "iris-diagnostic"],
+                 "iris", "iris-diagnostic", "bdnb"],
         help="étape à exécuter",
     )
     args = parseur.parse_args(argv)
@@ -146,6 +147,13 @@ def main(argv: list[str] | None = None) -> int:
         telecharger_logement(settings)
         log.info("Sources IRIS téléchargées. Relance 'pipeline gold' pour "
                  "les intégrer au dataset.")
+        return 0
+    if args.commande == "bdnb":
+        from realstate_data.enrichment.bdnb import preparer_bdnb, telecharger_bdnb
+
+        telecharger_bdnb(settings, departements=args.departements)
+        preparer_bdnb(settings)
+        log.info("BDNB prête. Relance 'pipeline gold' pour l'intégrer au dataset.")
         return 0
     if args.commande in ("silver", "run"):
         construire_silver(settings)

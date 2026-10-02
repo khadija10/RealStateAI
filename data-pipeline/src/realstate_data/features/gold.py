@@ -24,6 +24,7 @@ import duckdb
 from realstate_data.cleaning.silver import ouvrir_connexion
 from realstate_data.config import Settings, charger_settings
 from realstate_data.enrichment.dpe import enrichir_dpe
+from realstate_data.enrichment.bdnb import enrichir_bdnb
 from realstate_data.enrichment.iris import enrichir_iris
 from realstate_data.logging_conf import configurer_logging
 
@@ -35,6 +36,9 @@ MIN_VENTES_COMMUNE = 5
 
 # Nombre de mois de la fenêtre glissante des features de marché.
 FENETRE_MOIS = 12
+# Fenêtre des ventes du même immeuble : plus longue, car un immeuble compte
+# peu de ventes par an.
+FENETRE_IMMEUBLE_MOIS = 24
 
 
 def construire_gold(settings: Settings | None = None) -> dict:
@@ -259,6 +263,7 @@ def construire_gold(settings: Settings | None = None) -> dict:
             -- Adresse du logement : clé de jointure avec le DPE, et utile au
             -- backend pour l'affichage.
             b.adresse_numero, b.adresse_suffixe, b.adresse_nom_voie,
+            b.id_parcelle, b.lot1_numero,
             b.surface_bati, b.nb_pieces, b.surface_terrain, b.nb_parcelles,
             b.valeur_fonciere, b.prix_m2,
             mc.prix_m2_median_commune_12m,
@@ -289,6 +294,73 @@ def construire_gold(settings: Settings | None = None) -> dict:
               AND ml.mois_index = b.mois_index;
     """)
 
+    # --- 5b. Même immeuble et même logement --------------------------------
+    # La preuve qu'un agent montre à un vendeur, ce sont les ventes de
+    # l'immeuble. La parcelle cadastrale identifie l'immeuble (la copropriété) ;
+    # parcelle + numéro de lot identifient l'appartement lui-même.
+    #
+    # Les prix passés sont ramenés au marché du jour : on garde le RATIO
+    # prix / référence communale au moment de la vente passée, puis on le
+    # multiplie par la référence actuelle. Une vente de 2021 dans un immeuble
+    # n'est pas comparable telle quelle à une vente de 2025.
+    #
+    # Même règle anti-fuite que les features de marché : uniquement des
+    # mois strictement antérieurs à celui de la mutation.
+    con.execute(f"""
+        CREATE OR REPLACE TABLE immeuble AS
+        SELECT g.id_mutation,
+               median(h.prix_m2 / h.prix_m2_reference_12m)
+                   * any_value(g.prix_m2_reference_12m)   AS prix_m2_immeuble_indexe,
+               count(h.id_mutation)                       AS nb_ventes_immeuble
+        FROM gold g
+        JOIN gold h
+          ON h.id_parcelle = g.id_parcelle
+         AND h.code_type_local = g.code_type_local
+         AND h.mois_index BETWEEN g.mois_index - {FENETRE_IMMEUBLE_MOIS} AND g.mois_index - 1
+         AND h.prix_m2_reference_12m > 0
+        WHERE g.id_parcelle IS NOT NULL
+        GROUP BY g.id_mutation;
+    """)
+    # Revente : même parcelle, même lot (appartement) ou même parcelle sans
+    # lot (maison), surface à 10 % près pour écarter un autre logement qui
+    # partagerait le même numéro par erreur. On garde la vente la plus récente.
+    con.execute("""
+        CREATE OR REPLACE TABLE revente AS
+        SELECT g.id_mutation,
+               arg_max(h.prix_m2 / h.prix_m2_reference_12m, h.mois_index)
+                   * any_value(g.prix_m2_reference_12m)   AS prix_m2_precedent_indexe,
+               any_value(g.mois_index) - max(h.mois_index) AS mois_depuis_vente_precedente
+        FROM gold g
+        JOIN gold h
+          ON h.id_parcelle = g.id_parcelle
+         AND h.code_type_local = g.code_type_local
+         AND h.mois_index < g.mois_index
+         AND h.prix_m2_reference_12m > 0
+         AND abs(h.surface_bati - g.surface_bati) <= 0.10 * g.surface_bati
+         AND (h.lot1_numero = g.lot1_numero
+              OR (g.code_type_local = '1' AND g.lot1_numero IS NULL AND h.lot1_numero IS NULL))
+        WHERE g.id_parcelle IS NOT NULL
+        GROUP BY g.id_mutation;
+    """)
+    con.execute("""
+        CREATE OR REPLACE TABLE gold AS
+        SELECT g.*,
+               i.prix_m2_immeuble_indexe,
+               coalesce(i.nb_ventes_immeuble, 0) AS nb_ventes_immeuble,
+               r.prix_m2_precedent_indexe,
+               r.mois_depuis_vente_precedente
+        FROM gold g
+        LEFT JOIN immeuble i USING (id_mutation)
+        LEFT JOIN revente r USING (id_mutation);
+    """)
+    n_imm, n_rev = con.execute("""
+        SELECT count(prix_m2_immeuble_indexe), count(prix_m2_precedent_indexe) FROM gold
+    """).fetchone()
+    n_gold = con.execute("SELECT count(*) FROM gold").fetchone()[0]
+    log.info("Immeuble : %d ventes avec des ventes antérieures dans l'immeuble (%.1f %%), "
+             "%d reventes du même logement (%.1f %%)",
+             n_imm, 100 * n_imm / n_gold, n_rev, 100 * n_rev / n_gold)
+
     # Partitionné par année : l'équipe ML peut charger un seul millésime, et
     # découper train/test chronologiquement sans lire tout le dataset.
     # --- 6. Enrichissement DPE ---------------------------------------------
@@ -300,6 +372,11 @@ def construire_gold(settings: Settings | None = None) -> dict:
     # Colonnes toujours présentes : vides si les contours IRIS n'ont pas été
     # téléchargés, pour que le schéma du dataset ne varie jamais.
     bilan_iris = enrichir_iris(con, settings)
+
+    # --- 8. Enrichissement BDNB --------------------------------------------
+    # Caractéristiques de l'immeuble (niveaux, hauteur, matériaux...), par
+    # parcelle. Colonnes toujours présentes, même logique que DPE et IRIS.
+    bilan_bdnb = enrichir_bdnb(con, settings)
 
     sortie = settings.chemins.processed / "gold_transactions"
     con.execute(f"""
@@ -322,6 +399,7 @@ def construire_gold(settings: Settings | None = None) -> dict:
         "chemin": str(sortie),
         "dpe": bilan_dpe,
         "iris": bilan_iris,
+        "bdnb": bilan_bdnb,
     }
     _ecrire_empreinte(con, settings, rapport)
     log.info("Gold écrit : %s (%d lignes, %d sans référence de marché)",
