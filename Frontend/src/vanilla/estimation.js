@@ -1,7 +1,7 @@
 // Page "Estimation" — reprise quasi verbatim de l'artefact Claude Design
 // (https://claude.ai/artifact/A9YV2PZHfG1rWQh1GTccSo), rebranchée sur le
 // vrai backend FastAPI (estimation ML, communes, santé de l'API).
-import { heroEstimation, heroTour, heroVilla, heroInterieur, heroBois } from './illustrations-vanilla.js'
+import { heroEstimation } from './illustrations-vanilla.js'
 
 export const html = `
 <div class="fond-page" id="rsai-fond-page" aria-hidden="true"></div>
@@ -17,7 +17,7 @@ export const html = `
     <div class="rangee">
       <div class="critere">
         <div class="pic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.4"/></svg></div>
-        <div style="min-width:0;flex:1;position:relative"><label for="rsai-adresse">Adresse du bien <span class="indice">· active le modèle ML</span></label>
+        <div style="min-width:0;flex:1;position:relative"><label for="rsai-adresse" title="Une adresse précise active le modèle ML ; une commune seule donne la médiane des ventes comparables">Adresse du bien</label>
           <input id="rsai-adresse" type="text" placeholder="12 rue de la Paix, 75002 Paris" autocomplete="off"
             role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="rsai-suggestions">
           <input id="rsai-cp" type="hidden">
@@ -638,7 +638,15 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
   }
 
   let ordre = []
-  const vignettes = [heroTour, heroVilla, heroBois, heroInterieur]
+  // Même échelle et mêmes couleurs que la carte des prix (components/PriceMap.jsx)
+  const TRANCHES = [
+    { max: 3000, couleur: '#4ade80', libelle: 'moins de 3 000 €' },
+    { max: 5000, couleur: '#a3e635', libelle: '3 000 à 5 000 €' },
+    { max: 7000, couleur: '#facc15', libelle: '5 000 à 7 000 €' },
+    { max: 9000, couleur: '#fb923c', libelle: '7 000 à 9 000 €' },
+    { max: 12000, couleur: '#f87171', libelle: '9 000 à 12 000 €' },
+    { max: Infinity, couleur: '#dc2626', libelle: 'plus de 12 000 €' },
+  ]
   let affiches = 0
   async function chargerSecteursApi() {
     try {
@@ -656,11 +664,12 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
   }
   function chargerSecteurs() {
     const grille = $('#rsai-grille-marche')
-    ordre.slice(affiches, affiches + 8).forEach(([, s], i) => {
+    ordre.slice(affiches, affiches + 8).forEach(([, s]) => {
       const v = 100 * (s.eco[s.eco.length - 1] / s.eco[0] - 1)
       const b = document.createElement('button'); b.className = 'bien'; b.type = 'button'
-      b.innerHTML = `<div class="carte-img"><div class="illus">${vignettes[(affiches + i) % 4]()}</div></div>
-        <div class="prix">${nb(s.med)} €/m² · médiane</div><h4>${s.nom}</h4>
+      const t = TRANCHES.find((x) => s.med < x.max)
+      b.innerHTML = `<div class="carte-prix" style="--teinte:${t.couleur}"><b>${nb(s.med)} €/m²</b><span>médiane ${s.annee} · ${t.libelle}</span></div>
+        <h4>${s.nom}</h4>
         <div class="puces"><span class="puce">${nb(s.n)} ventes</span>
           <span class="puce">${v > 0 ? '+' : ''}${v.toFixed(1).replace('.', ',')} % depuis ${s.annees[0]}</span></div>`
       b.addEventListener('click', () => {
