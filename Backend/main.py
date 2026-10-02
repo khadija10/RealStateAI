@@ -261,6 +261,7 @@ class EstimationResponse(BaseModel):
     secteur: dict[str, Any] | None = None
     comparables_immeuble: list[dict[str, Any]] | None = None
     dpe_trouve: bool | None = None
+    code_postal: str | None = None
 
 
 class HealthResponse(BaseModel):
@@ -1080,9 +1081,15 @@ def estimate(
                     normalized.dpe_classe = req.dpe_classe or dpe_retrouve.get("dpe_classe")
                 if req.annee_construction or dpe_retrouve.get("annee_construction"):
                     normalized.annee_construction = req.annee_construction or dpe_retrouve.get("annee_construction")
-                dpe_zone = getattr(request.app.state, "dpe_zone", {})
-                if req.postal_code and req.postal_code in dpe_zone:
-                    normalized.dpe_zone_fg_pct = round(float(dpe_zone[req.postal_code]) * 100, 1)
+                # Part de passoires du code postal : saisi, sinon retrouvé par le géocodage
+                zone = ml_result.get("zone_part_dpe_fg") if isinstance(ml_result, dict) else None
+                if zone is None:
+                    dpe_zone = getattr(request.app.state, "dpe_zone", {})
+                    zone = dpe_zone.get(req.postal_code) if req.postal_code else None
+                if zone is not None:
+                    normalized.dpe_zone_fg_pct = round(float(zone) * 100, 1)
+                if isinstance(ml_result, dict) and ml_result.get("code_postal"):
+                    normalized.code_postal = ml_result["code_postal"]
                 try:
                     _adresse_norm = ml_result.get("adresse_normalisee") if isinstance(ml_result, dict) else None
                     _full_query = _adresse_norm or " ".join(filter(None, [req.address, req.postal_code, req.commune])).strip() or ""

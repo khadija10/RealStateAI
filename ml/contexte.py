@@ -83,7 +83,8 @@ def _gold(gold_path: Path) -> duckdb.DuckDBPyConnection:
         con = duckdb.connect()
         con.execute(f"""
             CREATE TABLE g AS
-            SELECT id_parcelle, code_type_local, code_commune, latitude, longitude, adresse_numero,
+            SELECT id_parcelle, code_type_local, code_commune, code_postal, zone_part_dpe_fg,
+                   latitude, longitude, adresse_numero,
                    date_mutation, mois_index, surface_bati, nb_pieces, valeur_fonciere,
                    prix_m2, prix_m2_reference_12m, lot1_numero, code_iris,
                    revenu_median_iris, part_logements_collectifs_iris, part_proprietaires_iris
@@ -161,6 +162,18 @@ def features_iris(latitude: float, longitude: float, code_commune: str,
         ORDER BY (latitude - ?)^2 + (longitude - ?)^2 LIMIT 1
     """, [code_commune, latitude, longitude]).fetchone()
     return dict(zip(cols, row)) if row else dict.fromkeys(cols)
+
+
+def zone_dpe(code_postal: str | None, gold_path: Path = GOLD_PATH) -> float | None:
+    """Part de passoires thermiques (F+G) du code postal, telle que calculée
+    par le pipeline (feature zone_part_dpe_fg) : sans elle, une estimation
+    faite sans code postal saisi recevait cette feature vide."""
+    if not code_postal or not Path(gold_path).exists():
+        return None
+    row = _gold(gold_path).execute(
+        "SELECT any_value(zone_part_dpe_fg) FROM g WHERE CAST(code_postal AS VARCHAR) = ? AND zone_part_dpe_fg IS NOT NULL",
+        [str(code_postal)]).fetchone()
+    return float(row[0]) if row and row[0] is not None else None
 
 
 def features_bdnb(id_parcelle: str | None, bdnb_path: Path = BDNB_PATH) -> dict:

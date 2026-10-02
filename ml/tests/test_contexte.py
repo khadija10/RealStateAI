@@ -40,6 +40,7 @@ def gold(tmp_path: Path) -> Path:
     df["date_mutation"] = pd.Timestamp("2025-01-01")
     df["code_commune"], df["latitude"], df["longitude"] = "75111", 48.86, 2.37
     df["adresse_numero"] = "12"
+    df["code_postal"], df["zone_part_dpe_fg"] = "75011", 0.12
     df.loc[df["id_parcelle"] == "P2", ["latitude", "revenu_median_iris"]] = [48.8601, 50_000.0]
     df["code_iris"] = "751114403"
     df["revenu_median_iris"] = df["revenu_median_iris"].fillna(30_000.0) if "revenu_median_iris" in df else 30_000.0
@@ -87,6 +88,15 @@ class TestImmeuble:
         assert r["prix_m2_immeuble_indexe"] is None
         assert r["nb_ventes_immeuble"] == 0
         assert r["comparables_immeuble"] == []
+
+
+class TestZoneDpe:
+    def test_part_de_passoires_du_code_postal(self, gold):
+        assert ctx.zone_dpe("75011", gold_path=gold) == pytest.approx(0.12)
+
+    def test_code_postal_inconnu(self, gold):
+        assert ctx.zone_dpe("99999", gold_path=gold) is None
+        assert ctx.zone_dpe(None, gold_path=gold) is None
 
 
 class TestBdnb:

@@ -98,6 +98,11 @@ def estimer_prix(
         gold_path=_GOLD_PATH,
     )
 
+    # Part de passoires du code postal : celle transmise par le backend, sinon
+    # celle du code postal retrouvé par le géocodage.
+    if zone_part_dpe_fg is None:
+        zone_part_dpe_fg = ctx.zone_dpe(geo.get("code_postal"))
+
     # Contexte du bien : parcelle, immeuble, quartier, bâtiment, DPE
     id_parcelle = ctx.parcelle_de(geo["latitude"], geo["longitude"],
                                   code_commune=geo["code_commune"], numero=geo.get("numero"))
@@ -149,6 +154,8 @@ def estimer_prix(
         "score_geocodage": geo["score"],
         "geocodage_incertain": geo.get("score_bas", False),
         "id_parcelle": id_parcelle,
+        "code_postal": geo.get("code_postal"),
+        "zone_part_dpe_fg": zone_part_dpe_fg,
         "comparables_immeuble": immeuble["comparables_immeuble"],
         "dpe_trouve": dpe["dpe_classe"] is not None,
         "dpe_classe": dpe_classe,
