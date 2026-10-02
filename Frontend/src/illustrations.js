@@ -52,8 +52,11 @@ export function heroEstimation() {
 /** Salon avec baie vitrée sur les toits au crépuscule — fond "Financement". */
 export function heroFinancement() {
   const m = id('m'), c = id('c'), s = id('s'), r = seeded(31)
+  // Baie vitrée pleine largeur (presque tout le bandeau), vue sur les toits
+  // au crépuscule — seule une fine bande de mur reste visible à gauche.
+  const winX = 60, winW = 1120
   let toits = ''
-  for (let x = 560, k = 0; x < 1220; k++) {
+  for (let x = winX + 20, k = 0; x < winX + winW - 20; k++) {
     const l = 40 + r() * 60, h = 60 + r() * 110, y = 420 - h
     toits += `<path d="M${x} 420 L${x} ${y + 12} L${x + 10} ${y} L${x + l - 10} ${y} L${x + l} ${y + 12} L${x + l} 420 Z" fill="#2A2233"/>`
     for (let j = 0; j < Math.floor(h / 26); j++)
@@ -61,20 +64,21 @@ export function heroFinancement() {
         if (r() > 0.55) toits += `<rect x="${x + 8 + i * 16}" y="${y + 18 + j * 24}" width="5" height="8" fill="#FFD28A" opacity="${(0.45 + r() * 0.5).toFixed(2)}"/>`
     x += l + 3
   }
+  const midX = Math.round(winX + winW * 0.54)
   return `<svg viewBox="0 0 1200 520" preserveAspectRatio="xMidYMid slice"><defs>
     <linearGradient id="${m}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5C4636"/><stop offset="1" stop-color="#2B2019"/></linearGradient>
     <linearGradient id="${c}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3E4A78"/><stop offset=".6" stop-color="#B7788A"/><stop offset="1" stop-color="#F0B27E"/></linearGradient>
     <radialGradient id="${s}" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#FFD9A0" stop-opacity=".55"/><stop offset="1" stop-color="#FFD9A0" stop-opacity="0"/></radialGradient></defs>
     <rect width="1200" height="520" fill="url(#${m})"/>
-    <rect x="540" y="40" width="640" height="380" fill="url(#${c})"/>${toits}
-    <rect x="540" y="40" width="640" height="6" fill="#1E1611"/><rect x="856" y="40" width="7" height="380" fill="#1E1611"/>
-    <rect x="540" y="414" width="640" height="8" fill="#1E1611"/>
+    <rect x="${winX}" y="40" width="${winW}" height="380" fill="url(#${c})"/>${toits}
+    <rect x="${winX}" y="40" width="${winW}" height="6" fill="#1E1611"/><rect x="${midX}" y="40" width="7" height="380" fill="#1E1611"/>
+    <rect x="${winX}" y="414" width="${winW}" height="8" fill="#1E1611"/>
     <rect y="440" width="1200" height="80" fill="#231A14"/>
-    <rect x="600" y="360" width="380" height="96" rx="22" fill="#CDBBA6"/>
-    <rect x="618" y="330" width="344" height="52" rx="20" fill="#DFCFBB"/>
-    <line x1="1080" y1="210" x2="1080" y2="448" stroke="#15100C" stroke-width="4"/>
-    <ellipse cx="1080" cy="204" rx="38" ry="18" fill="#F6DDA8"/>
-    <circle cx="1080" cy="230" r="110" fill="url(#${s})"/>
+    <rect x="590" y="360" width="560" height="96" rx="22" fill="#CDBBA6"/>
+    <rect x="616" y="330" width="500" height="52" rx="20" fill="#DFCFBB"/>
+    <line x1="1120" y1="210" x2="1120" y2="448" stroke="#15100C" stroke-width="4"/>
+    <ellipse cx="1120" cy="204" rx="38" ry="18" fill="#F6DDA8"/>
+    <circle cx="1120" cy="230" r="110" fill="url(#${s})"/>
   </svg>`
 }
 

@@ -54,7 +54,7 @@ export const html = `
 <section class="graphe">
   <div class="graphe-tete">
     <h3>Trajectoire <em>du prix au m²</em></h3>
-    <div class="legende">
+    <div class="legende-graphe">
       <span><i style="background:var(--encre)"></i>Observé</span>
       <span><i style="background:var(--rouge)"></i>Bas</span>
       <span><i style="background:var(--taupe)"></i>Central</span>

@@ -73,7 +73,7 @@ export const html = `
     </div>
   </div>
 
-  <div class="clair">
+  <div class="clair clair-grid">
     <div class="bloc">
       <div class="bloc-tete"><h3>Fiabilité <em>de l'estimation</em></h3><span id="rsai-src-modele"></span></div>
       <div class="fiab">
@@ -97,27 +97,12 @@ export const html = `
     <div class="bloc">
       <div class="bloc-tete"><h3>Plus-value <em>projetée</em></h3><span>scénario central · 10 ans</span></div>
       <p class="fiab-txt" id="rsai-pv-resume"></p>
-      <button type="button" class="charger" id="rsai-pv-voir" style="margin-top:14px">Simuler la plus-value de ce bien →</button>
+      <button type="button" class="bouton-accent" id="rsai-pv-voir" style="margin-top:14px">Simuler la plus-value de ce bien →</button>
     </div>
   </div>
 </section>
 
-<h2 class="titre-section" style="margin-top:86px">Vos <em>estimations</em> récentes</h2>
-<section class="histo" id="rsai-histo"></section>
-
-<section class="services" id="rsai-services">
-  <div class="carte-img"><div class="illus" data-illus="tour"></div>
-    <div class="legende"><em>Estimation</em><small>Prix au m² et position dans le secteur</small></div></div>
-  <div class="carte-img"><div class="illus" data-illus="villa"></div>
-    <div class="legende"><em>Plus-value</em><small>Projection à horizon N années</small></div></div>
-  <div class="carte-img brune"><div class="illus" data-illus="interieur"></div>
-    <div class="fleche"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#141311" stroke-width="2.2"><path d="M7 17L17 7M8 7h9v9"/></svg></div>
-    <div class="legende"><em>Financement</em><small>Capacité, plan, dossier de prêt</small></div></div>
-  <div class="carte-img"><div class="illus" data-illus="bois"></div>
-    <div class="legende"><em>Énergie</em><small>DPE de 3,5 millions de logements</small></div></div>
-</section>
-
-<h2 class="titre-section" id="rsai-marche" style="margin-top:96px">Le marché <em>par secteur</em></h2>
+<h2 class="titre-section" id="rsai-marche">Le marché <em>par secteur</em></h2>
 <section class="marche" id="rsai-grille-marche"></section>
 <button class="charger" id="rsai-charger">Voir plus de secteurs</button>
 
@@ -173,10 +158,8 @@ export function mount(root, { apiBase = '', onPlusValue } = {}) {
 
   let secteurCourant = '75111'
   let dernierBien = null
-  const DESSINS = { tour: heroTour, villa: heroVilla, interieur: heroInterieur, bois: heroBois }
   $('#illus-heros').innerHTML = heroEstimation()
   $('#illus-resultat').innerHTML = heroInterieur()
-  $$('[data-illus]').forEach((el) => { el.innerHTML = DESSINS[el.dataset.illus]() })
 
   const selecteur = $('#rsai-secteur')
   for (const [code, s] of Object.entries(SECTEURS)) {
@@ -355,6 +338,8 @@ export function mount(root, { apiBase = '', onPlusValue } = {}) {
         <text x="${x(i)}" y="${H - 2}" text-anchor="middle" font-size="10.5" font-family="Inter,sans-serif" fill="var(--gris)">${ANNEES[i]}</text>`).join('')}</svg>`
   }
 
+  // Historique local (clé lue par l'onglet "Historique" de l'application,
+  // voir components/History.jsx) — plus affiché directement sur cette page.
   const CLE = 'rsai_historique'
   function lireHisto() { try { return JSON.parse(localStorage.getItem(CLE) || '[]') } catch { return [] } }
   function memoriser(x) {
@@ -362,17 +347,6 @@ export function mount(root, { apiBase = '', onPlusValue } = {}) {
       const h = [{ ...x, created_at: new Date().toISOString() }, ...lireHisto()].slice(0, 6)
       localStorage.setItem(CLE, JSON.stringify(h))
     } catch { /* navigation privée */ }
-    afficherHisto()
-  }
-  function afficherHisto() {
-    const h = lireHisto(), cible = $('#rsai-histo')
-    if (!h.length) { cible.innerHTML = `<p class="vide">Vos estimations apparaîtront ici.</p>`; return }
-    cible.innerHTML = h.map((x) => {
-      const d = new Date(x.created_at)
-      return `<div class="histo-ligne"><span class="q">${x.query}</span>
-        <span class="d">${x.area_m2} m² · ${d.toLocaleDateString('fr-FR')} ${d.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}</span>
-        <span class="p">${euro(x.prix)}</span></div>`
-    }).join('')
   }
 
   const ordre = Object.entries(SECTEURS).sort((a, b) => b[1].med - a[1].med)
@@ -405,7 +379,7 @@ export function mount(root, { apiBase = '', onPlusValue } = {}) {
   ;['rsai-type', 'rsai-secteur'].forEach((i) => $('#' + i).addEventListener('change', () => estimer(false)))
   ;['rsai-surface', 'rsai-pieces'].forEach((i) => $('#' + i).addEventListener('input', () => estimer(false)))
 
-  chargerSecteurs(); afficherHisto(); estimer(false); verifierApi()
+  chargerSecteurs(); estimer(false); verifierApi()
 
   return () => { /* rien à nettoyer : le démontage du conteneur suffit */ }
 }

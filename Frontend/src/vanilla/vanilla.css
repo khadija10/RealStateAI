@@ -17,7 +17,7 @@
   font-size:15px;
   line-height:1.55;
   -webkit-font-smoothing:antialiased;
-  max-width:1240px;
+  max-width:1480px;
   margin:0 auto;
   padding:0 0 40px;
 }
@@ -35,10 +35,10 @@
 .rsai-vanilla .illus svg { display:block; width:100%; height:100%; }
 
 /* ---------- héros ---------- */
-.rsai-vanilla .heros{position:relative;border-radius:28px;overflow:hidden;min-height:560px;background:#8BA3C0;isolation:isolate}
+.rsai-vanilla .heros{position:relative;border-radius:28px;overflow:hidden;min-height:400px;background:#8BA3C0;isolation:isolate}
 .rsai-vanilla .heros .illus{position:absolute;inset:0;z-index:-1}
 .rsai-vanilla .heros::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(15,20,30,.34) 0%,rgba(15,20,30,0) 38%,rgba(15,20,30,0) 66%,rgba(15,20,30,.3) 100%)}
-.rsai-vanilla .heros.heros-simple{min-height:470px}
+.rsai-vanilla .heros.heros-simple{min-height:340px}
 .rsai-vanilla .heros.heros-simple::after{background:linear-gradient(90deg,rgba(20,14,10,.62) 0%,rgba(20,14,10,.2) 58%,rgba(20,14,10,0) 100%)}
 .rsai-vanilla .etat-api{position:absolute;top:20px;right:20px;display:flex;align-items:center;gap:7px;background:rgba(255,255,255,.92);color:var(--encre);font-size:11.5px;padding:7px 13px;border-radius:999px}
 .rsai-vanilla .etat-api i{width:7px;height:7px;border-radius:50%;background:var(--ambre)}
@@ -61,16 +61,16 @@
 .rsai-vanilla .estimer:hover{transform:scale(1.03)}
 .rsai-vanilla .estimer:disabled{opacity:.5;cursor:default;transform:none}
 @media (max-width:980px){
-  .rsai-vanilla .heros{min-height:820px}
+  .rsai-vanilla .heros{min-height:680px}
   .rsai-vanilla .critere{flex:1 1 44%}.rsai-vanilla .critere+.critere{border-left:none}
   .rsai-vanilla .estimer{flex:1 1 100%;margin-top:6px}
 }
 @media (max-width:640px){
-  .rsai-vanilla .heros.heros-simple{min-height:560px}
+  .rsai-vanilla .heros.heros-simple{min-height:460px}
 }
 
 /* ---------- manifeste ---------- */
-.rsai-vanilla .manifeste{display:grid;grid-template-columns:200px 1fr;gap:30px;padding:86px 26px 60px;max-width:1080px;margin:0 auto}
+.rsai-vanilla .manifeste{display:grid;grid-template-columns:200px 1fr;gap:30px;padding:48px 26px 40px;max-width:1240px;margin:0 auto}
 .rsai-vanilla .manifeste .etiq{font-size:12px;color:var(--gris);padding-top:10px}
 .rsai-vanilla .manifeste h2{margin:0;font-weight:400;font-size:clamp(23px,3.1vw,36px);line-height:1.22;letter-spacing:-.015em}
 .rsai-vanilla .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:24px;margin-top:56px}
@@ -80,7 +80,7 @@
 
 /* ---------- titres de section ---------- */
 .rsai-vanilla .titre-section{font-weight:400;font-size:clamp(30px,4.3vw,50px);letter-spacing:-.02em;margin:0 0 24px;padding:0 8px}
-.rsai-vanilla h2.titre-section{margin-top:84px}
+.rsai-vanilla h2.titre-section{margin-top:52px}
 .rsai-vanilla .sous{font-size:14px;color:var(--gris);margin:-16px 8px 26px;max-width:640px}
 
 /* ---------- résultat (carte sombre + carte claire) ---------- */
@@ -109,8 +109,18 @@
 .rsai-vanilla .mensualite small{font-family:var(--sans);font-style:normal;font-size:16px;opacity:.8;margin-left:6px}
 
 .rsai-vanilla .clair{background:var(--blanc);border-radius:24px;padding:28px}
-.rsai-vanilla .bloc+.rsai-vanilla .bloc{border-top:1px solid var(--ligne);margin-top:22px;padding-top:22px}
 .rsai-vanilla .bloc+.bloc{border-top:1px solid var(--ligne);margin-top:22px;padding-top:22px}
+
+/* Carte claire du résultat : 2 colonnes sur grand écran pour réduire la
+   hauteur totale de la section (le dernier bloc — plus-value — s'étend
+   sur toute la largeur). */
+@media (min-width:860px){
+  .rsai-vanilla .resultat .sombre{min-height:400px}
+  .rsai-vanilla .clair-grid{display:grid;grid-template-columns:1fr 1fr;column-gap:28px}
+  .rsai-vanilla .clair-grid .bloc:nth-child(2){border-top:none;margin-top:0;padding-top:0}
+  .rsai-vanilla .clair-grid .bloc:last-child{grid-column:1/-1}
+}
+
 .rsai-vanilla .bloc-tete{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:14px}
 .rsai-vanilla .bloc-tete h3{margin:0;font-weight:400;font-size:23px;letter-spacing:-.01em}
 .rsai-vanilla .bloc-tete span{font-size:12px;color:var(--gris)}
@@ -131,19 +141,8 @@
 .rsai-vanilla .fiab-txt{font-size:13px;color:var(--gris);line-height:1.6}
 .rsai-vanilla .fiab-txt b{color:var(--encre);font-weight:600}
 
-/* ---------- services (vignettes) ---------- */
-.rsai-vanilla .services{display:grid;grid-template-columns:1.2fr 1fr .8fr 1fr;gap:12px;margin-top:86px;align-items:end}
 .rsai-vanilla .carte-img{position:relative;border-radius:20px;overflow:hidden;background:var(--sable)}
 .rsai-vanilla .carte-img .illus{position:absolute;inset:0}
-.rsai-vanilla .services .carte-img:nth-child(1){height:300px}
-.rsai-vanilla .services .carte-img:nth-child(2){height:250px}
-.rsai-vanilla .services .carte-img:nth-child(3){height:290px}
-.rsai-vanilla .services .carte-img:nth-child(4){height:230px}
-.rsai-vanilla .legende{position:absolute;left:18px;bottom:16px;right:18px;color:#fff;font-size:22px;line-height:1.05;text-shadow:0 1px 12px rgba(0,0,0,.28)}
-.rsai-vanilla .legende small{display:block;font-family:var(--sans);font-style:normal;font-size:11.5px;margin-top:6px;opacity:.86;text-shadow:none}
-.rsai-vanilla .fleche{position:absolute;top:14px;right:14px;width:34px;height:34px;border-radius:50%;background:var(--blanc);display:grid;place-items:center}
-.rsai-vanilla .carte-img.brune{background:var(--brun)}
-@media (max-width:860px){.rsai-vanilla .services{grid-template-columns:1fr 1fr}.rsai-vanilla .services .carte-img:nth-child(n){height:230px}}
 
 /* ---------- marché ---------- */
 .rsai-vanilla .marche{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
@@ -156,6 +155,8 @@
 .rsai-vanilla .bien h4{margin:0 0 9px;font-family:var(--serif);font-style:italic;font-weight:400;font-size:23px;line-height:1.1}
 .rsai-vanilla .puces{display:flex;gap:6px;flex-wrap:wrap}
 .rsai-vanilla .charger{display:block;width:100%;margin:24px 0 0;background:var(--blanc);border:1px solid var(--ligne);border-radius:999px;padding:13px;font:500 13px var(--sans);color:var(--encre);cursor:pointer}
+.rsai-vanilla .bouton-accent{display:block;width:100%;background:var(--ambre);border:none;border-radius:999px;padding:14px;font:600 13.5px var(--sans);color:#fff;cursor:pointer;transition:transform .15s,background .15s}
+.rsai-vanilla .bouton-accent:hover{background:var(--brun);transform:scale(1.015)}
 
 /* ---------- historique ---------- */
 .rsai-vanilla .histo{background:var(--blanc);border-radius:24px;padding:26px 28px}
@@ -166,7 +167,7 @@
 .rsai-vanilla .histo-ligne .p{font-family:var(--serif);font-style:italic;font-size:21px;white-space:nowrap}
 .rsai-vanilla .vide{font-size:13px;color:var(--gris);padding:14px 0}
 
-.rsai-vanilla .bas{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:76px;padding:26px 8px 0;border-top:1px solid var(--ligne);font-size:12px;color:var(--gris)}
+.rsai-vanilla .bas{display:flex;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-top:48px;padding:26px 8px 0;border-top:1px solid var(--ligne);font-size:12px;color:var(--gris)}
 
 /* ---------- simulateurs (financement / plus-value) ---------- */
 .rsai-vanilla .simu{display:grid;grid-template-columns:minmax(0,.9fr) minmax(0,1.1fr);gap:14px}
@@ -253,9 +254,9 @@
 .rsai-vanilla .graphe{background:var(--blanc);border-radius:24px;padding:26px 26px 18px;margin-top:14px}
 .rsai-vanilla .graphe-tete{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:10px}
 .rsai-vanilla .graphe-tete h3{margin:0;font-weight:400;font-size:26px}
-.rsai-vanilla .legende{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--gris)}
-.rsai-vanilla .legende span{display:flex;align-items:center;gap:6px}
-.rsai-vanilla .legende i{width:18px;height:3px;border-radius:2px}
+.rsai-vanilla .legende-graphe{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--gris)}
+.rsai-vanilla .legende-graphe span{display:flex;align-items:center;gap:6px}
+.rsai-vanilla .legende-graphe i{width:18px;height:3px;border-radius:2px}
 
 .rsai-vanilla .deux{display:grid;grid-template-columns:1fr 1fr;gap:14px}
 @media (max-width:900px){.rsai-vanilla .deux{grid-template-columns:1fr}}
