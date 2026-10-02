@@ -129,6 +129,39 @@ Règle de décision : la fourchette est **tenue si les trois critères le sont**
 La couverture et la largeur sont publiées ensemble : une couverture élevée
 obtenue avec une fourchette trop large ne compte pas.
 
+## 8. Addendum — 2 octobre 2026 : validation du modèle v2 (avant mesure)
+
+**Objet.** Valider le modèle v2 (ventes du même immeuble, BDNB, cible log et
+perte de Huber, fourchette calibrée) avant la soutenance du 6 octobre 2026.
+
+**Modèle figé.** Code au commit `c77b014` (configuration `ml/config.yaml`),
+script d'évaluation au commit `bad9d10`, dataset gold d'empreinte
+`9a6c3409791e6905` (721 674 ventes, généré le 2 octobre 2026). Aucun réglage
+ne sera modifié après la mesure.
+
+**Découpage.** Identique à la section 2 : entraînement jusqu'à juin 2025,
+validation juillet–septembre 2025 (arrêt anticipé et calibration de la
+fourchette), **test octobre–décembre 2025, mesure unique**.
+
+**Critères.** Inchangés : objectif global de la section 4 (≥ 50 % à ±10 %,
+≥ 80 % à ±20 %), classement de la section 5, fourchette de la section 6 ter
+appliquée à la fourchette **calibrée**, celle qu'affiche l'application.
+
+**Pourquoi ce test reste valable — et ses deux réserves.** Tous les choix du
+v2 (features, transformation, perte, hyperparamètres) ont été faits sur la
+période juillet–septembre 2025, jamais en regardant octobre–décembre. Réserves
+déclarées :
+
+1. octobre–décembre 2025 a déjà servi à **mesurer** le modèle v1 (sections
+   4 à 6 ter). Mesurer un autre modèle ne règle rien du v2 ;
+2. l'entraînement de production du v2 (`ml/train.py`) utilise ces 3 mois pour
+   son arrêt anticipé et a affiché ses métriques ; ce passage a eu lieu
+   **après** le gel des choix, et aucun réglage n'a été modifié ensuite.
+
+**Règle.** Le résultat est publié tel quel, objectif atteint ou non
+(`docs/resultats_protocole_v2_2025-10_2025-12.md` et
+`docs/resultats_fourchette_v2_2025-10_2025-12.json`).
+
 ## 7. Exécution
 
 ```bash
