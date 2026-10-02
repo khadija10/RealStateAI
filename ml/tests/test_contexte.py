@@ -150,3 +150,15 @@ class TestParcelle:
     def test_reseau_indisponible(self):
         with patch.object(ctx, "_get_json", return_value=None):
             assert ctx.parcelle_de(48.8566, 2.3522) is None
+
+
+class TestSignatureEstimateur:
+    def test_code_postal_facultatif(self):
+        """Le formulaire principal n'a pas de champ code postal : l'estimateur
+        doit accepter une adresse seule, sinon tout retombe sur le repli DVF."""
+        import inspect
+
+        import estimator
+        params = inspect.signature(estimator.estimer_prix).parameters
+        assert params["code_postal"].default is None
+        assert params["surface_m2"].kind is inspect.Parameter.KEYWORD_ONLY

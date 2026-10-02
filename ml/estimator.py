@@ -52,7 +52,8 @@ _GOLD_PATH = str(
 
 def estimer_prix(
     adresse: str,
-    code_postal: str | None,
+    code_postal: str | None = None,
+    *,
     surface_m2: float,
     nb_pieces: float,
     type_bien: str,
