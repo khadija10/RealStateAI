@@ -94,6 +94,11 @@ export const html = `
       <div class="bloc-tete"><h3>Détail <em>du calcul</em></h3></div>
       <table><tbody id="rsai-detail"></tbody></table>
     </div>
+    <div class="bloc">
+      <div class="bloc-tete"><h3>Plus-value <em>projetée</em></h3><span>scénario central · 10 ans</span></div>
+      <p class="fiab-txt" id="rsai-pv-resume"></p>
+      <button type="button" class="charger" id="rsai-pv-voir" style="margin-top:14px">Simuler la plus-value de ce bien →</button>
+    </div>
   </div>
 </section>
 
@@ -156,7 +161,7 @@ const MAPE_MODELE = 0.164
 const euro = (n) => Math.round(n).toLocaleString('fr-FR') + ' €'
 const nb = (n) => Math.round(n).toLocaleString('fr-FR')
 
-export function mount(root, { apiBase = '' } = {}) {
+export function mount(root, { apiBase = '', onPlusValue } = {}) {
   const API = {
     BASE: apiBase,
     COMMUNES: '/api/metadata/communes',
@@ -167,6 +172,7 @@ export function mount(root, { apiBase = '' } = {}) {
   const $$ = (sel) => root.querySelectorAll(sel)
 
   let secteurCourant = '75111'
+  let dernierBien = null
   const DESSINS = { tour: heroTour, villa: heroVilla, interieur: heroInterieur, bois: heroBois }
   $('#illus-heros').innerHTML = heroEstimation()
   $('#illus-resultat').innerHTML = heroInterieur()
@@ -309,6 +315,16 @@ export function mount(root, { apiBase = '' } = {}) {
       : `<tr><td>Médiane du secteur, 2025</td><td class="n">${nb(r.base)} €/m²</td></tr>` +
         (r.facteurs || []).map(([l, f]) => `<tr><td>${l}</td><td class="n">${f >= 1 ? '+' : ''}${Math.round((f - 1) * 100)} %</td></tr>`).join('') +
         `<tr><td><em style="font-size:17px">Prix au m² retenu</em></td><td class="n"><b>${nb(r.prix_m2)} €</b></td></tr>`
+
+    // Projection de plus-value à 10 ans, scénario central (tendance 2021-2025
+    // du secteur), pour amorcer le lien vers le simulateur dédié.
+    const tendance = Math.pow(s.eco[4] / s.eco[0], 1 / 4) - 1
+    const revente10 = r.valeur * Math.pow(1 + tendance, 10)
+    const pv10 = revente10 - r.valeur
+    $('#rsai-pv-resume').innerHTML =
+      `Au rythme observé sur ce secteur depuis 2021 (<b>${v >= 0 ? '+' : ''}${(100 * tendance).toFixed(1).replace('.', ',')} %/an</b>), ` +
+      `ce bien pourrait valoir <b>${euro(revente10)}</b> dans 10 ans, soit ${pv10 >= 0 ? 'une plus-value brute de' : 'une moins-value de'} <b>${euro(Math.abs(pv10))}</b> avant fiscalité.`
+    dernierBien = { secteur: secteurCourant, prix: Math.round(r.valeur) }
   }
 
   function anneau(f) {
@@ -382,6 +398,9 @@ export function mount(root, { apiBase = '' } = {}) {
   }
 
   $('#rsai-charger').addEventListener('click', chargerSecteurs)
+  $('#rsai-pv-voir').addEventListener('click', () => {
+    if (dernierBien && onPlusValue) onPlusValue(dernierBien)
+  })
   $('#formulaire').addEventListener('submit', (e) => { e.preventDefault(); estimer(true) })
   ;['rsai-type', 'rsai-secteur'].forEach((i) => $('#' + i).addEventListener('change', () => estimer(false)))
   ;['rsai-surface', 'rsai-pieces'].forEach((i) => $('#' + i).addEventListener('input', () => estimer(false)))

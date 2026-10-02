@@ -6,20 +6,20 @@ import { useEffect, useRef } from 'react'
  * (src/vanilla/vanilla.css) est scopé sous `.rsai-vanilla` et importé une
  * fois globalement — il ne dépend pas de ce composant.
  */
-export default function VanillaPage({ page, apiBase }) {
+export default function VanillaPage({ page, apiBase, options }) {
   const rootRef = useRef(null)
 
   useEffect(() => {
     const root = rootRef.current
     if (!root) return
     root.innerHTML = page.html
-    const cleanup = page.mount(root, { apiBase })
+    const cleanup = page.mount(root, { apiBase, ...options })
     return () => {
       cleanup?.()
       root.innerHTML = ''
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [page])
+  }, [page, apiBase, JSON.stringify(options)])
 
   return <div className="rsai-vanilla" ref={rootRef} />
 }

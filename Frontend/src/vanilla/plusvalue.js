@@ -199,7 +199,7 @@ const k = (n) => (n / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 0 }
 const pct = (x, d = 1) => (x > 0 ? '+' : '') + (100 * x).toFixed(d).replace('.', ',') + ' %'
 const COULEURS = ['var(--rouge)', 'var(--taupe)', 'var(--vert)']
 
-export function mount(root) {
+export function mount(root, { prefill } = {}) {
   const $ = (sel) => root.querySelector(sel)
   let usage = 'rp', choixScen = 1
 
@@ -209,8 +209,18 @@ export function mount(root) {
   const sel = $('#pv-secteur')
   for (const [c, s] of Object.entries(SECTEURS)) {
     const o = document.createElement('option'); o.value = c; o.textContent = s.nom
-    if (c === '75111') o.selected = true
+    if (c === (prefill?.secteur in SECTEURS ? prefill.secteur : '75111')) o.selected = true
     sel.appendChild(o)
+  }
+
+  // Préremplissage depuis l'onglet Estimation : « simuler la plus-value de
+  // CE bien », prix et secteur réels, achat supposé cette année.
+  if (prefill?.prix) {
+    const prix = $('#pv-prix')
+    prix.value = Math.min(+prix.max, Math.max(+prix.min, Math.round(prefill.prix / 5000) * 5000))
+    const anneeSel = $('#pv-annee')
+    const anneeActuelle = String(new Date().getFullYear())
+    if ([...anneeSel.options].some((o) => o.value === anneeActuelle)) anneeSel.value = anneeActuelle
   }
 
   function calculer() {

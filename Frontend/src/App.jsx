@@ -31,6 +31,7 @@ export default function App() {
   const [showAuthModal, setShowAuthModal] = useState(false)
   const [datasetInfo, setDatasetInfo] = useState(null)
   const [historyKey, setHistoryKey] = useState(0)
+  const [plusValuePrefill, setPlusValuePrefill] = useState(null)
   const [dpeInfo, setDpeInfo] = useState(null)
   const [darkMode, setDarkMode] = useState(() => {
     try { return localStorage.getItem('reai_theme') === 'dark' } catch { return false }
@@ -118,7 +119,11 @@ export default function App() {
         {/* ONGLET ESTIMATION — reprise de l'artefact Claude Design, rebranchée sur le backend */}
         {activeTab === 'estimation' && (
           <div className="max-w-5xl w-full mx-auto px-4 sm:px-6 py-8">
-            <VanillaPage page={estimationPage} apiBase={API_BASE} />
+            <VanillaPage
+              page={estimationPage}
+              apiBase={API_BASE}
+              options={{ onPlusValue: (bien) => { setPlusValuePrefill(bien); setActiveTab('plusvalue') } }}
+            />
           </div>
         )}
 
@@ -132,7 +137,7 @@ export default function App() {
         {/* ONGLET PLUS-VALUE — calculateur local (scénarios + fiscalité CGI) */}
         {activeTab === 'plusvalue' && (
           <div className="max-w-5xl w-full mx-auto px-4 sm:px-6 py-8">
-            <VanillaPage page={plusvaluePage} apiBase={API_BASE} />
+            <VanillaPage page={plusvaluePage} apiBase={API_BASE} options={{ prefill: plusValuePrefill }} />
           </div>
         )}
 

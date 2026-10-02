@@ -198,6 +198,119 @@ export function mount(root, { apiBase = '' } = {}) {
     return r.json()
   }
 
+  // ---- Repli local : barème HCSF simplifié, utilisé uniquement quand le
+  // backend de financement est injoignable. Remplit les mêmes champs que
+  // la réponse réelle de /api/financing/dossier pour que afficherDossier()
+  // n'ait pas à distinguer les deux sources.
+  const BAREME = {
+    taux: { 15: 0.0295, 20: 0.031, 25: 0.033 },
+    assurance: 0.0034,
+    dmto: { plein: 0.05, reduit: 0.045, communale: 0.012, assiette: 0.0237 },
+    emoluments: { tva: 0.2, tranches: [[6500, 0.0387], [17000, 0.01596], [60000, 0.01064], [Infinity, 0.00799]] },
+    csi: 0.001, debours: 1200,
+    credit: { dossierTaux: 0.01, dossierMin: 500, dossierMax: 1500, caution: 0.012 },
+    rav: { premier: 900, supplementaire: 400, enfant: 300 },
+  }
+  function tauxIndicatif(duree) {
+    const cles = Object.keys(BAREME.taux).map(Number)
+    const proche = cles.reduce((a, b) => (Math.abs(b - duree) < Math.abs(a - duree) ? b : a))
+    return BAREME.taux[proche]
+  }
+  function mensualiteCredit(capital, taux, annees) {
+    if (capital <= 0 || annees <= 0) return 0
+    const n = annees * 12
+    if (taux === 0) return capital / n
+    const i = taux / 12
+    return (capital * i) / (1 - Math.pow(1 + i, -n))
+  }
+  function emoluments(prix) {
+    let total = 0, plancher = 0
+    for (const [plafond, taux] of BAREME.emoluments.tranches) {
+      const borne = Math.min(prix, plafond)
+      if (borne > plancher) { total += (borne - plancher) * taux; plancher = borne }
+      if (prix <= plafond) break
+    }
+    return total * (1 + BAREME.emoluments.tva)
+  }
+  function calculLocal(p) {
+    const d = BAREME.dmto
+    const depPrimo = p.primo ? d.reduit : d.plein
+    const tauxDmto = depPrimo + d.communale + depPrimo * d.assiette
+    const droits = p.prix * tauxDmto, emo = emoluments(p.prix), csi = p.prix * BAREME.csi
+    const totalAcq = droits + emo + csi + BAREME.debours
+
+    const besoin = p.prix + totalAcq
+    const emprunt = Math.max(0, besoin - p.apport)
+    const taux = tauxIndicatif(p.duree)
+    const dossier = Math.min(Math.max(emprunt * BAREME.credit.dossierTaux, BAREME.credit.dossierMin), BAREME.credit.dossierMax)
+    const garantie = emprunt * BAREME.credit.caution
+    const empruntTotal = emprunt + dossier + garantie
+
+    const mCredit = mensualiteCredit(empruntTotal, taux, p.duree)
+    const mAssurance = (empruntTotal * BAREME.assurance) / 12
+    const mensualite = mCredit + mAssurance
+    const n = p.duree * 12
+    const interets = mCredit * n - empruntTotal
+    const coutTotalCredit = interets + mAssurance * n
+
+    const revenus = p.revenus
+    const endettement = revenus > 0 ? (mensualite + p.charges) / revenus : 1
+    const ravMin = BAREME.rav.premier + BAREME.rav.supplementaire * Math.max(0, p.adultes - 1) + BAREME.rav.enfant * p.enfants
+    const ravDispo = revenus - mensualite - p.charges
+    const conforme = endettement <= 0.35 && p.duree <= 25 && ravDispo >= ravMin
+
+    const nEndett = endettement <= 0.2 ? 1 : endettement >= 0.35 ? 0 : (0.35 - endettement) / 0.15
+    const nApport = Math.min(1, (p.apport / besoin) / 0.2)
+    const nRav = ravMin <= 0 ? 1 : ravDispo <= ravMin ? Math.max(0, (ravDispo / ravMin) * 0.5) : Math.min(1, 0.5 + 0.5 * ((ravDispo - ravMin) / ravMin))
+    const nStab = { CDI: 1, fonctionnaire: 1, CDD: 0.45, independant: 0.6, interim: 0.3 }[p.situation] ?? 0.5
+    const score = Math.round(nEndett * 30 + nApport * 25 + nRav * 20 + nStab * 15 + 0.5 * 10)
+
+    const PIECES_COMMUNES = ["Pièce d'identité en cours de validité", 'Justificatif de domicile de moins de 3 mois',
+      '3 derniers relevés de tous les comptes bancaires', "Dernier avis d'imposition", "Justificatif de l'apport personnel et de sa provenance", 'Compromis de vente signé']
+    const PAR_SITUATION = {
+      CDI: ['3 derniers bulletins de salaire', 'Contrat de travail', "Attestation employeur de non-période d'essai"],
+      fonctionnaire: ['3 derniers bulletins de salaire', 'Arrêté de titularisation'],
+      CDD: ['12 derniers bulletins de salaire', 'Contrat en cours'],
+      independant: ['3 derniers bilans', "2 derniers avis d'imposition", 'Extrait Kbis'],
+      interim: ['12 derniers bulletins de salaire', "Attestation de l'agence"],
+    }
+    const pieces = [...PIECES_COMMUNES, ...(PAR_SITUATION[p.situation] || []),
+      p.neuf ? 'Contrat de réservation VEFA et plans' : 'Diagnostics techniques du bien (DPE, amiante, plomb)',
+      ...(p.charges > 0 ? ["Tableaux d'amortissement des crédits en cours"] : []),
+      ...(p.primo ? ["Attestation sur l'honneur de primo-accession"] : [])]
+
+    const leviers = []
+    if (p.duree < 25) {
+      const empruntMax25 = capitalEmpruntableMax({ ...p, duree: 25 })
+      leviers.push({ description: 'Allonger la durée à 25 ans', gain_capacite_emprunt: empruntMax25 - empruntTotal, contrepartie: 'Le coût total du crédit augmente.' })
+    }
+    if (p.charges > 0) {
+      const empruntSansCharges = capitalEmpruntableMax({ ...p, charges: 0 })
+      leviers.push({ description: `Solder ${Math.round(p.charges)} € de mensualités de crédits`, gain_capacite_emprunt: empruntSansCharges - empruntTotal, contrepartie: "Mobilise une partie de l'épargne disponible." })
+    }
+
+    return {
+      demo: true,
+      conformite_hcsf: { conforme_hcsf: conforme, criteres: { taux_endettement: { valeur: endettement, plafond: 0.35 } } },
+      credit: { mensualite_totale: mensualite, mensualite_credit: mCredit, mensualite_assurance: mAssurance, taux_nominal_retenu: taux, cout_total_credit: coutTotalCredit },
+      plan_financement: {
+        prix_bien: p.prix, frais_acquisition: totalAcq, frais_credit: dossier + garantie, apport: p.apport, montant_emprunte: empruntTotal,
+        detail_frais_acquisition: { droits_mutation: droits, taux_droits_mutation: tauxDmto, emoluments_notaire_ttc: emo, contribution_securite_immobiliere: csi, debours: BAREME.debours, total_frais_acquisition: totalAcq, part_du_prix: totalAcq / p.prix, part_revenant_au_notaire: emo / totalAcq },
+      },
+      score_dossier: { score_sur_100: score },
+      reste_a_vivre: { reste_a_vivre: ravDispo, minimum_requis: ravMin, marge: ravDispo - ravMin },
+      pieces_justificatives: { situation: p.situation, pieces },
+      synthese: { leviers },
+    }
+  }
+  function capitalEmpruntableMax(p) {
+    const taux = tauxIndicatif(p.duree)
+    const mMax = Math.max(0, p.revenus * 0.35 - p.charges)
+    const n = p.duree * 12, i = taux / 12
+    const facteur = taux === 0 ? 1 / n : i / (1 - Math.pow(1 + i, -n))
+    return mMax / (facteur + BAREME.assurance / 12)
+  }
+
   let seq = 0, timer = null
   function planifier() {
     majCurseurs()
@@ -208,31 +321,32 @@ export function mount(root, { apiBase = '' } = {}) {
   async function calculer() {
     const p = lire()
     const mySeq = ++seq
+    let d, demo = false
     try {
-      const d = await appelDossier(p)
-      if (mySeq !== seq) return
-      afficherDossier(d, p)
+      d = await appelDossier(p)
     } catch {
-      if (mySeq !== seq) return
-      $('#fin-verdict').innerHTML = `<i></i><span>Backend de financement indisponible</span>`
-      $('#fin-mensualite').textContent = '—'
+      d = calculLocal(p); demo = true
     }
+    if (mySeq !== seq) return
+    afficherDossier(d, p, demo)
   }
 
-  function afficherDossier(d, p) {
+  function afficherDossier(d, p, demo) {
     const conf = d.conformite_hcsf || {}
     const endettement = conf.criteres?.taux_endettement?.valeur ?? 0
     const conforme = !!conf.conforme_hcsf
     const v = $('#fin-verdict')
     v.className = 'verdict' + (conforme ? '' : endettement <= 0.4 ? ' alerte' : ' refus')
-    v.querySelector('span').textContent = conforme
+    v.querySelector('span').textContent = (conforme
       ? 'Conforme aux normes HCSF'
-      : endettement <= 0.4 ? 'Hors normes — dérogation nécessaire' : 'Non finançable en l\'état'
+      : endettement <= 0.4 ? 'Hors normes — dérogation nécessaire' : 'Non finançable en l\'état')
+      + (demo ? ' · démonstration' : '')
 
     const credit = d.credit || {}
     $('#fin-mensualite').innerHTML = nb(credit.mensualite_totale || 0) + '<small>€ / mois</small>'
     $('#fin-precision').textContent =
       `sur ${p.duree} ans · taux indicatif ${pct(credit.taux_nominal_retenu || 0, 2)} · assurance ${nb(credit.mensualite_assurance || 0)} €/mois`
+      + (demo ? ' · backend de financement injoignable, calcul approché côté navigateur' : '')
 
     const plan = d.plan_financement || {}
     $('#fin-emprunt').textContent = nb((plan.montant_emprunte || 0) / 1000) + 'k €'
