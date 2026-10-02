@@ -19,6 +19,7 @@ dependencies = [
     # multimethod.overload, supprimé des versions récentes de multimethod.
     "pandera>=0.24",          # validation de schéma du dataset gold
     "python-dotenv>=1.0",     # lecture du .env
+    "py7zr>=0.21",            # extraction des archives .7z des contours IGN
 ]
 
 [project.optional-dependencies]

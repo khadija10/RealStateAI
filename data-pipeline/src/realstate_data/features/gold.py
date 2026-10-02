@@ -24,6 +24,7 @@ import duckdb
 from realstate_data.cleaning.silver import ouvrir_connexion
 from realstate_data.config import Settings, charger_settings
 from realstate_data.enrichment.dpe import enrichir_dpe
+from realstate_data.enrichment.iris import enrichir_iris
 from realstate_data.logging_conf import configurer_logging
 
 log = configurer_logging()
@@ -295,6 +296,11 @@ def construire_gold(settings: Settings | None = None) -> dict:
     # téléchargés, pour que le schéma du dataset ne varie jamais.
     bilan_dpe = enrichir_dpe(con, settings)
 
+    # --- 7. Enrichissement IRIS --------------------------------------------
+    # Colonnes toujours présentes : vides si les contours IRIS n'ont pas été
+    # téléchargés, pour que le schéma du dataset ne varie jamais.
+    bilan_iris = enrichir_iris(con, settings)
+
     sortie = settings.chemins.processed / "gold_transactions"
     con.execute(f"""
         COPY gold TO '{sortie}'
@@ -315,6 +321,7 @@ def construire_gold(settings: Settings | None = None) -> dict:
         "part_sans_reference": round(sans_ref / n_final, 4) if n_final else None,
         "chemin": str(sortie),
         "dpe": bilan_dpe,
+        "iris": bilan_iris,
     }
     _ecrire_empreinte(con, settings, rapport)
     log.info("Gold écrit : %s (%d lignes, %d sans référence de marché)",

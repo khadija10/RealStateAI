@@ -164,3 +164,37 @@ def test_indicateur_de_zone_couvre_plus_que_le_dpe_individuel(environnement):
     settings, _, _ = environnement
     gold = _gold(settings)
     assert gold["zone_part_dpe_fg"].notna().sum() >= gold["dpe_classe"].notna().sum()
+
+
+# --- Proxy d'état du bien -----------------------------------------------------
+
+def test_deperdition_enveloppe_normalisee_est_positive(environnement):
+    settings, _, _ = environnement
+    valeurs = _gold(settings)["dpe_deperdition_enveloppe_m2"].dropna()
+    assert len(valeurs) > 0
+    assert (valeurs > 0).all()
+
+
+def test_deperdition_croit_avec_les_passoires(environnement):
+    """
+    Vérité terrain : fabrique_dpe encode une déperdition par m² croissante
+    de A à G (DEPERDITION_PAR_M2_BASE). Une classe F/G doit donc ressortir
+    avec une déperdition normalisée nettement plus haute qu'une classe A/B —
+    sinon la normalisation par surface (dpe_deperdition_enveloppe_m2) serait
+    cassée et le proxy n'aurait aucune valeur pour le modèle.
+    """
+    settings, _, _ = environnement
+    gold = _gold(settings)
+    bonnes = gold[gold["dpe_classe"].isin(["A", "B"])]["dpe_deperdition_enveloppe_m2"].dropna()
+    passoires = gold[gold["dpe_classe"].isin(["F", "G"])]["dpe_deperdition_enveloppe_m2"].dropna()
+    assert len(bonnes) > 10 and len(passoires) > 10
+    assert passoires.median() > bonnes.median()
+
+
+def test_type_chauffage_est_une_des_valeurs_connues(environnement):
+    settings, _, _ = environnement
+    from fabrique_dpe import TYPES_CHAUFFAGE
+
+    valeurs = set(_gold(settings)["dpe_type_chauffage"].dropna().unique())
+    assert len(valeurs) > 0
+    assert valeurs <= set(TYPES_CHAUFFAGE)

@@ -91,3 +91,35 @@ enrichissement:
   # En dessous de ce nombre de DPE, la part de passoires d'un code postal
   # n'est pas assez fiable pour servir d'indicateur.
   dpe_min_diagnostics_zone: 30
+
+  # --- Enrichissement IRIS (INSEE) ---------------------------------------------
+  # IRIS = découpage infra-communal de l'INSEE (~48 000 zones de ~2 000
+  # habitants), plus fin que la commune/l'arrondissement déjà utilisés pour les
+  # features de marché. Comble en partie l'absence de variables de quartier
+  # dans DVF (cf. docs/data_dictionary.md), via deux sources ouvertes :
+  #
+  #   1. contours géographiques (IGN, GeoPackage, projection Lambert-93) ;
+  #   2. statistiques socio-démographiques par code IRIS (INSEE).
+  #
+  # ATTENTION : comme pour le DPE, les URLs et noms de colonnes INSEE/IGN
+  # dérivent d'un millésime de publication à l'autre. Les valeurs ci-dessous
+  # sont celles du millésime 2021 (le plus récent disponible à l'écriture de
+  # cette configuration) : vérifier avec `pipeline iris-diagnostic` avant tout
+  # téléchargement en masse si une nouvelle publication est sortie.
+  iris_contours_url: "https://data.geopf.fr/telechargement/download/CONTOURS-IRIS/CONTOURS-IRIS_3-0__GPKG_LAMB93_FXX_2024-01-01/CONTOURS-IRIS_3-0__GPKG_LAMB93_FXX_2024-01-01.7z"
+  iris_contours_crs: "EPSG:2154"          # Lambert-93 : projection des contours IGN
+  # Nom réel observé dans CONTOURS-IRIS_3-0 (IGN) : "code_iris", en minuscules —
+  # confirmé par `pipeline iris-diagnostic`, qui vérifie aussi la colonne de
+  # géométrie (son nom varie, "geometrie" sur ce produit ; enrichir_iris la
+  # détecte automatiquement plutôt que de la coder en dur).
+  iris_code_colonne: "code_iris"
+
+  iris_filosofi_url: "https://www.insee.fr/fr/statistiques/fichier/8229323/BASE_TD_FILO_IRIS_2021_DISP_CSV.zip"
+  iris_filosofi_millesime: 21             # suffixe des colonnes INSEE, ex. DISP_MED21
+  iris_logement_url: "https://www.insee.fr/fr/statistiques/fichier/8268838/base-ic-logement-2021_csv.zip"
+  iris_logement_millesime: 21             # suffixe des colonnes INSEE, ex. P21_LOG
+
+  # En dessous de ce nombre de ménages, une statistique IRIS est trop fragile
+  # pour être publiée (le secret statistique INSEE masque déjà les plus
+  # petits IRIS ; ce seuil ajoute une marge de sécurité pour l'équipe ML).
+  iris_min_menages_zone: 50

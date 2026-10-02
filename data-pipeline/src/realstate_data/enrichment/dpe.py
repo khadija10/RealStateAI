@@ -38,6 +38,20 @@ Les DPE au nouveau format n'existent que depuis juillet 2021, et tous les
 logements vendus n'en ont pas. Une partie des ventes restera donc sans classe
 individuelle. L'indicateur de zone `zone_part_dpe_fg`, calculé sur tous les
 DPE du code postal, fournit un signal complémentaire pour 100 % des ventes.
+
+PROXY D'ÉTAT DU BIEN
+DVF ne trace ni l'étage ni l'état du logement, et aucune source ouverte
+équivalente n'existe pour ces deux variables précises (cf.
+docs/data_dictionary.md). Le DPE porte des champs techniques plus riches que
+la seule étiquette A-G : les déperditions thermiques de l'enveloppe (murs,
+planchers, baies vitrées) et le type de générateur de chauffage. Une
+enveloppe mal isolée ou un chauffage d'appoint électrique ancien sont des
+signes concrets de logement non rénové — pas littéralement « l'état du
+bien » d'une annonce, mais le proxy techniquement le plus proche disponible
+en open data. `dpe_deperdition_enveloppe_m2` normalise la déperdition
+totale par la surface du logement apparié : sans cela, un grand logement
+paraîtrait mécaniquement moins bien isolé qu'un petit, sans rapport avec sa
+qualité réelle.
 """
 
 from __future__ import annotations
@@ -68,6 +82,14 @@ CHAMPS_DPE = [
     "adresse_ban",
     "code_postal_ban",
     "nom_commune_ban",
+    # Proxy d'état du bien — DVF ne trace ni l'étage ni l'état du logement
+    # (cf. docs/data_dictionary.md), et aucune source ouverte équivalente
+    # n'existe pour ces deux variables précises. Les déperditions thermiques
+    # de l'enveloppe (murs, planchers, baies vitrées) sont en revanche un
+    # signal technique réel de qualité de rénovation, déjà présent dans le
+    # DPE et jusqu'ici inexploité par ce module.
+    "deperditions_enveloppe",
+    "type_generateur_chauffage_principal",
 ]
 
 # Abréviations employées par DVF (norme FANTOIR de la DGFiP), développées
@@ -410,6 +432,8 @@ COLONNES_DPE_GOLD = {
     "dpe_date": "DATE",
     "zone_part_dpe_fg": "DOUBLE",
     "zone_nb_dpe": "INTEGER",
+    "dpe_deperdition_enveloppe_m2": "DOUBLE",
+    "dpe_type_chauffage": "VARCHAR",
 }
 
 
@@ -450,6 +474,8 @@ def enrichir_dpe(con: duckdb.DuckDBPyConnection, settings: Settings) -> dict[str
             TRY_CAST(date_etablissement_dpe AS DATE)              AS date_dpe,
             lower(type_batiment)                                  AS type_batiment,
             TRY_CAST(annee_construction AS INTEGER)               AS annee_construction,
+            TRY_CAST(deperditions_enveloppe AS DOUBLE)            AS deperditions_enveloppe,
+            type_generateur_chauffage_principal                   AS type_chauffage,
             CAST(code_postal_ban AS VARCHAR)                      AS code_postal,
             TRY_CAST(regexp_extract(adresse_ban, '^\\s*(\\d+)', 1) AS INTEGER) AS numero,
             normaliser_voie(regexp_replace(
@@ -478,6 +504,7 @@ def enrichir_dpe(con: duckdb.DuckDBPyConnection, settings: Settings) -> dict[str
         SELECT
             k.id_mutation, k.type_local,
             d.classe, d.ges, d.date_dpe, d.numero_dpe, d.annee_construction,
+            d.deperditions_enveloppe, d.type_chauffage, k.surface_bati,
             abs(d.surface - k.surface_bati) / k.surface_bati          AS ecart_surface,
             abs(date_diff('day', k.date_mutation, d.date_dpe))         AS ecart_jours,
             d.date_dpe <= k.date_mutation                              AS anterieur,
@@ -511,7 +538,8 @@ def enrichir_dpe(con: duckdb.DuckDBPyConnection, settings: Settings) -> dict[str
         ),
         par_surface AS (
             SELECT id_mutation, classe, ges, date_dpe, ecart_surface,
-                   annee_construction,
+                   annee_construction, deperditions_enveloppe, type_chauffage,
+                   surface_bati,
                    nb_compatibles AS nb_candidats,
                    CASE WHEN nb_compatibles = 1 THEN 'exacte' ELSE 'probable' END
                        AS qualite
@@ -565,7 +593,15 @@ def enrichir_dpe(con: duckdb.DuckDBPyConnection, settings: Settings) -> dict[str
                    ELSE 'depuis 2006'
                END                                    AS periode_construction,
                round(z.zone_part_dpe_fg, 4)           AS zone_part_dpe_fg,
-               CAST(z.zone_nb_dpe AS INTEGER)         AS zone_nb_dpe
+               CAST(z.zone_nb_dpe AS INTEGER)         AS zone_nb_dpe,
+               -- Proxy d'état du bien (voir CHAMPS_DPE ci-dessus). Normalisé
+               -- par la surface du bien apparié : une grande et une petite
+               -- surface mal isolées ont la même déperdition PAR M², alors
+               -- que la valeur absolue de l'enveloppe croît mécaniquement
+               -- avec la taille du logement, sans rapport avec sa qualité.
+               round(a.deperditions_enveloppe / NULLIF(a.surface_bati, 0), 3)
+                                                       AS dpe_deperdition_enveloppe_m2,
+               a.type_chauffage                       AS dpe_type_chauffage
         FROM gold g
         LEFT JOIN appariement a USING (id_mutation)
         LEFT JOIN zone_dpe z ON z.code_postal = CAST(g.code_postal AS VARCHAR);

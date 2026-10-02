@@ -8,6 +8,8 @@ Usage :
     python -m realstate_data.pipeline qualite     # contrôles qualité (schéma + seuils)
     python -m realstate_data.pipeline dpe-test    # vérifie l'API ADEME (quelques lignes)
     python -m realstate_data.pipeline dpe         # télécharge les DPE du périmètre
+    python -m realstate_data.pipeline iris-diagnostic  # vérifie le format des sources IRIS/INSEE
+    python -m realstate_data.pipeline iris        # télécharge contours + statistiques IRIS
     python -m realstate_data.pipeline run         # les trois d'affilée
     python -m realstate_data.pipeline rapport     # journal de perte lisible
 """
@@ -60,7 +62,8 @@ def main(argv: list[str] | None = None) -> int:
     parseur.add_argument(
         "commande",
         choices=["ingest", "silver", "gold", "qualite", "run", "rapport",
-                 "dpe", "dpe-test", "dpe-diagnostic"],
+                 "dpe", "dpe-test", "dpe-diagnostic",
+                 "iris", "iris-diagnostic"],
         help="étape à exécuter",
     )
     args = parseur.parse_args(argv)
@@ -114,6 +117,35 @@ def main(argv: list[str] | None = None) -> int:
         bilan = telecharger_dpe(settings, departements=args.departements)
         for departement, nombre in bilan.items():
             log.info("Département %s : %d diagnostics", departement, nombre)
+        return 0
+    if args.commande == "iris-diagnostic":
+        from realstate_data.enrichment.iris import diagnostic_iris
+
+        resultat = diagnostic_iris(settings)
+        print("\nDiagnostic des sources IRIS/INSEE :\n")
+        for source, infos in resultat.items():
+            print(f"--- {source} ---")
+            if "erreur" in infos:
+                print(f"  ERREUR : {infos['erreur']}")
+                continue
+            for cle, valeur in infos.items():
+                print(f"  {cle:<22} {valeur}")
+        print("\nSi des colonnes manquent, adapte les URLs et noms de "
+              "colonnes dans config/settings.yaml (section enrichissement.iris_*) "
+              "avant de lancer 'pipeline iris'.\n")
+        return 0
+    if args.commande == "iris":
+        from realstate_data.enrichment.iris import (
+            telecharger_contours_iris,
+            telecharger_filosofi,
+            telecharger_logement,
+        )
+
+        telecharger_contours_iris(settings)
+        telecharger_filosofi(settings)
+        telecharger_logement(settings)
+        log.info("Sources IRIS téléchargées. Relance 'pipeline gold' pour "
+                 "les intégrer au dataset.")
         return 0
     if args.commande in ("silver", "run"):
         construire_silver(settings)

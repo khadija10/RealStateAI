@@ -31,11 +31,16 @@ features:
     - annee_construction
     - dpe_score
     - densite_pieces
+    - revenu_median_iris
+    - part_logements_collectifs_iris
+    - part_proprietaires_iris
+    - dpe_deperdition_enveloppe_m2
   categorical:
     - code_type_local
     - code_departement
     - code_commune
     - dpe_classe
+    - dpe_type_chauffage
   boolean:
     - a_terrain
     - is_studio
