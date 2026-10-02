@@ -94,6 +94,69 @@ def _classement_communes(test_df: pd.DataFrame, ape: np.ndarray) -> tuple[dict, 
     return resume, par_commune
 
 
+def _jeux(config: dict, test_debut: str, test_fin: str):
+    debut, fin = _periode(test_debut, test_fin)
+    val_debut = debut - MOIS_VALIDATION
+    filtre = _filtrer_outliers(_charger_gold_brut(config))
+    train_df = filtre[filtre["periode"] < val_debut]
+    val_df = filtre[(filtre["periode"] >= val_debut) & (filtre["periode"] < debut)]
+    test_df = filtre[(filtre["periode"] >= debut) & (filtre["periode"] <= fin)]
+    cat_dtypes = construire_cat_dtypes(filtre, config["features"])
+    jeux = [preparer_features(d, config, cat_dtypes) for d in (train_df, val_df, test_df)]
+    sw_cfg = config.get("sample_weights", {})
+    poids = train_df["annee"].map({int(k): v for k, v in sw_cfg.items()}).fillna(1.0).values
+    return jeux, poids, test_df
+
+
+def evaluer_fourchette(test_debut: str, test_fin: str, config_path: str = "ml/config.yaml") -> dict:
+    """Section 6 ter : couverture et largeur de la fourchette q7,5–q92,5."""
+    config = charger_config(config_path)
+    resultats = Path("docs") / f"resultats_protocole_{test_debut}_{test_fin}.json"
+    classes = {k: v["classe"] for k, v in json.loads(resultats.read_text())["communes"].items()}
+
+    jeux, poids, test_df = _jeux(config, test_debut, test_fin)
+    (X_train, y_train), (X_val, y_val), (X_test, y_test) = jeux
+    params = dict(config["lightgbm"])
+    early_stopping = params.pop("early_stopping_rounds", 50)
+    params.pop("verbose", None)
+    model = lgb.LGBMRegressor(**params, verbose=-1)
+    model.fit(X_train, y_train, sample_weight=poids, eval_set=[(X_val, y_val)],
+              callbacks=[lgb.early_stopping(early_stopping, verbose=False)])
+    n_arbres = int(model.best_iteration_)
+    y_pred = model.predict(X_test)
+    # Contrôle de reproductibilité : doit redonner la MAPE de la mesure principale
+    mape_controle = round(float(_erreurs(y_test.values, y_pred).mean()), 2)
+
+    bornes = {}
+    for alpha in (0.075, 0.925):
+        q = lgb.LGBMRegressor(**{**params, "objective": "quantile", "metric": "quantile",
+                                 "alpha": alpha, "n_estimators": n_arbres}, verbose=-1)
+        q.fit(X_train, y_train, sample_weight=poids)
+        bornes[alpha] = q.predict(X_test)
+    bas, haut = np.minimum(bornes[0.075], bornes[0.925]), np.maximum(bornes[0.075], bornes[0.925])
+
+    df = pd.DataFrame({
+        "classe": test_df["code_commune"].map(classes).fillna("donnees_insuffisantes").values,
+        "dedans": (y_test.values >= bas) & (y_test.values <= haut),
+        "largeur": (haut - bas) / y_pred * 100,
+    })
+    def _resume(d):
+        return {"n": int(len(d)), "couverture": round(float(d["dedans"].mean() * 100), 1),
+                "largeur_mediane": round(float(d["largeur"].median()), 1)}
+    par_classe = {c: _resume(d) for c, d in df.groupby("classe")}
+    globale = _resume(df)
+    classes_affichees = [c for c in ("fiable", "indicative", "a_completer") if c in par_classe]
+    criteres = {
+        "couverture_globale": globale["couverture"] >= 80.0,
+        "couverture_par_classe": all(par_classe[c]["couverture"] >= 80.0 for c in classes_affichees),
+        "largeur_mediane": globale["largeur_mediane"] <= 30.0,
+    }
+    return {"mesure_le": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+            "mape_controle": mape_controle, "n_arbres": n_arbres,
+            "globale": globale, "par_classe": par_classe,
+            "criteres": criteres, "tenue": all(criteres.values())}
+
+
 def evaluer(test_debut: str, test_fin: str, config_path: str = "ml/config.yaml") -> dict:
     config = charger_config(config_path)
     debut, fin = _periode(test_debut, test_fin)
@@ -214,7 +277,16 @@ def main() -> None:
     parseur = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parseur.add_argument("--test-debut", required=True, help="AAAA-MM")
     parseur.add_argument("--test-fin", required=True, help="AAAA-MM")
+    parseur.add_argument("--fourchette", action="store_true",
+                         help="section 6 ter : couverture de la fourchette (après la mesure principale)")
     args = parseur.parse_args()
+
+    if args.fourchette:
+        res = evaluer_fourchette(args.test_debut, args.test_fin)
+        sortie = Path("docs") / f"resultats_fourchette_{args.test_debut}_{args.test_fin}.json"
+        sortie.write_text(json.dumps(res, ensure_ascii=False, indent=2), encoding="utf-8")
+        print(json.dumps(res, ensure_ascii=False, indent=2))
+        return
 
     res = evaluer(args.test_debut, args.test_fin)
     par_commune = res.pop("_par_commune")
