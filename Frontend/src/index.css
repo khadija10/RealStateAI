@@ -189,3 +189,7 @@ input[type="range"]::-moz-range-thumb {
     scroll-behavior: auto !important;
   }
 }
+
+/* Le bandeau des pages Estimation, Financement et Plus-value va bord à bord
+   (100vw) : pas de défilement horizontal dû à la barre de défilement. */
+body { overflow-x: clip; }

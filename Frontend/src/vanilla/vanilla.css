@@ -23,10 +23,11 @@
   font-size:15px;
   line-height:1.55;
   -webkit-font-smoothing:antialiased;
-  /* Pleine largeur avec une gouttière latérale ; le bandeau, lui, va bord à bord */
+  /* Contenu dans une colonne centrée (comme SeLoger) ; seul le bandeau va bord à bord */
   --gouttiere:clamp(16px,2.6vw,40px);
-  max-width:none;
-  margin:0;
+  --colonne:1280px;
+  max-width:var(--colonne);
+  margin:0 auto;
   padding:0 var(--gouttiere) 40px;
 }
 :root:not([data-theme="light"]) .rsai-vanilla {
@@ -52,7 +53,9 @@
 .rsai-vanilla .illus svg { display:block; width:100%; height:100%; }
 
 /* ---------- héros ---------- */
-.rsai-vanilla .heros{position:relative;border-radius:0;overflow:hidden;min-height:360px;background:#8BA3C0;isolation:isolate;margin:0 calc(-1 * var(--gouttiere))}
+.rsai-vanilla .heros{position:relative;border-radius:0;overflow:hidden;min-height:360px;background:#8BA3C0;isolation:isolate;margin-inline:calc(50% - 50vw);
+  /* contenu du bandeau aligné sur la colonne du contenu */
+  --decalage:max(var(--gouttiere),calc((100vw - var(--colonne)) / 2 + var(--gouttiere)))}
 .rsai-vanilla .heros .illus{position:absolute;inset:0;z-index:-1}
 .rsai-vanilla .heros::after{content:"";position:absolute;inset:0;z-index:-1;
   /* voile sombre à gauche, sous le titre (lisibilité), puis assombrissement haut et bas */
@@ -60,17 +63,17 @@
     linear-gradient(180deg,rgba(15,20,30,.34) 0%,rgba(15,20,30,0) 38%,rgba(15,20,30,0) 66%,rgba(15,20,30,.3) 100%)}
 .rsai-vanilla .heros.heros-simple{min-height:250px}
 .rsai-vanilla .heros.heros-simple::after{background:linear-gradient(90deg,rgba(20,14,10,.62) 0%,rgba(20,14,10,.2) 58%,rgba(20,14,10,0) 100%)}
-.rsai-vanilla .etat-api{position:absolute;top:20px;right:20px;display:flex;align-items:center;gap:7px;background:color-mix(in srgb,var(--blanc) 92%,transparent);color:var(--encre);font-size:13px;padding:7px 13px;border-radius:999px}
+.rsai-vanilla .etat-api{position:absolute;top:20px;right:var(--decalage);display:flex;align-items:center;gap:7px;background:color-mix(in srgb,var(--blanc) 92%,transparent);color:var(--encre);font-size:13px;padding:7px 13px;border-radius:999px}
 .rsai-vanilla .etat-api i{width:7px;height:7px;border-radius:50%;background:var(--ambre)}
 .rsai-vanilla .etat-api.direct i{background:#3E9E6E}
-.rsai-vanilla .accroche{position:absolute;top:36px;left:var(--gouttiere);right:var(--gouttiere);color:#fff;max-width:620px;text-shadow:0 1px 18px rgba(10,14,22,.45)}
-.rsai-vanilla .heros.heros-simple .accroche{top:auto;bottom:40px;left:var(--gouttiere);right:var(--gouttiere);max-width:620px}
+.rsai-vanilla .accroche{position:absolute;top:36px;left:var(--decalage);right:var(--decalage);color:#fff;max-width:620px;text-shadow:0 1px 18px rgba(10,14,22,.45)}
+.rsai-vanilla .heros.heros-simple .accroche{top:auto;bottom:40px;left:var(--decalage);right:var(--decalage);max-width:620px}
 .rsai-vanilla .accroche h1{margin:0;font-weight:400;font-size:clamp(34px,4.8vw,60px);line-height:.98;letter-spacing:-.03em}
 .rsai-vanilla .accroche h1 em{display:block;font-size:1.05em}
 .rsai-vanilla .accroche p{margin:14px 0 0;font-size:15px;max-width:600px;color:#fff;font-weight:400}
 
 /* ---------- recherche (barre héros estimation) ---------- */
-.rsai-vanilla .recherche{position:absolute;left:var(--gouttiere);right:var(--gouttiere);bottom:22px;background:var(--blanc);border-radius:26px;padding:10px;box-shadow:0 10px 34px rgba(0,0,0,.16)}
+.rsai-vanilla .recherche{position:absolute;left:var(--decalage);right:var(--decalage);bottom:22px;background:var(--blanc);border-radius:26px;padding:10px;box-shadow:0 10px 34px rgba(0,0,0,.16)}
 .rsai-vanilla .rangee{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .rsai-vanilla .critere{flex:1;display:flex;align-items:center;gap:10px;padding:6px 10px;min-width:150px}
 .rsai-vanilla .critere+.critere{border-left:1px solid var(--ligne)}

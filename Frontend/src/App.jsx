@@ -173,7 +173,7 @@ export default function App() {
 
         {/* ONGLET CARTE */}
         {activeTab === 'carte' && (
-          <div className="w-full px-4 sm:px-6 lg:px-10 py-10">
+          <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-10">
             <div className="max-w-xl mb-8">
               <h1 className="font-display text-4xl sm:text-5xl text-ink leading-[1.05] whitespace-nowrap">
                 Carte des prix par commune
@@ -188,7 +188,7 @@ export default function App() {
 
         {/* ONGLET RÉFÉRENCE */}
         {activeTab === 'marche' && (
-          <div className="w-full px-4 sm:px-6 lg:px-10 py-10">
+          <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-10">
             <div className="max-w-xl mb-8">
               <h1 className="font-display text-4xl sm:text-5xl text-ink leading-[1.05] whitespace-nowrap">
                 Référence du marché
@@ -203,7 +203,7 @@ export default function App() {
 
         {/* ONGLET HISTORIQUE */}
         {activeTab === 'historique' && (
-          <div className="w-full px-4 sm:px-6 lg:px-10 py-10">
+          <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-10">
             <div className="max-w-xl mb-8">
               <h1 className="font-display text-4xl sm:text-5xl text-ink leading-[1.05] whitespace-nowrap">
                 Historique
@@ -220,7 +220,7 @@ export default function App() {
 
         {/* ONGLET PROFIL */}
         {activeTab === 'profil' && (
-          <div className="w-full px-4 sm:px-6 lg:px-10 py-10">
+          <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-10">
             <div className="max-w-xl mb-8">
               <h1 className="font-display text-4xl sm:text-5xl text-ink leading-[1.05] whitespace-nowrap">
                 Mon profil
