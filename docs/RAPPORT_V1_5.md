@@ -173,6 +173,9 @@ Exemple au 54 rue de Malte, 75011, sur 66 m² : avec le numéro de DPE, la fourc
 | Pour une surface < 30 m², la fourchette était **remplacée** par ±20 %, parfois plus étroite que la fourchette calibrée | **oui** | elle ne peut plus qu'être élargie |
 | L'estimation plantait avec le modèle à 33 features (IRIS absent à l'inférence) | non (introduit le 2 octobre, jamais déployé) | inférence complète |
 | La classe DPE retrouvée par son numéro n'était pas renvoyée | — | renvoyée avec l'année de construction |
+| Le formulaire de la nouvelle interface n'a pas de code postal ; `estimer_prix()` l'exigeait : **toutes les estimations par adresse retombaient sur la médiane DVF** | — (nouvelle interface, non déployée) | code postal facultatif, test de signature |
+| La part de passoires du code postal (feature du modèle) restait vide sans code postal saisi | — | code postal retrouvé par le géocodage, part de passoires lue dans le gold |
+| Une commune seule était envoyée au modèle, géocodée au centre de la commune | — | le modèle seulement à partir d'une adresse ; la commune seule passe par le repli DVF |
 
 **Effet mesuré** (section 6.3) : l'écart médian entre l'application et le modèle hors ligne passe de 5,9 % à **2,2 %**, et la part des ventes à moins de 5 % d'écart de 45 % à **70 %**.
 

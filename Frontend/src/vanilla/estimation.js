@@ -326,8 +326,11 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
   // Suggestions d'adresses pendant la saisie (API Adresse, comme l'ancien
   // formulaire) : choisir une suggestion fixe aussi le code postal.
   const champAdresse = $('#rsai-adresse'), liste = $('#rsai-suggestions')
-  let suggestions = [], choix = -1, attente = null
-  function fermerSuggestions() { liste.hidden = true; champAdresse.setAttribute('aria-expanded', 'false'); choix = -1 }
+  let suggestions = [], choix = -1, attente = null, requete = 0
+  function fermerSuggestions() {
+    clearTimeout(attente); requete += 1   // une réponse encore en route ne rouvrira pas la liste
+    liste.hidden = true; champAdresse.setAttribute('aria-expanded', 'false'); choix = -1
+  }
   function montrerSuggestions() {
     liste.innerHTML = suggestions.map((s, i) => `<li role="option" data-i="${i}" aria-selected="${i === choix}">
       <b>${s.name}</b><span>${s.postcode} ${s.city}</span></li>`).join('')
@@ -346,10 +349,11 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
     const q = champAdresse.value.trim()
     if (q.length < 3) { suggestions = []; return fermerSuggestions() }
     attente = setTimeout(async () => {
+      const numero = ++requete
       try {
         const r = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(q)}&limit=6&autocomplete=1`)
         const d = await r.json()
-        if (!actif || champAdresse.value.trim() !== q) return
+        if (!actif || numero !== requete || champAdresse.value.trim() !== q || document.activeElement !== champAdresse) return
         suggestions = (d.features || []).map((f) => ({ label: f.properties.label, name: f.properties.name,
           postcode: f.properties.postcode || '', city: f.properties.city || '' }))
         choix = -1; montrerSuggestions()
@@ -382,6 +386,7 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
   }
 
   async function estimer(defiler) {
+    fermerSuggestions()
     const surface = +$('#rsai-surface').value
     const pieces = +$('#rsai-pieces').value
     const type = $('#rsai-type').value
