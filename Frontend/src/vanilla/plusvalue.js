@@ -4,6 +4,7 @@
 // secteurs viennent du backend (GET /api/market/secteurs), jamais du code.
 import { heroPlusValue } from '../illustrations.js'
 import { enregistreurSimulation } from './historique.js'
+import { scenariosMarche } from './scenarios.js'
 
 export const html = `
 <section class="heros heros-simple">
@@ -139,10 +140,7 @@ function impot(prixAchat, prixVente, annees, rp, travaux = 0) {
   return { exonere: false, pvBrute: pv, prixRevient, baseIR, basePS, ir, ps, surtaxe, total: ir + ps + surtaxe, abattIR: abattementIR(annees), abattPS: abattementPS(annees) }
 }
 function scenarios(serie) {
-  const tendance = Math.pow(serie[4] / serie[0], 1 / 4) - 1
-  const derniere = serie[4] / serie[3] - 1
-  return [{ nom: 'Tendance 2021-2025', taux: tendance }, { nom: 'Rythme de la dernière année', taux: derniere }, { nom: 'Stabilité des prix', taux: 0 }]
-    .sort((a, b) => a.taux - b.taux)
+  return scenariosMarche(serie, [2021, 2022, 2023, 2024, 2025])
 }
 function indice(serie, annee, taux) {
   if (annee <= 2021) return serie[0]

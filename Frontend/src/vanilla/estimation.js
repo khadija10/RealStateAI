@@ -2,6 +2,7 @@
 // (https://claude.ai/artifact/A9YV2PZHfG1rWQh1GTccSo), rebranchée sur le
 // vrai backend FastAPI (estimation ML, communes, santé de l'API).
 import { heroEstimation } from './illustrations-vanilla.js'
+import { scenariosMarche } from './scenarios.js'
 
 export const html = `
 <div class="fond-page" id="rsai-fond-page" aria-hidden="true"></div>
@@ -582,14 +583,16 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
     $('#rsai-tendance').innerHTML = `<span class="puce">${v > 0 ? '+' : ''}${v.toFixed(1).replace('.', ',')} %</span>`
     $('#rsai-courbe').innerHTML = courbe(s.eco, s.annees)
 
-    // Projection de plus-value à 10 ans, scénario central (tendance observée
-    // du secteur), pour amorcer le lien vers le simulateur dédié.
-    const tendance = Math.pow(s.eco[dernier] / s.eco[0], 1 / (s.annees[dernier] - s.annees[0])) - 1
-    const revente10 = r.valeur * Math.pow(1 + tendance, 10)
-    const pv10 = revente10 - r.valeur
+    // Projection de plus-value à 10 ans : mêmes trois scénarios et même scénario
+    // central que le simulateur de plus-value (vanilla/scenarios.js).
+    const [bas, central, haut] = scenariosMarche(s.eco, s.annees)
+    const revente = (sc) => r.valeur * Math.pow(1 + sc.taux, 10)
+    const taux = (sc) => `${sc.taux > 0 ? '+' : sc.taux < 0 ? '−' : ''}${Math.abs(100 * sc.taux).toFixed(1).replace('.', ',')} %/an`
+    const pv10 = revente(central) - r.valeur
     $('#rsai-pv-resume').innerHTML =
-      `Au rythme observé sur ce secteur depuis ${s.annees[0]} (<b>${tendance >= 0 ? '+' : ''}${(100 * tendance).toFixed(1).replace('.', ',')} %/an</b>), ` +
-      `ce bien pourrait valoir <b>${euro(revente10)}</b> dans 10 ans, soit ${pv10 >= 0 ? 'une plus-value brute de' : 'une moins-value de'} <b>${euro(Math.abs(pv10))}</b> avant fiscalité.`
+      `Scénario central (${central.nom.toLowerCase()}, <b>${taux(central)}</b>) : ce bien pourrait valoir <b>${euro(revente(central))}</b> dans 10 ans, ` +
+      (Math.abs(pv10) < 500 ? 'soit un prix stable' : `soit ${pv10 >= 0 ? 'une plus-value brute de' : 'une moins-value de'} <b>${euro(Math.abs(pv10))}</b>`) +
+      ` avant fiscalité. Selon le scénario, entre <b>${euro(revente(bas))}</b> (${bas.nom.toLowerCase()}, ${taux(bas)}) et <b>${euro(revente(haut))}</b> (${haut.nom.toLowerCase()}, ${taux(haut)}).`
 
   }
 
