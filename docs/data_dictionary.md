@@ -191,6 +191,56 @@ et noms de colonnes INSEE/IGN dérivent d'un millésime de publication à
 l'autre. Lancer `pipeline iris-diagnostic` avant tout téléchargement en masse
 si une nouvelle publication est sortie depuis l'écriture de ce module.
 
+## Même immeuble et même logement — DVF
+
+**Pourquoi.** La preuve qu'un agent montre à un vendeur, ce sont les ventes de
+l'immeuble. DVF fournit la parcelle cadastrale (qui identifie l'immeuble) et le
+numéro de lot de copropriété (qui identifie l'appartement), jusqu'ici
+abandonnés au passage silver. 53,8 % des ventes ont au moins une vente
+antérieure dans leur immeuble ; 2,7 % sont des reventes du même logement
+(l'historique ne remonte qu'à 2021 : Etalab ne publie que 5 millésimes).
+
+**Sans fuite.** Mois strictement antérieurs à celui de la mutation. Les prix
+passés sont ramenés au marché du jour : ratio prix / référence communale à la
+date de la vente passée, multiplié par la référence actuelle.
+
+| Colonne | Type | Nullable | Description |
+|---|---|---|---|
+| `id_parcelle` | string | oui | Parcelle cadastrale du logement (ex. `75111000AA0012`). Clé de jointure avec la BDNB. |
+| `lot1_numero` | string | oui | Numéro de lot de copropriété du logement. Stable d'une vente à l'autre. |
+| `prix_m2_immeuble_indexe` | float | oui | Médiane des prix au m² des ventes du même immeuble et du même type sur les 24 mois précédents, ramenés au marché du jour. |
+| `nb_ventes_immeuble` | int | non | Nombre de ventes entrant dans la médiane précédente (0 si aucune). |
+| `prix_m2_precedent_indexe` | float | oui | Dernière vente du même logement (même parcelle, même lot, surface à 10 % près ; même parcelle sans lot pour une maison), ramenée au marché du jour. |
+| `mois_depuis_vente_precedente` | int | oui | Écart en mois avec cette vente précédente. |
+
+À l'inférence, `ml/contexte.py` recalcule ces colonnes avec les mêmes
+définitions ; la parcelle est retrouvée par l'API Carto de l'IGN, le lot est
+saisi par l'agent s'il le connaît.
+
+## Enrichissement BDNB — bâtiments (CSTB)
+
+**Pourquoi.** DVF décrit le logement, jamais l'immeuble. La Base de Données
+Nationale des Bâtiments (licence ouverte 2.0, millésime 2026-02.a) en donne la
+carte d'identité, croisée d'une cinquantaine de sources publiques. Jointure
+exacte sur `id_parcelle` ; 93,4 % des ventes rattachées. Une parcelle portant
+plusieurs bâtiments garde le plus haut, le plus ancien, la somme des logements.
+Voir `data-pipeline/src/realstate_data/enrichment/bdnb.py`.
+
+| Colonne | Type | Nullable | Description |
+|---|---|---|---|
+| `bdnb_nb_niveaux` | int | oui | Nombre de niveaux du bâtiment le plus haut de la parcelle (fichiers fonciers). |
+| `bdnb_hauteur_max` | float | oui | Hauteur maximale du bâti en mètres (BD TOPO, IGN). |
+| `bdnb_annee_construction` | int | oui | Année de construction la plus ancienne de la parcelle (fichiers fonciers). |
+| `bdnb_nb_logements` | int | oui | Nombre de logements de la parcelle. |
+| `bdnb_mat_mur` | string | oui | Matériau principal des murs (ex. pierre, brique, béton). |
+| `bdnb_distance_monument` | float | oui | Distance en mètres au monument historique le plus proche (Mérimée). |
+| `bdnb_part_logement_social` | float | oui | Part de logements sociaux (RPLS) de la parcelle, 0 à 1. |
+| `bdnb_qpv` | int | oui | 1 si un bâtiment de la parcelle est en quartier prioritaire de la ville. |
+
+**Limite assumée.** Instantané 2026 appliqué à des ventes de 2021 à 2025. Les
+caractéristiques physiques d'un immeuble changent rarement en cinq ans ; la
+part de logement social peut évoluer à la marge.
+
 ## Pièges connus et limites assumées
 
 - **Étage : aucune source ouverte, pas de proxy identifié.** DVF ne trace pas l'étage, ni aucune source administrative française — ce n'est collecté nulle part en dehors des annonces immobilières elles-mêmes (non open data). C'est une limite structurelle assumée, pas un oubli du pipeline.

@@ -123,3 +123,9 @@ enrichissement:
   # pour être publiée (le secret statistique INSEE masque déjà les plus
   # petits IRIS ; ce seuil ajoute une marge de sécurité pour l'équipe ML).
   iris_min_menages_zone: 50
+
+  # --- Enrichissement BDNB (CSTB) ----------------------------------------------
+  # Base de Données Nationale des Bâtiments, licence ouverte 2.0. Extraction
+  # CSV départementale ; {dep} est remplacé par le code département.
+  # Millésime 2026-02.a, le plus récent au 2 octobre 2026 (bdnb.io/download).
+  bdnb_url: "https://open-data.s3.fr-par.scw.cloud/bdnb_millesime_2026-02-a/millesime_2026-02-a_dep{dep}/open_data_millesime_2026-02-a_dep{dep}_csv.zip"

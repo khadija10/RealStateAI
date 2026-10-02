@@ -75,6 +75,7 @@ def geocoder_adresse(adresse: str, code_postal: str | None = None) -> dict:
         "code_departement": code_departement,
         "nom_commune": props.get("city", ""),
         "adresse_normalisee": props.get("label", adresse),
+        "numero": props.get("housenumber"),
         "score": score,
         "score_bas": score < 0.6,
     }
@@ -152,13 +153,18 @@ def recuperer_features_marche(
     if latitude is not None and longitude is not None:
         lat_r = round(latitude, 2)
         lon_r = round(longitude, 2)
+        # Valeur du mois le plus récent de la cellule, comme la référence
+        # communale ci-dessus. Un MAX() sur toutes les années renvoyait le
+        # mois le plus cher depuis 2021 (souvent le pic 2021-2022) et gonflait
+        # les estimations jusqu'à +40 % par rapport au modèle hors ligne.
         local_row = con.execute(f"""
-            SELECT MAX(prix_m2_median_local_12m)
+            SELECT prix_m2_median_local_12m
             FROM {parquet_query}
             WHERE ROUND(latitude, 2)  = {lat_r}
               AND ROUND(longitude, 2) = {lon_r}
               AND code_type_local = '{code_type_local}'
               AND prix_m2_median_local_12m IS NOT NULL
+            ORDER BY mois_index DESC
             LIMIT 1
         """).fetchone()
         if local_row and local_row[0] is not None:

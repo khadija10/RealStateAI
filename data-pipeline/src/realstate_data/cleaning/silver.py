@@ -213,7 +213,11 @@ def construire_silver(
     # Chaque colonne n'est lue que si elle existe dans la source : le schéma
     # DVF a varié selon les millésimes.
     colonnes_adresse = ["adresse_numero", "adresse_suffixe",
-                        "adresse_nom_voie", "adresse_code_voie"]
+                        "adresse_nom_voie", "adresse_code_voie",
+                        # Numéro de lot de copropriété du logement : stable
+                        # d'une vente à l'autre, il permet de reconnaître une
+                        # revente du même appartement.
+                        "lot1_numero"]
     select_adresse = ",\n                ".join(
         f"any_value({c}) AS {c}" if c in colonnes_presentes
         else f"CAST(NULL AS VARCHAR) AS {c}"
@@ -254,7 +258,11 @@ def construire_silver(
                 sum(CASE WHEN code_type_local = '1' THEN 1 ELSE 0 END)     AS nb_maisons,
                 sum(CASE WHEN code_type_local = '2' THEN 1 ELSE 0 END)     AS nb_appartements,
                 any_value(type_local)                                      AS type_local,
-                any_value(code_type_local)                                 AS code_type_local
+                any_value(code_type_local)                                 AS code_type_local,
+                -- Parcelle du logement : identifie l'immeuble (ventes voisines
+                -- dans la même copropriété) et, avec le lot, le logement
+                -- lui-même lorsqu'il est revendu.
+                any_value(id_parcelle)                                     AS id_parcelle
             FROM s4_biens GROUP BY id_mutation
         ),
         terrains AS (

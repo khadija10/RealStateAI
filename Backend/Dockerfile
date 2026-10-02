@@ -22,6 +22,8 @@ COPY Backend/ /app/
 COPY ml/ /app/ml/
 COPY data/samples/ /app/data/samples/
 COPY data/processed/gold_transactions/ /app/data/processed/gold_transactions/
+# Caractéristiques des immeubles (BDNB) par parcelle, lues à l'inférence
+COPY data/external/bdnb/bdnb_parcelle.parquet /app/data/external/bdnb/bdnb_parcelle.parquet
 # Module financement — agent HCSF et génération de dossier
 COPY financement/ /opt/financement/
 RUN pip install --no-cache-dir -e "/opt/financement[agent]"

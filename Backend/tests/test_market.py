@@ -177,3 +177,53 @@ class TestMarketTrends:
     def test_503_si_fichier_absent(self, client_sans_fichiers):
         r = client_sans_fichiers.get("/api/market/trends")
         assert r.status_code == 503
+
+
+# ── /api/market/secteurs : statistiques calculées sur le dataset ─────────────
+
+import pandas as pd
+
+from main import _construire_secteurs
+
+
+def _dvf_secteurs() -> pd.DataFrame:
+    """Une commune, deux années : 2024 (3 ventes) et 2025 (12 ventes)."""
+    lignes = [("2024-06-01", 9000.0)] * 3 + [("2025-06-01", 10000.0 + 100 * i) for i in range(12)]
+    return pd.DataFrame({
+        "code_commune": "75111", "commune": "Paris 11e Arrondissement",
+        "type_bien_norm": "apartment",
+        "date_mutation": [d for d, _ in lignes], "prix_au_m2": [p for _, p in lignes],
+    })
+
+
+class TestSecteurs:
+    def test_mediane_et_deciles_de_la_derniere_annee(self):
+        s = _construire_secteurs(_dvf_secteurs())[("75111", "apartment")]
+        assert s["annee"] == 2025
+        assert s["med"] == 10550          # médiane des 12 ventes 2025
+        assert s["p10"] < s["med"] < s["p90"]
+        assert s["n"] == 15               # toutes les ventes de la période
+
+    def test_evolution_annuelle_avec_annees_manquantes(self):
+        s = _construire_secteurs(_dvf_secteurs())[("75111", "apartment")]
+        assert s["eco"] == [None, None, None, 9000, 10550]
+
+    def test_peu_de_ventes_recentes_repli_sur_toute_la_periode(self):
+        df = _dvf_secteurs().iloc[:8]     # 3 ventes 2024 + 5 ventes 2025 (< 10)
+        s = _construire_secteurs(df)[("75111", "apartment")]
+        assert s["med"] == round(df["prix_au_m2"].median())
+
+    def test_dataset_absent(self):
+        assert _construire_secteurs(None) == {}
+
+    def test_endpoint_classe_par_prix_et_filtre_le_volume(self):
+        with TestClient(app) as client:
+            app.state.secteurs = {
+                ("A", "apartment"): {"code": "A", "nom": "A", "med": 5000, "n": 500},
+                ("B", "apartment"): {"code": "B", "nom": "B", "med": 9000, "n": 300},
+                ("C", "apartment"): {"code": "C", "nom": "C", "med": 12000, "n": 50},
+                ("D", "house"): {"code": "D", "nom": "D", "med": 4000, "n": 900},
+            }
+            r = client.get("/api/market/secteurs?property_type=apartment&min_ventes=200")
+        assert r.status_code == 200
+        assert [s["code"] for s in r.json()] == ["B", "A"]
