@@ -437,7 +437,6 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
     if (!r) return message(erreur)
 
     afficher(r, r.secteur, adresse, surface, pieces, type)
-    memoriser({ query: adresse || commune, area_m2: surface, prix: r.valeur })
     onEstime?.()
     if (defiler) $('#rsai-resultat').scrollIntoView({ behavior: 'smooth' })
   }
@@ -638,17 +637,6 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
         <text x="${x(i)}" y="${H - 2}" text-anchor="middle" font-size="10.5" font-family="Inter,sans-serif" fill="var(--gris)">${annees[i]}</text>`).join('')}</svg>`
   }
 
-  // Historique local (clé lue par l'onglet "Historique" de l'application,
-  // voir components/History.jsx) — plus affiché directement sur cette page.
-  const CLE = 'rsai_historique'
-  function lireHisto() { try { return JSON.parse(localStorage.getItem(CLE) || '[]') } catch { return [] } }
-  function memoriser(x) {
-    try {
-      const h = [{ ...x, created_at: new Date().toISOString() }, ...lireHisto()].slice(0, 6)
-      localStorage.setItem(CLE, JSON.stringify(h))
-    } catch { /* navigation privée */ }
-  }
-
   let ordre = []
   const vignettes = [heroTour, heroVilla, heroBois, heroInterieur]
   let affiches = 0
@@ -726,7 +714,9 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
 
   verifierApi(); chargerSecteursApi()
   // « Ré-estimer » depuis l'historique : demande explicite, on relance l'estimation du bien.
-  if (relance) { remplir(relance); estimer(true) }
+  // Lancée au tour suivant et annulée au démontage : React monte la page deux
+  // fois en développement, ce qui envoyait deux estimations (doublons d'historique).
+  const relanceDiff = relance ? setTimeout(() => { if (actif) { remplir(relance); estimer(true) } }, 0) : null
 
-  return () => { actif = false }
+  return () => { actif = false; clearTimeout(relanceDiff) }
 }

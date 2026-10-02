@@ -347,7 +347,8 @@ export default function History({ onReEstimate }) {
                 </p>
               </div>
 
-              <div className="text-right shrink-0">
+              <div className="flex items-center gap-5 shrink-0">
+              <div className="text-right">
                 {item.estimated_price ? (
                   <p className="text-sm font-semibold text-ink tabular-nums">{formatEUR(item.estimated_price)}</p>
                 ) : (
@@ -358,16 +359,18 @@ export default function History({ onReEstimate }) {
                     {formatEUR(Math.round(item.estimated_price / item.area_m2))} / m²
                   </p>
                 )}
+              </div>
+              <div className="flex items-center gap-3">
                 {onReEstimate && item.estimated_price && (
                   <button
                     onClick={(e) => { e.stopPropagation(); onReEstimate(item) }}
-                    className="text-[11px] font-medium text-seine hover:underline mt-1 block"
+                    className="text-[11px] font-medium text-seine border border-stone-200 rounded-full px-3 py-1 hover:border-seine transition-colors"
                   >
                     Ré-estimer
                   </button>
                 )}
                 {confirmDeleteId === item.id ? (
-                  <div className="flex items-center gap-2 mt-1" onClick={(e) => e.stopPropagation()}>
+                  <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                     <button
                       onClick={(e) => { e.stopPropagation(); setConfirmDeleteId(null) }}
                       className="text-[11px] text-ink-muted hover:text-ink transition-colors"
@@ -385,8 +388,9 @@ export default function History({ onReEstimate }) {
                   <button
                     onClick={(e) => handleDelete(e, item)}
                     disabled={deleting === item.id}
-                    className="mt-1 text-ink-muted hover:text-red-500 transition-colors disabled:opacity-40"
+                    className="p-1 text-ink-muted hover:text-red-500 transition-colors disabled:opacity-40"
                     title="Supprimer"
+                    aria-label="Supprimer cette estimation"
                   >
                     {deleting === item.id ? (
                       <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24" fill="none" aria-hidden="true">
@@ -400,6 +404,7 @@ export default function History({ onReEstimate }) {
                     )}
                   </button>
                 )}
+              </div>
               </div>
             </div>
           )

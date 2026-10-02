@@ -4,7 +4,6 @@ import Footer from './components/Footer'
 import PriceMap from './components/PriceMap'
 import MarketTrends from './components/MarketTrends'
 import History from './components/History'
-import LocalEstimationsHistory from './components/LocalEstimationsHistory'
 import ProfilePanel from './components/ProfilePanel'
 import VanillaPage from './components/VanillaPage'
 import * as estimationPage from './vanilla/estimation.js'
@@ -210,11 +209,10 @@ export default function App() {
                 Historique
               </h1>
               <p className="text-sm text-ink-muted mt-3 whitespace-nowrap">
-                Vos 20 dernières estimations enregistrées.
+                Vos estimations enregistrées, les plus récentes d'abord.
               </p>
             </div>
             <div className="max-w-2xl">
-              <LocalEstimationsHistory />
               <History key={historyKey} onReEstimate={(item) => { setRelance({ ...item, _demande: Date.now() }); setActiveTab('estimation') }} />
             </div>
           </div>
