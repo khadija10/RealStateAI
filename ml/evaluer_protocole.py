@@ -321,6 +321,8 @@ def main() -> None:
     parseur = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parseur.add_argument("--test-debut", required=True, help="AAAA-MM")
     parseur.add_argument("--test-fin", required=True, help="AAAA-MM")
+    parseur.add_argument("--config", default="ml/config.yaml",
+                         help="configuration du modèle à évaluer (par défaut, celle de production)")
     parseur.add_argument("--version", default="",
                          help="préfixe des fichiers de résultats, ex. v2_ (n'écrase pas une mesure précédente)")
     parseur.add_argument("--fourchette", action="store_true",
@@ -328,13 +330,13 @@ def main() -> None:
     args = parseur.parse_args()
 
     if args.fourchette:
-        res = evaluer_fourchette(args.test_debut, args.test_fin, version=args.version)
+        res = evaluer_fourchette(args.test_debut, args.test_fin, config_path=args.config, version=args.version)
         sortie = Path("docs") / f"resultats_fourchette_{args.version}{args.test_debut}_{args.test_fin}.json"
         sortie.write_text(json.dumps(res, ensure_ascii=False, indent=2), encoding="utf-8")
         print(json.dumps(res, ensure_ascii=False, indent=2))
         return
 
-    res = evaluer(args.test_debut, args.test_fin)
+    res = evaluer(args.test_debut, args.test_fin, config_path=args.config)
     par_commune = res.pop("_par_commune")
     sortie = Path("docs") / f"resultats_protocole_{args.version}{args.test_debut}_{args.test_fin}"
     if sortie.with_suffix(".json").exists():
