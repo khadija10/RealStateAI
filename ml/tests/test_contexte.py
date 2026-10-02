@@ -39,7 +39,10 @@ def gold(tmp_path: Path) -> Path:
                 "prix_m2_reference_12m", "lot1_numero", "surface_bati"])
     df["date_mutation"] = pd.Timestamp("2025-01-01")
     df["code_commune"], df["latitude"], df["longitude"] = "75111", 48.86, 2.37
-    df["code_iris"], df["revenu_median_iris"] = "751114403", 30_000.0
+    df["adresse_numero"] = "12"
+    df.loc[df["id_parcelle"] == "P2", ["latitude", "revenu_median_iris"]] = [48.8601, 50_000.0]
+    df["code_iris"] = "751114403"
+    df["revenu_median_iris"] = df["revenu_median_iris"].fillna(30_000.0) if "revenu_median_iris" in df else 30_000.0
     df["part_logements_collectifs_iris"], df["part_proprietaires_iris"] = 0.98, 0.35
     df["nb_pieces"] = 2.0
     df["valeur_fonciere"] = df["prix_m2"] * df["surface_bati"]
@@ -124,6 +127,21 @@ class TestDpe:
 
 
 class TestParcelle:
+    def test_parcelle_dvf_au_meme_numero_avant_l_api(self, gold):
+        with patch.object(ctx, "_get_json") as api:
+            assert ctx.parcelle_de(48.8602, 2.37, code_commune="75111", numero="12", gold_path=gold) == "P2"
+        api.assert_not_called()
+
+    def test_numero_absent_de_dvf_repli_sur_l_api(self, gold):
+        reponse = {"features": [{"properties": {"idu": "75111000ZZ0001"}}]}
+        with patch.object(ctx, "_get_json", return_value=reponse):
+            assert ctx.parcelle_de(48.86, 2.37, code_commune="75111", numero="99", gold_path=gold) == "75111000ZZ0001"
+
+    def test_iris_de_la_parcelle_prioritaire(self, gold):
+        # Le point est plus proche des ventes de P1, mais la parcelle est P2
+        r = ctx.features_iris(48.86, 2.37, "75111", gold_path=gold, id_parcelle="P2")
+        assert r["revenu_median_iris"] == 50_000.0
+
     def test_idu_retourne(self):
         reponse = {"features": [{"properties": {"idu": "75104000AE0003"}}]}
         with patch.object(ctx, "_get_json", return_value=reponse):

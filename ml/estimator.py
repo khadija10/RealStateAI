@@ -98,7 +98,8 @@ def estimer_prix(
     )
 
     # Contexte du bien : parcelle, immeuble, quartier, bâtiment, DPE
-    id_parcelle = ctx.parcelle_de(geo["latitude"], geo["longitude"])
+    id_parcelle = ctx.parcelle_de(geo["latitude"], geo["longitude"],
+                                  code_commune=geo["code_commune"], numero=geo.get("numero"))
     dpe = ctx.features_dpe(numero_dpe, surface_m2)
     dpe_classe = dpe["dpe_classe"] or dpe_classe
     annee_construction = dpe["annee_construction"] or annee_construction
@@ -107,7 +108,8 @@ def estimer_prix(
         marche["prix_m2_reference_12m"], surface_m2, lot=numero_lot)
     contexte = {
         **immeuble,
-        **ctx.features_iris(geo["latitude"], geo["longitude"], geo["code_commune"]),
+        **ctx.features_iris(geo["latitude"], geo["longitude"], geo["code_commune"],
+                            id_parcelle=id_parcelle),
         **ctx.features_bdnb(id_parcelle),
         "dpe_deperdition_enveloppe_m2": dpe["dpe_deperdition_enveloppe_m2"],
         "dpe_type_chauffage": dpe["dpe_type_chauffage"],

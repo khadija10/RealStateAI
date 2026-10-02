@@ -38,8 +38,32 @@ def _get_json(url: str, params: dict, timeout: float = 4.0) -> dict | None:
         return None
 
 
-def parcelle_de(latitude: float, longitude: float) -> str | None:
-    """Identifiant de la parcelle cadastrale contenant le point (API Carto IGN)."""
+# Distance maximale entre le point BAN et une vente DVF au même numéro pour
+# considérer qu'il s'agit du même immeuble (~60 m : largeur d'une rue et d'une
+# parcelle, sans atteindre l'immeuble d'en face au numéro pair/impair voisin).
+DISTANCE_MAX_DEG = 0.0006
+
+
+def parcelle_de(latitude: float, longitude: float, code_commune: str | None = None,
+                numero: str | None = None, gold_path: Path = GOLD_PATH) -> str | None:
+    """Parcelle cadastrale de l'adresse.
+
+    1. Une vente DVF au même numéro, dans la commune, à moins de ~60 m : c'est
+       la parcelle que le pipeline a utilisée à l'entraînement. Le point BAN
+       est posé sur la façade ou dans la rue, et la parcelle qui le contient
+       est souvent la voisine — d'où des features d'immeuble et de bâtiment
+       vides ou fausses, mesuré jusqu'à 40 % d'écart d'estimation.
+    2. Sinon, la parcelle qui contient le point (API Carto IGN)."""
+    if code_commune and numero and str(numero).isdigit() and Path(gold_path).exists():
+        row = _gold(gold_path).execute("""
+            SELECT id_parcelle FROM g
+            WHERE code_commune = ? AND TRY_CAST(adresse_numero AS INTEGER) = ? AND id_parcelle IS NOT NULL
+              AND abs(latitude - ?) < ? AND abs(longitude - ?) < ?
+            ORDER BY (latitude - ?)^2 + (longitude - ?)^2 LIMIT 1
+        """, [code_commune, int(numero), latitude, DISTANCE_MAX_DEG, longitude, DISTANCE_MAX_DEG,
+              latitude, longitude]).fetchone()
+        if row:
+            return row[0]
     geom = json.dumps({"type": "Point", "coordinates": [longitude, latitude]})
     data = _get_json(CADASTRE_URL, {"geom": geom})
     if not data or not data.get("features"):
@@ -59,7 +83,7 @@ def _gold(gold_path: Path) -> duckdb.DuckDBPyConnection:
         con = duckdb.connect()
         con.execute(f"""
             CREATE TABLE g AS
-            SELECT id_parcelle, code_type_local, code_commune, latitude, longitude,
+            SELECT id_parcelle, code_type_local, code_commune, latitude, longitude, adresse_numero,
                    date_mutation, mois_index, surface_bati, nb_pieces, valeur_fonciere,
                    prix_m2, prix_m2_reference_12m, lot1_numero, code_iris,
                    revenu_median_iris, part_logements_collectifs_iris, part_proprietaires_iris
@@ -114,15 +138,23 @@ def features_immeuble(id_parcelle: str | None, code_type_local: str, mois_index:
 
 
 def features_iris(latitude: float, longitude: float, code_commune: str,
-                  gold_path: Path = GOLD_PATH) -> dict:
-    """Statistiques IRIS de la vente connue la plus proche dans la commune.
+                  gold_path: Path = GOLD_PATH, id_parcelle: str | None = None) -> dict:
+    """Statistiques IRIS de la parcelle si elle a déjà connu une vente, sinon
+    de la vente connue la plus proche dans la commune.
 
-    Évite de charger les contours IGN (170 Mo) dans le backend : à l'échelle
-    d'un IRIS (~2 000 habitants), la vente la plus proche est presque
-    toujours dans le même IRIS."""
+    Évite de charger les contours IGN (170 Mo) dans le backend. La parcelle
+    d'abord : en limite de deux IRIS, la vente la plus proche du point BAN
+    peut être de l'autre côté (mesuré : revenu médian 21 300 € → 34 740 €)."""
     cols = ["revenu_median_iris", "part_logements_collectifs_iris", "part_proprietaires_iris"]
     if not Path(gold_path).exists():
         return dict.fromkeys(cols)
+    if id_parcelle:
+        row = _gold(gold_path).execute(f"""
+            SELECT {", ".join(cols)} FROM g
+            WHERE id_parcelle = ? AND code_iris IS NOT NULL LIMIT 1
+        """, [id_parcelle]).fetchone()
+        if row:
+            return dict(zip(cols, row))
     row = _gold(gold_path).execute(f"""
         SELECT {", ".join(cols)} FROM g
         WHERE code_commune = ? AND code_iris IS NOT NULL
