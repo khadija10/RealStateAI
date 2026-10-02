@@ -99,6 +99,18 @@ en 2026 ?).
   les mois m-12 à m-1, mois de la vente exclu
   (`data-pipeline/src/realstate_data/features/gold.py`, étape 4).
 
+## 6 bis. Addendum — 2 octobre 2026, toujours avant mesure
+
+Un second filtre, côté ML (`ml/features.py`, `_filtrer_outliers`), retire
+les ventes dont le prix au m² sort de [0,40 ; 2,50] × le prix de référence
+des 12 mois précédents. Il ne crée pas de fuite (la référence est passée),
+mais il retire du test des ventes difficiles. On publie donc **deux mesures** :
+
+- **mesure principale** : test filtré comme le reste du pipeline — c'est
+  elle qui décide de l'objectif (section 4) et du classement (section 5) ;
+- **mesure complémentaire** : mêmes modèle et période de test, **sans** ce
+  filtre ML, pour montrer l'écart. Elle ne change pas la décision.
+
 ## 7. Exécution
 
 ```bash
