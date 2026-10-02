@@ -363,6 +363,36 @@ def _construire_secteurs(df: "pd.DataFrame | None") -> dict:
     return secteurs
 
 
+_CACHE_DATASET: dict = {}
+
+
+def _empreinte(path: Path) -> tuple:
+    """Taille et date de modification des fichiers : change si le dataset change."""
+    fichiers = sorted(path.rglob("*.parquet")) if path.is_dir() else [path]
+    return tuple((str(f), f.stat().st_size, f.stat().st_mtime_ns) for f in fichiers)
+
+
+def _charger_dataset(path: Path) -> dict:
+    """Dataset, communes et statistiques de secteur, mis en cache dans le
+    processus tant que les fichiers ne changent pas.
+
+    Le chargement coûte ~7 s et les secteurs ~2,5 s : sans cache, chaque
+    démarrage de l'application (un par test dans la suite de tests) les
+    payait à nouveau."""
+    cle = (str(path), _empreinte(path))
+    if cle not in _CACHE_DATASET:
+        dvf = load_dvf(path)
+        secteurs = _construire_secteurs(dvf)
+        _CACHE_DATASET.clear()
+        _CACHE_DATASET[cle] = {
+            "dvf": dvf,
+            "communes": commune_display_names(dvf),
+            "secteurs": secteurs,
+            "secteurs_par_nom": {(normalize_commune(s["nom"]), typ): s for (_, typ), s in secteurs.items()},
+        }
+    return _CACHE_DATASET[cle]
+
+
 def _type_secteur(property_type: str | None) -> str:
     return "house" if property_type == "house" else "apartment"
 
@@ -422,12 +452,12 @@ async def lifespan(app: FastAPI):
         logger.warning(app.state.dvf_error)
     else:
         try:
-            app.state.dvf = load_dvf(path)
+            donnees = _charger_dataset(path)
+            app.state.dvf = donnees["dvf"]
             app.state.dvf_path = str(path)
-            app.state.communes = commune_display_names(app.state.dvf)
-            app.state.secteurs = _construire_secteurs(app.state.dvf)
-            app.state.secteurs_par_nom = {
-                (normalize_commune(s["nom"]), typ): s for (_, typ), s in app.state.secteurs.items()}
+            app.state.communes = donnees["communes"]
+            app.state.secteurs = donnees["secteurs"]
+            app.state.secteurs_par_nom = donnees["secteurs_par_nom"]
         except Exception as exc:  # noqa: BLE001 — on veut démarrer malgré tout
             app.state.dvf_error = f"{type(exc).__name__} : {exc}"
             logger.exception("Échec du chargement du dataset DVF")
