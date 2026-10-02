@@ -30,12 +30,26 @@ FENETRE_IMMEUBLE_MOIS = 24
 TOLERANCE_SURFACE = 0.10
 
 
+_CACHE_HTTP: dict[str, dict] = {}
+
+
 def _get_json(url: str, params: dict, timeout: float = 4.0) -> dict | None:
-    try:
-        with urllib.request.urlopen(f"{url}?{urllib.parse.urlencode(params)}", timeout=timeout) as r:
-            return json.loads(r.read())
-    except Exception:  # noqa: BLE001 — source facultative
-        return None
+    """GET JSON d'une source facultative (API Carto, ADEME) : second essai avec
+    un délai doublé, réponses réussies gardées en cache (elles changent peu)."""
+    cle = f"{url}?{urllib.parse.urlencode(params)}"
+    if cle in _CACHE_HTTP:
+        return _CACHE_HTTP[cle]
+    for delai in (timeout, 2 * timeout):
+        try:
+            with urllib.request.urlopen(cle, timeout=delai) as r:
+                data = json.loads(r.read())
+        except Exception:  # noqa: BLE001 — source facultative
+            continue
+        if len(_CACHE_HTTP) >= 5000:
+            _CACHE_HTTP.pop(next(iter(_CACHE_HTTP)))
+        _CACHE_HTTP[cle] = data
+        return data
+    return None
 
 
 # Distance maximale entre le point BAN et une vente DVF au même numéro pour
