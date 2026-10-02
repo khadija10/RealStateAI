@@ -1,0 +1,24 @@
+{
+  "source": "docs/protocole_evaluation.md (addendum 8)",
+  "commit_resultats": "9807cec",
+  "mesure_le": "2026-10-02T21:48:58",
+  "periode_test": [
+    "2025-10",
+    "2025-12"
+  ],
+  "n_test": 31696,
+  "mape": 14.91,
+  "dans_10pct": 50.2,
+  "dans_20pct": 78.0,
+  "mape_sans_filtre": 16.63,
+  "objectif": {
+    "dans_10pct_min": 50.0,
+    "dans_20pct_min": 80.0,
+    "atteint": false
+  },
+  "fourchette": {
+    "couverture": 84.7,
+    "largeur_mediane": 50.0,
+    "tenue": false
+  }
+}

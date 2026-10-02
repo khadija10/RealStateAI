@@ -258,6 +258,7 @@ class EstimationResponse(BaseModel):
     local_mape: float | None = None
     local_mape_n: int | None = None
     classe_fiabilite: str | None = None
+    secteur: dict[str, Any] | None = None
     comparables_immeuble: list[dict[str, Any]] | None = None
     dpe_trouve: bool | None = None
 
@@ -278,6 +279,8 @@ class HealthResponse(BaseModel):
     model_n_transactions: int | None = None
     model_n_train: int | None = None
     model_n_test: int | None = None
+    # Résultats de la validation officielle (protocole fixé avant mesure)
+    model_validation: dict[str, Any] | None = None
     dvf_min_year: int | None = None
     dvf_max_year: int | None = None
     dpe_loaded: bool = False
@@ -303,6 +306,61 @@ def _charger_model_info() -> dict | None:
             except Exception:
                 pass
     return None
+
+
+def _charger_validation() -> dict | None:
+    """Résultats officiels du protocole d'évaluation (Backend/models/validation.json)."""
+    for p in (BASE_DIR / "models" / "validation.json", BASE_DIR.parent / "Backend" / "models" / "validation.json"):
+        if p.exists():
+            try:
+                return json.loads(p.read_text())
+            except Exception:  # noqa: BLE001
+                pass
+    return None
+
+
+ANNEES_SECTEUR = (2021, 2022, 2023, 2024, 2025)
+
+
+def _construire_secteurs(df: "pd.DataFrame | None") -> dict:
+    """Statistiques de marché par commune et type de bien, calculées une fois
+    au démarrage sur le dataset chargé : médiane et déciles de la dernière
+    année, nombre de ventes, médiane annuelle 2021-2025.
+
+    Remplace les chiffres écrits en dur dans le frontend : une mise à jour du
+    dataset se reflète sans toucher au code de l'interface."""
+    colonnes = ["code_commune", "commune", "type_bien_norm", "date_mutation", "prix_au_m2"]
+    if df is None or not set(colonnes) <= set(df.columns):
+        return {}
+    cles = ["code_commune", "type_bien_norm"]
+    # L'année est la partition du parquet (annee=2025/), absente des fichiers lus un à un
+    annee = pd.to_datetime(df["date_mutation"], errors="coerce").dt.year
+    d = pd.DataFrame({"code_commune": df["code_commune"].astype(str), "type_bien_norm": df["type_bien_norm"].astype(str),
+                      "commune": df["commune"], "annee": annee, "prix": df["prix_au_m2"]}).dropna(subset=["prix", "annee"])
+    derniere = int(d["annee"].max())
+    tout = d.groupby(cles)["prix"].agg(n="count", med_tout="median",
+                                       p10_tout=lambda s: s.quantile(0.10), p90_tout=lambda s: s.quantile(0.90))
+    rec = d[d["annee"] == derniere].groupby(cles)["prix"].agg(
+        n_rec="count", med="median", p10=lambda s: s.quantile(0.10), p90=lambda s: s.quantile(0.90))
+    noms = d.groupby(cles)["commune"].agg(lambda s: s.value_counts().index[0])
+    par_an = d.groupby(cles + ["annee"])["prix"].median().unstack()
+    stats = tout.join(rec).join(noms).join(par_an)
+    secteurs: dict = {}
+    for (code, typ), r in stats.iterrows():
+        recent = r["n_rec"] >= 10  # sinon : toute la période
+        secteurs[(code, typ)] = {
+            "code": code, "nom": str(r["commune"]), "annee": derniere,
+            "med": round(float(r["med"] if recent else r["med_tout"])),
+            "p10": round(float(r["p10"] if recent else r["p10_tout"])),
+            "p90": round(float(r["p90"] if recent else r["p90_tout"])),
+            "n": int(r["n"]),
+            "eco": [round(float(r[a])) if a in r.index and pd.notna(r[a]) else None for a in ANNEES_SECTEUR],
+        }
+    return secteurs
+
+
+def _type_secteur(property_type: str | None) -> str:
+    return "house" if property_type == "house" else "apartment"
 
 
 def _dvf_year_range(info: dict | None, bound: str) -> int | None:
@@ -347,6 +405,9 @@ async def lifespan(app: FastAPI):
     app.state.search_history.init_db()
     app.state.model_info = _charger_model_info()
     app.state.local_mape = _charger_local_mape()
+    app.state.validation = _charger_validation()
+    app.state.secteurs = {}
+    app.state.secteurs_par_nom = {}
 
     path = resolve_dvf_path()
     if path is None:
@@ -360,6 +421,9 @@ async def lifespan(app: FastAPI):
             app.state.dvf = load_dvf(path)
             app.state.dvf_path = str(path)
             app.state.communes = commune_display_names(app.state.dvf)
+            app.state.secteurs = _construire_secteurs(app.state.dvf)
+            app.state.secteurs_par_nom = {
+                (normalize_commune(s["nom"]), typ): s for (_, typ), s in app.state.secteurs.items()}
         except Exception as exc:  # noqa: BLE001 — on veut démarrer malgré tout
             app.state.dvf_error = f"{type(exc).__name__} : {exc}"
             logger.exception("Échec du chargement du dataset DVF")
@@ -852,6 +916,7 @@ def health(request: Request) -> HealthResponse:
         dpe_loaded=dpe_cov > 0,
         dpe_coverage_pct=round(dpe_cov * 100, 1) if dpe_cov > 0 else None,
         dpe_n_zones=len(dpe_zones),
+        model_validation=getattr(request.app.state, "validation", None),
     )
 
 
@@ -998,6 +1063,8 @@ def estimate(
                     normalized.classe_fiabilite = ml_result.get("classe_fiabilite")
                     normalized.comparables_immeuble = ml_result.get("comparables_immeuble") or []
                     normalized.dpe_trouve = ml_result.get("dpe_trouve")
+                    normalized.secteur = getattr(request.app.state, "secteurs", {}).get(
+                        (str(ml_result.get("code_commune") or ""), _type_secteur(type_bien)))
                 if lm.get("mape"):
                     normalized.reliability = round(max(0.30, min(0.95, 1.0 - lm["mape"] / 100)), 2)
                 # Score géocodage BAN
@@ -1159,6 +1226,9 @@ def estimate(
             notes=outcome.notes,
         ),
     )
+    # Statistiques du secteur, retrouvé par le nom de la commune
+    response.secteur = getattr(request.app.state, "secteurs_par_nom", {}).get(
+        (commune_norm, _type_secteur(type_bien)))
     # Enrichissement DPE
     if req.dpe_classe:
         response.dpe_classe = req.dpe_classe
@@ -1206,6 +1276,22 @@ def market_map():
     if not _COMMUNE_STATS_PATH.exists():
         raise HTTPException(503, "Données cartographiques non disponibles.")
     return json.loads(_COMMUNE_STATS_PATH.read_text())
+
+
+@app.get(f"{API_PREFIX}/market/secteurs", tags=["marché"])
+def market_secteurs(
+    request: Request,
+    property_type: str = Query(default="apartment", description="apartment | house"),
+    min_ventes: int = Query(default=200, ge=1, description="Nombre minimal de ventes du secteur"),
+):
+    """Secteurs (communes et arrondissements) classés par prix au m² médian,
+    calculés sur le dataset chargé — alimente la grille « Le marché par secteur »."""
+    typ = _type_secteur(property_type)
+    secteurs = [s for (_, t), s in getattr(request.app.state, "secteurs", {}).items()
+                if t == typ and s["n"] >= min_ventes]
+    if not secteurs:
+        raise HTTPException(503, "Statistiques de secteur non disponibles.")
+    return sorted(secteurs, key=lambda s: -s["med"])
 
 
 @app.get(f"{API_PREFIX}/market/trends", tags=["marché"])
