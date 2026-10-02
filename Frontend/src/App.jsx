@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import Header from './components/Header'
 import Footer from './components/Footer'
 import PriceMap from './components/PriceMap'
@@ -17,7 +17,7 @@ const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 const TABS = [
   { id: 'estimation', label: 'Estimation' },
-  { id: 'financement', label: 'Financement' },
+  { id: 'financement', label: 'Financement', protected: true },
   { id: 'plusvalue', label: 'Plus-value' },
   { id: 'carte', label: 'Carte des prix' },
   { id: 'marche', label: 'Référence du marché' },
@@ -34,6 +34,11 @@ export default function App() {
   const [historyKey, setHistoryKey] = useState(0)
   const [plusValuePrefill, setPlusValuePrefill] = useState(null)
   const [financementPrefill, setFinancementPrefill] = useState(null)
+  const [estimationFaite, setEstimationFaite] = useState(false)
+  // « Ré-estimer » depuis l'historique : le bien à réestimer, transmis à la page Estimation
+  const [relance, setRelance] = useState(null)
+  // Action mise en attente de connexion (estimation lancée sans être connecté)
+  const actionApresConnexion = useRef(null)
   const [dpeInfo, setDpeInfo] = useState(null)
   const [darkMode, setDarkMode] = useState(() => {
     try { return localStorage.getItem('reai_theme') === 'dark' } catch { return false }
@@ -54,6 +59,14 @@ export default function App() {
   function handleAuthSuccess(_token, userData) {
     setUser(userData)
     setShowAuthModal(false)
+    const action = actionApresConnexion.current
+    actionApresConnexion.current = null
+    action?.()
+  }
+
+  function ouvrirOnglet(id) {
+    if (id !== 'estimation') setRelance(null)
+    setActiveTab(id)
   }
 
   function handleLogout() {
@@ -91,7 +104,7 @@ export default function App() {
         onToggleDark={() => setDarkMode((d) => !d)}
       />
       {showAuthModal && (
-        <AuthModal onSuccess={handleAuthSuccess} onClose={() => setShowAuthModal(false)} />
+        <AuthModal onSuccess={handleAuthSuccess} onClose={() => { setShowAuthModal(false); actionApresConnexion.current = null }} />
       )}
 
       {/* Barre de navigation onglets */}
@@ -103,7 +116,7 @@ export default function App() {
                 key={tab.id}
                 onClick={() => {
                   if (tab.protected && !user) { setShowAuthModal(true); return }
-                  setActiveTab(tab.id)
+                  ouvrirOnglet(tab.id)
                   if (tab.id === 'historique') setHistoryKey((k) => k + 1)
                 }}
                 className={`px-3.5 sm:px-5 py-2 text-sm font-medium rounded-full shrink-0 transition-colors ${
@@ -113,6 +126,9 @@ export default function App() {
                 }`}
               >
                 {tab.label}
+                {tab.id === 'estimation' && estimationFaite && (
+                  <span className="ml-2 h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block align-middle" aria-label="estimation disponible" />
+                )}
               </button>
             ))}
           </div>
@@ -127,8 +143,16 @@ export default function App() {
               page={estimationPage}
               apiBase={API_BASE}
               options={{
-                onPlusValue: (bien) => { setPlusValuePrefill(bien); setActiveTab('plusvalue') },
-                onFinancement: (bien) => { setFinancementPrefill(bien); setActiveTab('financement') },
+                onPlusValue: (bien) => { setPlusValuePrefill(bien); ouvrirOnglet('plusvalue') },
+                onFinancement: (bien) => {
+                  setFinancementPrefill(bien)
+                  if (!getToken()) { actionApresConnexion.current = () => ouvrirOnglet('financement'); setShowAuthModal(true); return }
+                  ouvrirOnglet('financement')
+                },
+                onEstime: () => setEstimationFaite(true),
+                // Connexion demandée avant d'estimer, comme dans l'ancien frontend
+                demanderConnexion: (reprendre) => { actionApresConnexion.current = reprendre; setShowAuthModal(true) },
+                relance,
               }}
             />
           </div>
@@ -191,7 +215,7 @@ export default function App() {
             </div>
             <div className="max-w-2xl">
               <LocalEstimationsHistory />
-              <History key={historyKey} onReEstimate={() => setActiveTab('estimation')} />
+              <History key={historyKey} onReEstimate={(item) => { setRelance({ ...item, _demande: Date.now() }); setActiveTab('estimation') }} />
             </div>
           </div>
         )}

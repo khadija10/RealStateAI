@@ -17,17 +17,22 @@ export const html = `
     <div class="rangee">
       <div class="critere">
         <div class="pic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.4"/></svg></div>
-        <div style="min-width:0;flex:1"><label for="rsai-adresse">Adresse du bien</label>
-          <input id="rsai-adresse" type="text" placeholder="12 rue de la Paix, 75002 Paris" autocomplete="off"></div>
+        <div style="min-width:0;flex:1;position:relative"><label for="rsai-adresse">Adresse du bien <span class="indice">· active le modèle ML</span></label>
+          <input id="rsai-adresse" type="text" placeholder="12 rue de la Paix, 75002 Paris" autocomplete="off"
+            role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="rsai-suggestions">
+          <input id="rsai-cp" type="hidden">
+          <ul class="suggestions" id="rsai-suggestions" role="listbox" hidden></ul></div>
       </div>
       <div class="critere">
         <div class="pic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M4 21V9l8-6 8 6v12"/><path d="M9 21v-6h6v6"/></svg></div>
-        <div style="min-width:0;flex:1"><label for="rsai-secteur">ou secteur</label><select id="rsai-secteur"></select></div>
+        <div style="min-width:0;flex:1"><label for="rsai-secteur">ou commune</label>
+          <input id="rsai-secteur" type="text" list="rsai-communes" placeholder="Chargement…" autocomplete="off">
+          <datalist id="rsai-communes"></datalist></div>
       </div>
       <div class="critere">
         <div class="pic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><rect x="4" y="4" width="16" height="16" rx="2"/><path d="M4 12h16M12 4v16"/></svg></div>
         <div style="flex:1"><label for="rsai-type">Type de bien</label>
-          <select id="rsai-type"><option value="apartment">Appartement</option><option value="house">Maison</option></select></div>
+          <select id="rsai-type"><option value="apartment">Appartement</option><option value="house">Maison</option><option value="other">Autre</option></select></div>
       </div>
       <div class="critere">
         <div class="pic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 21h18M6 21V8l6-4 6 4v13"/></svg></div>
@@ -40,6 +45,26 @@ export const html = `
       <button type="submit" class="estimer" id="rsai-bouton">Estimer</button>
     </div>
   </form>
+</section>
+
+<section class="affiner" aria-labelledby="rsai-affiner-titre">
+  <div class="affiner-tete"><h3 id="rsai-affiner-titre">Affiner <em>l'estimation</em></h3>
+    <span>Facultatif — plus le bien est décrit, plus l'estimation est précise.</span></div>
+  <div class="affiner-champs">
+    <div class="champ"><span class="champ-lib">Classe DPE</span>
+      <div class="dpe-choix" id="rsai-dpe" role="group" aria-label="Classe DPE">
+        ${'ABCDEFG'.split('').map((c) => `<button type="button" class="dpe-${c}" data-dpe="${c}" aria-pressed="false">${c}</button>`).join('')}
+      </div></div>
+    <div class="champ"><label for="rsai-annee">Année de construction</label>
+      <input id="rsai-annee" type="number" min="1800" max="2026" placeholder="ex. 1975"></div>
+    <div class="champ"><label for="rsai-num-dpe">Numéro de DPE</label>
+      <input id="rsai-num-dpe" type="text" maxlength="13" placeholder="13 caractères, sur le diagnostic" autocomplete="off"></div>
+    <div class="champ"><label for="rsai-lot">Numéro de lot</label>
+      <input id="rsai-lot" type="text" maxlength="20" placeholder="sur le titre de propriété" autocomplete="off"></div>
+  </div>
+  <p class="aide">Avec le numéro de DPE, la classe énergétique, l'année de construction et l'isolation du bien
+    sont retrouvées automatiquement dans la base de l'ADEME. Le numéro de lot permet de retrouver
+    une vente précédente du même logement.</p>
 </section>
 
 <section class="manifeste">
@@ -65,6 +90,7 @@ export const html = `
       <div class="lib" id="rsai-lib-secteur">Estimation</div>
       <div class="valeur" id="rsai-valeur">—</div>
       <div class="fourchette" id="rsai-fourchette"></div>
+      <div id="rsai-alertes"></div>
       <div class="jauge-ci"><i id="rsai-curseur-ci" style="left:50%"></i></div>
       <div class="bornes-ci"><span id="rsai-ci-bas"></span><span id="rsai-ci-haut"></span></div>
       <div class="mesures">
@@ -77,8 +103,12 @@ export const html = `
       <div class="bloc-tete"><h3>Fiabilité <em>de l'estimation</em></h3><span id="rsai-src-modele"></span></div>
       <div class="fiab">
         <div id="rsai-anneau"></div>
-        <div class="fiab-txt" id="rsai-fiab-txt"></div>
+        <div class="fiab-txt"><p class="classe-fiab" id="rsai-classe-fiab"></p><div id="rsai-fiab-txt"></div></div>
       </div>
+    </div>
+    <div class="bloc" id="rsai-bloc-dpe" hidden>
+      <div class="bloc-tete"><h3>Performance <em>énergétique</em></h3><span id="rsai-dpe-source"></span></div>
+      <div id="rsai-dpe-contenu"></div>
     </div>
     <div class="bloc" data-secteur>
       <div class="bloc-tete"><h3>Position <em>dans le secteur</em></h3><span id="rsai-volume"></span></div>
@@ -88,6 +118,11 @@ export const html = `
     <div class="bloc" data-secteur>
       <div class="bloc-tete"><h3>Évolution <em>depuis 2021</em></h3><span id="rsai-tendance"></span></div>
       <div id="rsai-courbe"></div>
+    </div>
+    <div class="bloc bloc-large" id="rsai-bloc-comparables" hidden>
+      <div class="bloc-tete"><h3>Ventes <em>dans l'immeuble</em></h3><span>DVF · prix ramenés au marché du jour</span></div>
+      <table class="comparables"><thead><tr><th>Date</th><th>Surface</th><th>Pièces</th><th>Prix</th><th>€/m² à la vente</th><th>€/m² aujourd'hui</th></tr></thead>
+        <tbody id="rsai-comparables"></tbody></table>
     </div>
     <div class="bloc">
       <div class="bloc-tete"><h3>Détail <em>du calcul</em></h3></div>
@@ -126,10 +161,18 @@ const nb = (n) => Math.round(n).toLocaleString('fr-FR')
 
 const TYPE_LABEL = { apartment: 'Appartement', house: 'Maison', other: 'Autre' }
 
+// Classes de fiabilité du protocole d'évaluation (docs/protocole_evaluation.md)
+const CLASSES = {
+  fiable: { titre: 'Secteur fiable', texte: "l'estimation peut appuyer un prix.", ton: 'vert' },
+  indicative: { titre: 'Estimation indicative', texte: 'un point de départ, à confirmer.', ton: 'ambre' },
+  a_completer: { titre: 'Secteur difficile', texte: "l'expertise terrain est indispensable.", ton: 'rouge' },
+  donnees_insuffisantes: { titre: 'Peu de ventes de contrôle', texte: 'fiabilité locale non mesurée.', ton: 'gris' },
+}
+
 /** Fiche imprimable — même principe que l'ancien frontend (fenêtre + print()). */
 function exporterPDF(bien) {
   if (!bien) return
-  const { r, s, adresse, surface, pieces } = bien
+  const { r, s, adresse, surface, pieces, type } = bien
   const date = new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long', timeStyle: 'short' }).format(new Date())
   const lieu = adresse || r.adresse || s?.nom || ''
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">
@@ -153,8 +196,12 @@ function exporterPDF(bien) {
 <p class="sub">RealStateAI · ${date}</p>
 <table>
   <tr><td>Bien</td><td>${lieu}</td></tr>
+  <tr><td>Type</td><td>${TYPE_LABEL[type] || '—'}</td></tr>
   <tr><td>Surface</td><td>${surface} m²</td></tr>
   <tr><td>Pièces</td><td>${pieces}</td></tr>
+  ${r.dpeClasse ? `<tr><td>Classe DPE</td><td>${r.dpeClasse}</td></tr>` : ''}
+  ${r.annee ? `<tr><td>Année de construction</td><td>${r.annee}</td></tr>` : ''}
+  ${r.classe ? `<tr><td>Fiabilité du secteur</td><td>${CLASSES[r.classe]?.titre || r.classe}</td></tr>` : ''}
   <tr><td>Méthode</td><td>${r.modele === 'ml' ? 'Modèle ML (LightGBM)' : 'Médiane DVF communale'}</td></tr>
 </table>
 <p class="price">${euro(r.valeur)}</p>
@@ -181,10 +228,13 @@ function construireLienPartage(bien) {
   if (bien.type) p.set('type', bien.type)
   if (bien.adresse) p.set('address', bien.adresse)
   if (bien.commune) p.set('commune', bien.commune)
+  if (bien.codePostal) p.set('postal_code', bien.codePostal)
+  if (bien.dpe) p.set('dpe', bien.dpe)
+  if (bien.annee) p.set('year', bien.annee)
   return `${window.location.origin}${window.location.pathname}?${p.toString()}`
 }
 
-export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
+export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime, demanderConnexion, relance } = {}) {
   const API = {
     BASE: apiBase,
     COMMUNES: '/api/metadata/communes',
@@ -203,10 +253,10 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
   $('#illus-heros').innerHTML = heroEstimation()
   $('#rsai-fond-page').innerHTML = heroEstimation()
 
-  // Liste des communes servie par le backend ; aucune présélection.
+  // Communes servies par le backend, cherchables à la saisie (datalist) ; aucune présélection.
   const selecteur = $('#rsai-secteur')
-  selecteur.innerHTML = '<option value="">Chargement…</option>'
-  let communeDemandee = null   // commune d'un lien partagé, appliquée au chargement de la liste
+  let communes = []
+  let dpeChoisi = ''
 
   async function verifierApi() {
     const badge = $('#etat-api')
@@ -231,7 +281,7 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
       if (dernierBien) afficher(dernierBien.r, dernierBien.s, dernierBien.adresse, dernierBien.surface, dernierBien.pieces, dernierBien.type)
     } catch {
       badge.innerHTML = `<i></i><span>Backend injoignable</span>`
-      selecteur.innerHTML = '<option value="">Indisponible</option>'
+      selecteur.placeholder = 'Indisponible'
     }
   }
 
@@ -263,15 +313,67 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
     try {
       const r = await fetch(API.BASE + API.COMMUNES)
       const d = await r.json()
-      const communes = Array.isArray(d) ? d.filter(Boolean) : Array.isArray(d?.communes) ? d.communes.filter(Boolean) : []
-      if (!actif || !communes.length) return
-      selecteur.innerHTML = '<option value="">— choisir —</option>' +
-        communes.map((c) => `<option value="${c}">${c}</option>`).join('')
-      if (communeDemandee && communes.includes(communeDemandee)) selecteur.value = communeDemandee
+      const liste = Array.isArray(d) ? d.filter(Boolean) : Array.isArray(d?.communes) ? d.communes.filter(Boolean) : []
+      if (!actif || !liste.length) return
+      communes = liste
+      $('#rsai-communes').innerHTML = liste.map((c) => `<option value="${c}"></option>`).join('')
+      selecteur.placeholder = 'Rechercher une commune'
     } catch {
-      selecteur.innerHTML = '<option value="">Indisponible</option>'
+      selecteur.placeholder = 'Indisponible'
     }
   }
+
+  // Suggestions d'adresses pendant la saisie (API Adresse, comme l'ancien
+  // formulaire) : choisir une suggestion fixe aussi le code postal.
+  const champAdresse = $('#rsai-adresse'), liste = $('#rsai-suggestions')
+  let suggestions = [], choix = -1, attente = null
+  function fermerSuggestions() { liste.hidden = true; champAdresse.setAttribute('aria-expanded', 'false'); choix = -1 }
+  function montrerSuggestions() {
+    liste.innerHTML = suggestions.map((s, i) => `<li role="option" data-i="${i}" aria-selected="${i === choix}">
+      <b>${s.name}</b><span>${s.postcode} ${s.city}</span></li>`).join('')
+    liste.hidden = !suggestions.length
+    champAdresse.setAttribute('aria-expanded', String(!!suggestions.length))
+  }
+  function choisir(s) {
+    champAdresse.value = s.label
+    $('#rsai-cp').value = s.postcode
+    selecteur.value = ''
+    suggestions = []; fermerSuggestions()
+  }
+  champAdresse.addEventListener('input', () => {
+    $('#rsai-cp').value = ''   // adresse modifiée à la main : code postal à redéduire
+    clearTimeout(attente)
+    const q = champAdresse.value.trim()
+    if (q.length < 3) { suggestions = []; return fermerSuggestions() }
+    attente = setTimeout(async () => {
+      try {
+        const r = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(q)}&limit=6&autocomplete=1`)
+        const d = await r.json()
+        if (!actif || champAdresse.value.trim() !== q) return
+        suggestions = (d.features || []).map((f) => ({ label: f.properties.label, name: f.properties.name,
+          postcode: f.properties.postcode || '', city: f.properties.city || '' }))
+        choix = -1; montrerSuggestions()
+      } catch { suggestions = []; fermerSuggestions() }
+    }, 300)
+  })
+  champAdresse.addEventListener('keydown', (e) => {
+    if (liste.hidden) return
+    if (e.key === 'ArrowDown') { e.preventDefault(); choix = Math.min(choix + 1, suggestions.length - 1); montrerSuggestions() }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); choix = Math.max(choix - 1, -1); montrerSuggestions() }
+    else if (e.key === 'Enter' && choix >= 0) { e.preventDefault(); choisir(suggestions[choix]) }
+    else if (e.key === 'Escape') fermerSuggestions()
+  })
+  liste.addEventListener('mousedown', (e) => {
+    const li = e.target.closest('li'); if (li) { e.preventDefault(); choisir(suggestions[+li.dataset.i]) }
+  })
+  champAdresse.addEventListener('blur', () => setTimeout(fermerSuggestions, 120))
+
+  // Classe DPE : un bouton par classe, un second clic désélectionne
+  function choisirDpe(c) {
+    dpeChoisi = dpeChoisi === c ? '' : c
+    root.querySelectorAll('[data-dpe]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.dpe === dpeChoisi)))
+  }
+  $('#rsai-dpe').addEventListener('click', (e) => { const b = e.target.closest('[data-dpe]'); if (b) choisirDpe(b.dataset.dpe) })
 
   function message(texte) {
     const m = $('#rsai-attente')
@@ -284,10 +386,23 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
     const pieces = +$('#rsai-pieces').value
     const type = $('#rsai-type').value
     const adresse = $('#rsai-adresse').value.trim()
-    const commune = selecteur.value
-    if (!adresse && !commune) return message("Indiquez l'adresse du bien ou choisissez son secteur.")
+    const commune = selecteur.value.trim()
+    const codePostal = $('#rsai-cp').value
+    const annee = +$('#rsai-annee').value || null
+    const numeroDpe = $('#rsai-num-dpe').value.trim().toUpperCase()
+    const lot = $('#rsai-lot').value.trim()
+    if (!adresse && !commune) return message("Indiquez l'adresse du bien ou choisissez sa commune.")
+    if (!adresse && communes.length && !communes.includes(commune)) return message('Choisissez une commune dans la liste proposée.')
     if (!surface || surface < 9) return message('Indiquez la surface du bien (9 m² minimum).')
     if (!pieces) return message('Indiquez le nombre de pièces.')
+    if (annee && (annee < 1800 || annee > 2026)) return message("L'année de construction doit être comprise entre 1800 et 2026.")
+    if (numeroDpe && !/^[0-9A-Z]{13}$/.test(numeroDpe)) return message('Le numéro de DPE compte 13 caractères (chiffres et lettres).')
+
+    // Connexion demandée avant d'estimer, comme dans l'ancien frontend :
+    // l'estimation reprend d'elle-même une fois connecté.
+    let jeton = null
+    try { jeton = localStorage.getItem('reai_token') } catch { /* ignore */ }
+    if (!jeton && demanderConnexion) return demanderConnexion(() => estimer(true))
 
     const bouton = $('#rsai-bouton')
     bouton.disabled = true; bouton.textContent = 'Calcul…'
@@ -308,11 +423,17 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
           area_m2: surface, rooms: pieces, property_type: type,
           commune: commune || undefined,
           address: adresse || undefined,
+          postal_code: codePostal || undefined,
+          dpe_classe: dpeChoisi || undefined,
+          annee_construction: annee || undefined,
+          numero_dpe: numeroDpe || undefined,
+          numero_lot: lot || undefined,
         }),
       })
       const d = await rep.json().catch(() => ({}))
       if (rep.ok) r = normaliser(d)
-      else erreur = typeof d.detail === 'string' ? d.detail : "L'estimation n'a pas abouti."
+      else erreur = typeof d.detail === 'string' ? d.detail
+        : Array.isArray(d.detail) ? d.detail.map((x) => x.msg).join(' ') : "L'estimation n'a pas abouti."
     } catch {
       erreur = 'Le service d\'estimation est injoignable. Réessayez dans un instant.'
     }
@@ -322,6 +443,7 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
 
     afficher(r, r.secteur, adresse, surface, pieces, type)
     memoriser({ query: adresse || commune, area_m2: surface, prix: r.valeur })
+    onEstime?.()
     if (defiler) $('#rsai-resultat').scrollIntoView({ behavior: 'smooth' })
   }
 
@@ -338,6 +460,12 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
       modele: d.model, adresse: d.meta?.adresse_normalisee,
       meta: d.meta, reel: true,
       secteur: d.secteur ? avecAnnees(d.secteur) : null,
+      classe: d.classe_fiabilite || null,
+      comparables: d.comparables_immeuble || [],
+      dpeClasse: d.dpe_classe || null, annee: d.annee_construction || null,
+      dpeTrouve: d.dpe_trouve, dpeZone: d.dpe_zone_fg_pct ?? null,
+      alerteGeo: d.geocoding_warning || null, codePostal: d.code_postal || null,
+      notes: d.meta?.notes || [],
     }
   }
 
@@ -370,6 +498,10 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
     }
 
     $('#rsai-anneau').innerHTML = anneau(r.fiabilite)
+    afficherAlertes(r)
+    afficherClasse(r)
+    afficherDpe(r)
+    afficherComparables(r)
     $('#rsai-src-modele').innerHTML = `<span class="puce">${r.modele === 'ml' ? 'Modèle ML' : 'Médiane DVF communale'}</span>`
     const val = modelInfo?.validation
     $('#rsai-fiab-txt').innerHTML =
@@ -388,9 +520,49 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
        <tr><td>Modèle</td><td class="n">${r.modele === 'ml' ? `LightGBM${modelInfo?.nFeatures ? ` · ${modelInfo.nFeatures} variables` : ''}` : 'Médiane des ventes comparables'}</td></tr>
        <tr><td><em style="font-size:17px">Valeur estimée</em></td><td class="n"><b>${euro(r.valeur)}</b></td></tr>`
     afficherTechnique(r)
+    const cp = r.codePostal || $('#rsai-cp').value || null
     dernierBien = { commune: s?.nom || selecteur.value || null, code_commune: s?.code || null,
-                    departement: s?.code ? s.code.slice(0, 2) : null, secteur: s?.code || null,
+                    departement: s?.code ? s.code.slice(0, 2) : cp ? cp.slice(0, 2) : null, secteur: s?.code || null,
+                    codePostal: cp, dpe: dpeChoisi || r.dpeClasse || null, annee: +$('#rsai-annee').value || null,
                     prix: Math.round(r.valeur), r, s, adresse, surface, pieces, type }
+  }
+
+  // Alertes reprises de l'ancien frontend : adresse mal localisée, notes du
+  // repli DVF (petite surface…), passoire thermique.
+  function afficherAlertes(r) {
+    const a = []
+    if (r.alerteGeo) a.push(['ambre', r.alerteGeo])
+    if (r.modele !== 'ml') r.notes.filter((n) => !/estimation fournie/i.test(n)).forEach((n) => a.push(['gris', n]))
+    if (r.modele !== 'ml' && r.modele) a.push(['gris', "Sans adresse précise, l'estimation repose sur la médiane des ventes comparables de la commune ; indiquez l'adresse pour activer le modèle."])
+    if (['F', 'G'].includes(r.dpeClasse)) a.push(['rouge', `<b>Passoire thermique (classe ${r.dpeClasse})</b> — depuis la loi Climat et Résilience, les biens F et G se vendent avec une décote, et leur mise en location est interdite${r.dpeClasse === 'G' ? ' depuis 2025' : ' à partir de 2028'}.`])
+    $('#rsai-alertes').innerHTML = a.map(([ton, txt]) => `<p class="alerte alerte-${ton}">${txt}</p>`).join('')
+  }
+
+  function afficherClasse(r) {
+    const c = CLASSES[r.classe]
+    const pct = r.fiabilite != null ? Math.round(r.fiabilite * 100) : null
+    const niveau = pct == null ? '' : pct >= 80 ? 'Bonne fiabilité' : pct >= 60 ? 'Fiabilité moyenne' : 'Fiabilité limitée'
+    $('#rsai-classe-fiab').innerHTML = c
+      ? `<span class="puce puce-${c.ton}">${c.titre}</span> ${c.texte}`
+      : niveau ? `<span class="niveau">${niveau}</span>` : ''
+  }
+
+  function afficherDpe(r) {
+    const bloc = $('#rsai-bloc-dpe')
+    if (!r.dpeClasse && r.dpeZone == null) { bloc.hidden = true; return }
+    bloc.hidden = false
+    $('#rsai-dpe-source').textContent = r.dpeTrouve ? 'retrouvé par son numéro · ADEME' : r.dpeClasse ? 'saisi' : ''
+    $('#rsai-dpe-contenu').innerHTML =
+      (r.dpeClasse ? `<p class="dpe-ligne"><span class="badge-dpe dpe-${r.dpeClasse}">DPE ${r.dpeClasse}</span>${r.annee ? ` construit en ${r.annee}` : ''}</p>` : '') +
+      (r.dpeZone != null ? `<p class="fiab-txt"><b>${String(r.dpeZone).replace('.', ',')} %</b> de passoires thermiques (F et G) parmi les diagnostics du code postal.</p>` : '')
+  }
+
+  function afficherComparables(r) {
+    const bloc = $('#rsai-bloc-comparables')
+    bloc.hidden = !r.comparables.length
+    const date = (d) => new Date(d).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })
+    $('#rsai-comparables').innerHTML = r.comparables.map((c) => `<tr><td>${date(c.date)}</td><td>${nb(c.surface_m2)} m²</td>
+      <td>${c.nb_pieces ? nb(c.nb_pieces) : '—'}</td><td>${euro(c.prix)}</td><td>${nb(c.prix_m2)} €</td><td><b>${nb(c.prix_m2_aujourdhui)} €</b></td></tr>`).join('')
   }
 
   function afficherSecteur(r, s) {
@@ -496,7 +668,7 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
   }
   function chargerSecteurs() {
     const grille = $('#rsai-grille-marche')
-    ordre.slice(affiches, affiches + 8).forEach(([code, s], i) => {
+    ordre.slice(affiches, affiches + 8).forEach(([, s], i) => {
       const v = 100 * (s.eco[s.eco.length - 1] / s.eco[0] - 1)
       const b = document.createElement('button'); b.className = 'bien'; b.type = 'button'
       b.innerHTML = `<div class="carte-img"><div class="illus">${vignettes[(affiches + i) % 4]()}</div></div>
@@ -504,8 +676,8 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
         <div class="puces"><span class="puce">${nb(s.n)} ventes</span>
           <span class="puce">${v > 0 ? '+' : ''}${v.toFixed(1).replace('.', ',')} % depuis ${s.annees[0]}</span></div>`
       b.addEventListener('click', () => {
-        if ([...selecteur.options].some((o) => o.value === s.nom)) selecteur.value = s.nom
-        $('#rsai-adresse').value = ''; estimer(true)
+        selecteur.value = communes.includes(s.nom) ? s.nom : ''
+        $('#rsai-adresse').value = ''; $('#rsai-cp').value = ''; estimer(true)
       })
       grille.appendChild(b)
     })
@@ -536,14 +708,25 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
 
   // Préremplissage depuis un lien partagé.
   const params = new URLSearchParams(window.location.search)
-  if (params.get('area_m2')) $('#rsai-surface').value = params.get('area_m2')
-  if (params.get('rooms')) $('#rsai-pieces').value = params.get('rooms')
-  if (params.get('type')) $('#rsai-type').value = params.get('type')
-  if (params.get('address')) $('#rsai-adresse').value = params.get('address')
-  if (params.get('commune')) communeDemandee = params.get('commune')
+  // Préremplissage commun au lien partagé et à « Ré-estimer » depuis l'historique.
+  function remplir(v) {
+    if (v.area_m2) $('#rsai-surface').value = v.area_m2
+    if (v.rooms) $('#rsai-pieces').value = v.rooms
+    if (v.property_type || v.type) $('#rsai-type').value = v.property_type || v.type
+    $('#rsai-adresse').value = v.adresse_normalisee || v.address || ''
+    $('#rsai-cp').value = v.postal_code || ''
+    selecteur.value = !$('#rsai-adresse').value ? (v.commune || '') : ''
+    if (v.dpe_classe || v.dpe) choisirDpe(v.dpe_classe || v.dpe)
+    if (v.annee_construction || v.year) $('#rsai-annee').value = v.annee_construction || v.year
+  }
+  remplir({ area_m2: params.get('area_m2'), rooms: params.get('rooms'), type: params.get('type'),
+            address: params.get('address'), postal_code: params.get('postal_code'), commune: params.get('commune'),
+            dpe: params.get('dpe'), year: params.get('year') })
   if ([...params.keys()].length) window.history.replaceState({}, '', window.location.pathname)
 
   verifierApi(); chargerSecteursApi()
+  // « Ré-estimer » depuis l'historique : demande explicite, on relance l'estimation du bien.
+  if (relance) { remplir(relance); estimer(true) }
 
   return () => { actif = false }
 }

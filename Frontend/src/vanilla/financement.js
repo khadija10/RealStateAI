@@ -36,7 +36,7 @@ export const html = `
         <select id="fin-duree"><option value="15">15 ans</option><option value="20">20 ans</option><option value="25" selected>25 ans</option></select></div>
       <div class="choix"><label for="fin-situation">Situation</label>
         <select id="fin-situation"><option value="CDI">CDI</option><option value="fonctionnaire">Fonctionnaire</option><option value="CDD">CDD</option>
-          <option value="independant">Indépendant</option><option value="interim">Intérim</option></select></div>
+          <option value="independant">Indépendant</option><option value="interim">Intérim</option><option value="chomage">Sans emploi</option></select></div>
     </div>
     <div class="ligne-choix">
       <div class="choix"><label for="fin-adultes">Adultes</label>
@@ -65,11 +65,12 @@ export const html = `
       <span class="verdict" id="fin-verdict"><i></i><span>En attente de votre situation</span></span>
       <div class="mensualite" id="fin-mensualite">—</div>
       <div class="precision" id="fin-precision"></div>
+      <div class="precision" id="fin-decision"></div>
     </div>
     <div class="mesures">
       <div class="mesure"><b id="fin-emprunt">—</b><span>Montant emprunté</span></div>
       <div class="mesure"><b id="fin-endett">—</b><span>Taux d'endettement</span></div>
-      <div class="mesure"><b id="fin-score">—</b><span>Score du dossier</span></div>
+      <div class="mesure"><b id="fin-score">—</b><span id="fin-score-lib">Score du dossier</span></div>
     </div>
   </div>
 </section>
@@ -286,6 +287,12 @@ export function mount(root, { apiBase = '', prefill } = {}) {
     $('#fin-emprunt').textContent = nb((plan.montant_emprunte || 0) / 1000) + 'k €'
     $('#fin-endett').textContent = pct(endettement)
     $('#fin-score').textContent = Math.round(d.score_dossier?.score_sur_100 || 0) + '/100'
+    const appreciation = d.score_dossier?.appreciation
+    $('#fin-score-lib').textContent = 'Score du dossier' + (appreciation ? ' · ' + appreciation : '')
+    // La décision n'est affichée que si elle précise le verdict (sinon elle le répète)
+    const decision = d.synthese?.decision_indicative || ''
+    const verdict = $('#fin-verdict').textContent.toLowerCase()
+    $('#fin-decision').textContent = decision && !verdict.includes(decision.toLowerCase()) ? decision : ''
 
     $('#fin-jauge').innerHTML = jauge(endettement)
     const rav = d.reste_a_vivre || {}
@@ -300,6 +307,8 @@ export function mount(root, { apiBase = '', prefill } = {}) {
       <tr><td>Frais de dossier et garantie</td><td class="n">${euro(plan.frais_credit || 0)}</td></tr>
       <tr><td>Apport</td><td class="n">− ${euro(plan.apport ?? p.apport)}</td></tr>
       <tr class="total"><td>À emprunter</td><td class="n">${euro(plan.montant_emprunte || 0)}</td></tr>
+      <tr><td>Mensualité hors assurance, sur ${credit.duree_annees || p.duree} ans</td><td class="n">${euro(credit.mensualite_credit || 0)}</td></tr>
+      ${plan.cout_total_operation ? `<tr><td>Coût total de l'opération</td><td class="n">${euro(plan.cout_total_operation)}</td></tr>` : ''}
       <tr><td>Coût total du crédit</td><td class="n">${euro(credit.cout_total_credit || 0)}</td></tr>
       <tr><td>Reste à vivre</td><td class="n">${euro(rav.reste_a_vivre || 0)}</td></tr>`
 

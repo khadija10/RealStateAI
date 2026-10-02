@@ -300,3 +300,58 @@
 .rsai-vanilla .methode h3{margin:0 0 10px;font-weight:400;font-size:28px;line-height:1.1}
 .rsai-vanilla .methode p{margin:0 0 10px;font-size:13.5px;color:rgba(255,255,255,.82)}
 .rsai-vanilla .methode b{color:#fff}
+
+/* ==========================================================================
+   Fonctions reprises de l'ancien frontend : suggestions d'adresses, panneau
+   « Affiner l'estimation », alertes, DPE, classe de fiabilité, comparables.
+   ========================================================================== */
+.rsai-vanilla .critere label .indice{color:var(--ambre)}
+.rsai-vanilla .suggestions{position:absolute;left:-10px;right:-10px;bottom:calc(100% + 14px);margin:0;padding:6px;list-style:none;
+  background:var(--blanc);border-radius:18px;box-shadow:0 14px 40px rgba(0,0,0,.22);z-index:5;max-height:300px;overflow-y:auto}
+.rsai-vanilla .suggestions li{display:flex;flex-direction:column;gap:2px;padding:9px 12px;border-radius:12px;cursor:pointer}
+.rsai-vanilla .suggestions li b{font-weight:500;font-size:13.5px;color:var(--encre)}
+.rsai-vanilla .suggestions li span{font-size:11.5px;color:var(--gris)}
+.rsai-vanilla .suggestions li:hover,.rsai-vanilla .suggestions li[aria-selected="true"]{background:var(--fond)}
+
+.rsai-vanilla .affiner{background:var(--blanc);border-radius:24px;padding:22px 26px;margin:16px 0 0}
+.rsai-vanilla .affiner-tete{display:flex;justify-content:space-between;align-items:baseline;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.rsai-vanilla .affiner-tete h3{margin:0;font-weight:400;font-size:22px}
+.rsai-vanilla .affiner-tete span{font-size:12.5px;color:var(--gris)}
+.rsai-vanilla .affiner-champs{display:grid;grid-template-columns:minmax(260px,1.4fr) repeat(3,1fr);gap:14px 18px}
+@media (max-width:900px){.rsai-vanilla .affiner-champs{grid-template-columns:1fr 1fr}}
+@media (max-width:520px){.rsai-vanilla .affiner-champs{grid-template-columns:1fr}}
+.rsai-vanilla .affiner .champ label,.rsai-vanilla .affiner .champ-lib{display:block;font-size:11px;color:var(--gris);margin-bottom:6px}
+.rsai-vanilla .affiner .champ input{width:100%;box-sizing:border-box;border:1px solid var(--ligne);background:var(--fond);border-radius:12px;
+  padding:10px 12px;font:500 13.5px var(--sans);color:var(--encre);outline:none}
+.rsai-vanilla .affiner .champ input:focus{border-color:var(--encre)}
+.rsai-vanilla .affiner .aide{font-size:12px;color:var(--gris);margin:14px 0 0;line-height:1.5}
+.rsai-vanilla .dpe-choix{display:flex;gap:6px}
+.rsai-vanilla .dpe-choix button{flex:1;border:1px solid var(--ligne);background:var(--fond);color:var(--gris);border-radius:10px;
+  padding:9px 0;font:600 13px var(--sans);cursor:pointer;transition:all .15s}
+.rsai-vanilla .dpe-choix button[aria-pressed="true"]{color:#fff;border-color:transparent}
+.rsai-vanilla .dpe-A[aria-pressed="true"],.rsai-vanilla .badge-dpe.dpe-A{background:#2E8B57}
+.rsai-vanilla .dpe-B[aria-pressed="true"],.rsai-vanilla .badge-dpe.dpe-B{background:#4FA35B}
+.rsai-vanilla .dpe-C[aria-pressed="true"],.rsai-vanilla .badge-dpe.dpe-C{background:#9AB33C}
+.rsai-vanilla .dpe-D[aria-pressed="true"],.rsai-vanilla .badge-dpe.dpe-D{background:#D9B32E}
+.rsai-vanilla .dpe-E[aria-pressed="true"],.rsai-vanilla .badge-dpe.dpe-E{background:#E0882F}
+.rsai-vanilla .dpe-F[aria-pressed="true"],.rsai-vanilla .badge-dpe.dpe-F{background:#D3602B}
+.rsai-vanilla .dpe-G[aria-pressed="true"],.rsai-vanilla .badge-dpe.dpe-G{background:#B5332B}
+.rsai-vanilla .badge-dpe{display:inline-block;color:#fff;font:600 12px var(--sans);padding:4px 10px;border-radius:8px;margin-right:8px}
+.rsai-vanilla .dpe-ligne{font-size:13px;color:var(--gris);margin:0 0 10px}
+
+.rsai-vanilla .alerte{font-size:12.5px;line-height:1.5;text-align:left;border-radius:12px;padding:10px 14px;margin:12px auto 0;max-width:520px}
+.rsai-vanilla .alerte-ambre{background:rgba(194,137,58,.12);color:var(--encre)}
+.rsai-vanilla .alerte-rouge{background:rgba(181,83,63,.12);color:var(--encre)}
+.rsai-vanilla .alerte-gris{background:var(--fond);color:var(--gris)}
+.rsai-vanilla .classe-fiab{font-size:13px;color:var(--gris);margin:0 0 8px;line-height:1.6}
+.rsai-vanilla .puce-vert{background:var(--vert)}
+.rsai-vanilla .puce-ambre{background:var(--ambre)}
+.rsai-vanilla .puce-rouge{background:var(--rouge)}
+.rsai-vanilla .puce-gris{background:var(--gris)}
+.rsai-vanilla .niveau{display:inline-block;margin-left:4px;font-size:11.5px;color:var(--encre)}
+
+.rsai-vanilla .clair-grid .bloc-large{grid-column:1/-1}
+.rsai-vanilla .comparables{width:100%;border-collapse:collapse;font-size:12.5px}
+.rsai-vanilla .comparables th{text-align:right;font-weight:500;color:var(--gris);font-size:11px;padding:0 6px 8px;border-bottom:1px solid var(--ligne)}
+.rsai-vanilla .comparables td{text-align:right;padding:9px 6px;border-bottom:1px solid var(--ligne)}
+.rsai-vanilla .comparables th:first-child,.rsai-vanilla .comparables td:first-child{text-align:left}
