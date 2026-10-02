@@ -8,6 +8,8 @@ import MarketTrends from './components/MarketTrends'
 import History from './components/History'
 import FinancingPanel from './components/FinancingPanel'
 import ProfilePanel from './components/ProfilePanel'
+import HeroBanner from './components/HeroBanner'
+import { heroEstimation, heroFinancement } from './illustrations'
 import { getHealth, getCommunes, estimatePrice, getMe, getToken, saveToken, clearToken, ApiError } from './api/client'
 import AuthModal from './components/AuthModal'
 
@@ -280,14 +282,12 @@ export default function App() {
         {/* ONGLET ESTIMATION */}
         {activeTab === 'estimation' && (
           <>
-            <div className="mb-10">
-              <h1 className="font-display text-4xl sm:text-5xl text-ink leading-[1.05]">
-                Estimez la valeur de votre bien
-              </h1>
-              <p className="text-sm text-ink-muted mt-3">
-                Basé sur {(modelInfo?.nTrain ?? modelInfo?.nTransactions)?.toLocaleString('fr-FR') ?? '—'} transactions immobilières récentes · Île-de-France
-              </p>
-            </div>
+            <HeroBanner
+              illustration={heroEstimation}
+              title="La vraie valeur"
+              titleEm="de votre bien"
+              subtitle={`Estimée par un modèle entraîné sur ${(modelInfo?.nTrain ?? modelInfo?.nTransactions)?.toLocaleString('fr-FR') ?? 'chaque'} transaction notariée d'Île-de-France, à la maille de l'arrondissement.`}
+            />
 
             <div className="grid md:grid-cols-2 gap-6 items-start">
               <EstimationForm
@@ -318,14 +318,12 @@ export default function App() {
         {/* ONGLET FINANCEMENT */}
         {activeTab === 'financement' && (
           <>
-            <div className="max-w-xl mb-10">
-              <h1 className="font-display text-4xl sm:text-5xl text-ink leading-[1.05] whitespace-nowrap">
-                Simulez votre financement
-              </h1>
-              <p className="text-sm text-ink-muted mt-3 whitespace-nowrap">
-                Calcul basé sur les normes HCSF en vigueur · Taux d'effort, mensualité, score dossier.
-              </p>
-            </div>
+            <HeroBanner
+              illustration={heroFinancement}
+              title="Financer"
+              titleEm="votre projet"
+              subtitle="Capacité d'emprunt, plan de financement et dossier de prêt, calculés selon les normes du Haut Conseil de stabilité financière."
+            />
             <FinancingPanel defaultPrix={financingDefaultPrix} defaultDep={financingDefaultDep} />
           </>
         )}
