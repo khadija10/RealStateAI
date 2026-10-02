@@ -160,3 +160,35 @@ def test_migration_conserve_donnees_existantes(tmp_path):
     rows = svc.list_recent()
     assert len(rows) == 1
     assert rows[0]["commune"] == "PARIS 8"
+
+
+# ==========================================================================
+#  Résultat complet et simulations rattachées au bien
+# ==========================================================================
+
+def test_resultat_complet_relu_en_objet(svc):
+    resultat = {"estimated_price": 300_000, "price_range": {"low": 270_000, "high": 330_000},
+                "classe_fiabilite": "fiable", "dpe_source": "adresse"}
+    rec = svc.add_search(query="12 rue X", estimated_price=300_000, resultat=resultat, user_id=1)
+    ligne = svc.list_recent(user_id=1)[0]
+    assert ligne["id"] == rec["id"]
+    assert ligne["resultat"] == resultat
+    assert ligne["simulations"] == {}
+
+
+def test_attach_simulation_garde_la_derniere_de_chaque_sorte(svc):
+    rec = svc.add_search(query="12 rue X", estimated_price=300_000, user_id=1)
+    assert svc.attach_simulation(rec["id"], 1, "plusvalue", {"plus_value": 10_000})
+    assert svc.attach_simulation(rec["id"], 1, "plusvalue", {"plus_value": 25_000})
+    assert svc.attach_simulation(rec["id"], 1, "financement", {"mensualite": 1_200})
+    sims = svc.list_recent(user_id=1)[0]["simulations"]
+    assert sims["plusvalue"]["plus_value"] == 25_000
+    assert sims["financement"]["mensualite"] == 1_200
+    assert "date" in sims["plusvalue"]
+
+
+def test_attach_simulation_refusee_pour_un_autre_compte(svc):
+    rec = svc.add_search(query="12 rue X", estimated_price=300_000, user_id=1)
+    assert not svc.attach_simulation(rec["id"], 2, "plusvalue", {"plus_value": 1})
+    assert not svc.attach_simulation(999, 1, "plusvalue", {"plus_value": 1})
+    assert svc.list_recent(user_id=1)[0]["simulations"] == {}

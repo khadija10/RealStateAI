@@ -457,6 +457,8 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
       dpeAppariement: d.dpe_appariement || null, dpeZone: d.dpe_zone_fg_pct ?? null,
       alerteGeo: d.geocoding_warning || null, codePostal: d.code_postal || null,
       notes: d.meta?.notes || [],
+      historiqueId: d.historique_id ?? null,
+      enregistreLe: null,
     }
   }
 
@@ -515,16 +517,24 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
     dernierBien = { commune: s?.nom || selecteur.value || null, code_commune: s?.code || null,
                     departement: s?.code ? s.code.slice(0, 2) : cp ? cp.slice(0, 2) : null, secteur: s?.code || null,
                     codePostal: cp, dpe: dpeChoisi || r.dpeClasse || null, annee: +$('#rsai-annee').value || null,
-                    prix: Math.round(r.valeur), r, s, adresse, surface, pieces, type }
+                    prix: Math.round(r.valeur), r, s, adresse, surface, pieces, type,
+                    // ligne d'historique : les simulations faites sur ce bien y sont rattachées
+                    historique_id: r.historiqueId }
   }
 
   // Alertes reprises de l'ancien frontend : adresse mal localisée, notes du
   // repli DVF (petite surface…), passoire thermique.
+  function dateFr(iso) {
+    const d = new Date(iso)
+    return isNaN(d) ? '' : d.toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' })
+  }
+
   function afficherAlertes(r) {
     const a = []
     if (r.alerteGeo) a.push(['ambre', r.alerteGeo])
     if (r.modele !== 'ml') r.notes.filter((n) => !/estimation fournie/i.test(n)).forEach((n) => a.push(['gris', n]))
     if (r.modele !== 'ml' && r.modele) a.push(['gris', "Sans adresse précise, l'estimation repose sur la médiane des ventes comparables de la commune ; indiquez l'adresse pour activer le modèle."])
+    if (r.enregistreLe) a.push(['gris', `<b>Estimation enregistrée le ${dateFr(r.enregistreLe)}</b>, réaffichée telle qu'elle était. Cliquez sur « Estimer » pour obtenir le prix d'aujourd'hui.`])
     if (['F', 'G'].includes(r.dpeClasse)) a.push(['rouge', `<b>Passoire thermique (classe ${r.dpeClasse})</b> — depuis la loi Climat et Résilience, les biens F et G se vendent avec une décote, et leur mise en location est interdite${r.dpeClasse === 'G' ? ' depuis 2025' : ' à partir de 2028'}.`])
     $('#rsai-alertes').innerHTML = a.map(([ton, txt]) => `<p class="alerte alerte-${ton}">${txt}</p>`).join('')
   }
@@ -686,7 +696,23 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
   // « Ré-estimer » depuis l'historique : demande explicite, on relance l'estimation du bien.
   // Lancée au tour suivant et annulée au démontage : React monte la page deux
   // fois en développement, ce qui envoyait deux estimations (doublons d'historique).
-  const relanceDiff = relance ? setTimeout(() => { if (actif) { remplir(relance); estimer(true) } }, 0) : null
+  // « Voir » depuis l'historique : le résultat enregistré est réaffiché tel quel, sans recalcul.
+  function revoir(item) {
+    remplir(item)
+    const r = normaliser(item.resultat)
+    r.historiqueId = item.id
+    r.enregistreLe = item.created_at
+    const saisie = item.resultat.saisie || {}
+    afficher(r, r.secteur, item.address || saisie.address || '', item.area_m2 || saisie.surface,
+             item.rooms || saisie.rooms, item.property_type || saisie.property_type)
+    onEstime?.()
+    $('#rsai-resultat').scrollIntoView({ behavior: 'smooth' })
+  }
+  const relanceDiff = relance ? setTimeout(() => {
+    if (!actif) return
+    if (relance._mode === 'voir' && relance.resultat) revoir(relance)
+    else { remplir(relance); estimer(true) }
+  }, 0) : null
 
   return () => { actif = false; clearTimeout(relanceDiff) }
 }

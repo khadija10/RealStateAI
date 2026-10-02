@@ -36,12 +36,11 @@ RealStateAI estime le prix des logements en Île-de-France (Paris et les 7 dépa
   - copier un lien de partage qui reconstitue le formulaire ;
   - simuler la plus-value ;
   - simuler le financement, avec le prix et le département transmis.
-- **Pastille sur l'onglet Estimation** une fois une estimation disponible.
+- **Pastille sur l'onglet Estimation** une fois une estimation disponible. Le formulaire, le résultat et les simulations restent affichés quand on change d'onglet, comme en v1.4.
 
 ### Page d'accueil de l'estimation
 
 - **Chiffres clés du modèle**, servis par l'API : transactions analysées, nombre de variables, erreur moyenne mesurée sur le test officiel, part des estimations à moins de 20 % du prix réel.
-- **« Le marché par secteur »** : les secteurs classés par prix médian, avec le nombre de ventes et l'évolution depuis 2021. Un clic sur une carte estime le bien dans ce secteur.
 
 ---
 
@@ -87,8 +86,15 @@ RealStateAI estime le prix des logements en Île-de-France (Paris et les 7 dépa
 ## 5. Compte et historique
 
 - **Compte** : création, connexion, mot de passe oublié avec code de réinitialisation, changement de mot de passe, suppression du compte. La session tient par un jeton JWT. Nombre de tentatives limité : 3 par minute pour l'inscription et la demande de réinitialisation, 5 par minute pour la connexion.
-- **Historique du compte** : toutes les estimations, avec recherche, suppression d'une estimation, effacement complet (avec confirmation) et **comparaison de deux biens** (écart de prix, écart de prix au m², bien le moins cher). Le bouton **« Ré-estimer »** relance l'estimation du bien. Chaque compte ne voit que ses propres estimations.
-- **Historique de l'appareil** : les dernières estimations faites sur ce navigateur.
+- **Historique du compte, regroupé par bien** (même adresse, type, surface et pièces) :
+  - une ligne par bien : dernier prix, fourchette, classe de fiabilité, DPE, nombre d'estimations et évolution du prix depuis la première ;
+  - toutes les estimations sont gardées : le prix d'un même bien peut changer d'une estimation à l'autre (marché, DPE retrouvé, modèle réentraîné) ;
+  - **« Voir le résultat »** réaffiche l'estimation enregistrée telle qu'elle était, sans recalcul, avec sa date ;
+  - **« Ré-estimer »** relance l'estimation pour obtenir le prix d'aujourd'hui ;
+  - **simulations rattachées au bien** : dernière plus-value (scénario, revente, plus-value, gain net) et dernier financement (mensualité, endettement, conformité HCSF, score), enregistrés automatiquement ;
+  - recherche, tri (récents, prix croissant ou décroissant), suppression d'un bien ou d'une estimation, effacement complet avec confirmation ;
+  - **comparaison de deux biens** : écart de prix et de prix au m², fourchette, DPE, fiabilité, bien le moins cher.
+  Chaque compte ne voit que ses propres estimations.
 - **Profil** : adresse e-mail, date d'inscription, changement de mot de passe, zone de danger pour supprimer le compte.
 - **Mode clair / sombre**, mémorisé sur l'appareil.
 - **Indicateurs dans l'en-tête** : état des données DVF et couverture du DPE.
@@ -111,7 +117,8 @@ RealStateAI estime le prix des logements en Île-de-France (Paris et les 7 dépa
 | `GET /api/financing/rates` | taux indicatifs du barème |
 | `POST /api/auth/register`, `/login`, `/forgot-password`, `/reset-password` | authentification |
 | `GET`, `DELETE /api/auth/me`, `PUT /api/auth/me/password` | compte |
-| `GET /api/search-history`, `DELETE /api/history[/{id}]` | historique |
+| `GET /api/search-history`, `DELETE /api/history[/{id}]` | historique (avec le résultat complet de chaque estimation) |
+| `PUT /api/history/{id}/simulation` | rattacher une simulation de plus-value ou de financement à une estimation |
 
 ---
 

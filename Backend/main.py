@@ -265,6 +265,12 @@ class EstimationResponse(BaseModel):
     dpe_date: str | None = None
     dpe_appariement: str | None = None     # exacte | probable (DPE retrouvé à l'adresse)
     code_postal: str | None = None
+    historique_id: int | None = None       # ligne d'historique, pour y rattacher les simulations
+
+
+class SimulationRequest(BaseModel):
+    type: Literal["plusvalue", "financement"]
+    donnees: dict[str, Any]
 
 
 class HealthResponse(BaseModel):
@@ -784,6 +790,19 @@ def change_password(body: ChangePasswordRequest, request: Request) -> dict[str, 
     return {"message": "Mot de passe modifié avec succès."}
 
 
+@app.put(f"{API_PREFIX}/history/{{item_id}}/simulation", tags=["historique"],
+         summary="Rattacher une simulation à une estimation")
+def attach_history_simulation(item_id: int, body: SimulationRequest, request: Request) -> dict[str, Any]:
+    """Garde la dernière simulation de plus-value ou de financement faite sur ce bien."""
+    user_id = _current_user(request)
+    service: SearchHistoryService = request.app.state.search_history
+    if len(json.dumps(body.donnees, default=str)) > 20_000:
+        raise HTTPException(413, "Simulation trop volumineuse.")
+    if not service.attach_simulation(item_id, user_id, body.type, body.donnees):
+        raise HTTPException(404, "Estimation introuvable ou accès refusé.")
+    return {"message": "Simulation enregistrée."}
+
+
 @app.delete(f"{API_PREFIX}/history/{{item_id}}", tags=["historique"], summary="Supprimer une estimation")
 def delete_history_item(item_id: int, request: Request) -> dict[str, Any]:
     user_id = _current_user(request)
@@ -983,7 +1002,7 @@ def list_communes(
 )
 def list_search_history(
     request: Request,
-    limit: int = Query(default=10, ge=1, le=50, description="Nombre maximum de résultats (1–50)"),
+    limit: int = Query(default=10, ge=1, le=200, description="Nombre maximum de résultats (1–200)"),
 ) -> list[dict[str, Any]]:
     """Retourne les estimations récentes.
 
@@ -994,6 +1013,43 @@ def list_search_history(
     service: SearchHistoryService = request.app.state.search_history
     user_id = _current_user(request)
     return service.list_recent(limit=limit, user_id=user_id)
+
+
+def _inscrire_historique(request: Request, req: Any, surface: float, reponse: EstimationResponse,
+                         *, adresse_normalisee: str | None = None, query: str | None = None) -> None:
+    """Inscrit l'estimation dans l'historique avec sa réponse complète.
+
+    La réponse (fourchette, classe de fiabilité, DPE retrouvé, ventes de l'immeuble)
+    et la date d'entraînement du modèle sont gardées : l'historique peut ainsi
+    réafficher le résultat tel qu'il était, sans le recalculer. L'identifiant de la
+    ligne est renvoyé dans la réponse pour y rattacher les simulations.
+    """
+    try:
+        info = getattr(request.app.state, "model_info", None) or {}
+        resultat = {**reponse.model_dump(exclude={"historique_id"}),
+                    "modele_entraine_le": info.get("trained_at"),
+                    "saisie": {"address": req.address, "commune": req.commune, "postal_code": req.postal_code,
+                               "property_type": req.property_type, "surface": surface, "rooms": req.rooms,
+                               "dpe_classe": req.dpe_classe, "annee_construction": req.annee_construction}}
+        texte = " ".join(filter(None, [req.address, req.postal_code, req.commune])).strip()
+        ligne = request.app.state.search_history.add_search(
+            query=adresse_normalisee or texte or query or "",
+            commune=req.commune,
+            property_type=req.property_type,
+            area_m2=surface,
+            estimated_price=reponse.estimated_price,
+            user_id=_current_user(request),
+            rooms=req.rooms,
+            address=req.address,
+            postal_code=req.postal_code,
+            adresse_normalisee=adresse_normalisee,
+            dpe_classe=req.dpe_classe,
+            annee_construction=req.annee_construction,
+            resultat=resultat,
+        )
+        reponse.historique_id = ligne.get("id")
+    except Exception as exc:  # pragma: no cover - la persistance ne doit pas casser la réponse
+        logger.warning("Historique de recherche non inscrit : %s", exc)
 
 
 def _mock_estimate(surface: float, property_type: str) -> EstimationResponse:
@@ -1128,25 +1184,8 @@ def estimate(
                     normalized.dpe_zone_fg_pct = round(float(zone) * 100, 1)
                 if isinstance(ml_result, dict) and ml_result.get("code_postal"):
                     normalized.code_postal = ml_result["code_postal"]
-                try:
-                    _adresse_norm = ml_result.get("adresse_normalisee") if isinstance(ml_result, dict) else None
-                    _full_query = _adresse_norm or " ".join(filter(None, [req.address, req.postal_code, req.commune])).strip() or ""
-                    request.app.state.search_history.add_search(
-                        query=_full_query,
-                        commune=req.commune,
-                        property_type=req.property_type,
-                        area_m2=surface,
-                        estimated_price=normalized.estimated_price,
-                        user_id=_current_user(request),
-                        rooms=req.rooms,
-                        address=req.address,
-                        postal_code=req.postal_code,
-                        adresse_normalisee=_adresse_norm,
-                        dpe_classe=req.dpe_classe,
-                        annee_construction=req.annee_construction,
-                    )
-                except Exception as exc:  # pragma: no cover - la persistance ne doit pas casser la réponse
-                    logger.warning("Historique de recherche non inscrit : %s", exc)
+                _inscrire_historique(request, req, surface, normalized, adresse_normalisee=(
+                    ml_result.get("adresse_normalisee") if isinstance(ml_result, dict) else None))
                 return normalized
         except ValueError as exc:
             # Erreur métier lisible (adresse introuvable, hors périmètre IDF…)
@@ -1165,22 +1204,7 @@ def estimate(
             raise HTTPException(503, "Le service d'estimation est momentanément indisponible.")
         logger.warning("Dataset indisponible : réponse mock renvoyée")
         result = _mock_estimate(surface, req.property_type)
-        try:
-            request.app.state.search_history.add_search(
-                query=" ".join(filter(None, [req.address, req.postal_code, req.commune])).strip() or "",
-                commune=req.commune,
-                property_type=req.property_type,
-                area_m2=surface,
-                estimated_price=result.estimated_price,
-                user_id=_current_user(request),
-                rooms=req.rooms,
-                address=req.address,
-                postal_code=req.postal_code,
-                dpe_classe=req.dpe_classe,
-                annee_construction=req.annee_construction,
-            )
-        except Exception as exc:  # pragma: no cover - la persistance ne doit pas casser la réponse
-            logger.warning("Historique de recherche non inscrit : %s", exc)
+        _inscrire_historique(request, req, surface, result)
         return result
 
     # Localisation : commune explicite en priorité, sinon parsing de l'adresse.
@@ -1283,22 +1307,7 @@ def estimate(
     if req.postal_code and req.postal_code in dpe_zone:
         response.dpe_zone_fg_pct = round(float(dpe_zone[req.postal_code]) * 100, 1)
 
-    try:
-        request.app.state.search_history.add_search(
-            query=" ".join(filter(None, [req.address, req.postal_code, req.commune])).strip() or commune_norm or "",
-            commune=req.commune,
-            property_type=req.property_type,
-            area_m2=surface,
-            estimated_price=response.estimated_price,
-            user_id=_current_user(request),
-            rooms=req.rooms,
-            address=req.address,
-            postal_code=req.postal_code,
-            dpe_classe=req.dpe_classe,
-            annee_construction=req.annee_construction,
-        )
-    except Exception as exc:  # pragma: no cover - la persistance ne doit pas casser l'estimation
-        logger.warning("Historique de recherche non inscrit : %s", exc)
+    _inscrire_historique(request, req, surface, response, query=commune_norm)
 
     return response
 

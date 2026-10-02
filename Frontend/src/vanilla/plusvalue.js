@@ -3,6 +3,7 @@
 // local (projections de marché + fiscalité CGI) ; les séries de prix des
 // secteurs viennent du backend (GET /api/market/secteurs), jamais du code.
 import { heroPlusValue } from '../illustrations.js'
+import { enregistreurSimulation } from './historique.js'
 
 export const html = `
 <section class="heros heros-simple">
@@ -180,6 +181,7 @@ export function mount(root, { apiBase = '', prefill } = {}) {
   let usage = 'rp', choixScen = 1, simule = false
   let SECTEURS = {}
   let actif = true   // réponses ignorées après démontage (double montage React en développement)
+  const historique = enregistreurSimulation(apiBase, prefill?.historique_id, 'plusvalue')
 
   $('#pv-illus-heros').innerHTML = heroPlusValue()
   $('#pv-illus-carte').innerHTML = tourCarte()
@@ -265,6 +267,13 @@ export function mount(root, { apiBase = '', prefill } = {}) {
 
     eventail(s, annee, vente, sc)
     fiscalite(r, prix, horizon)
+    historique.planifier({
+      secteur: s.nom, prix, annee_achat: annee, horizon, annee_revente: vente,
+      usage: usage === 'rp' ? 'résidence principale' : 'investissement',
+      scenario: ['bas', 'central', 'haut'][choixScen], taux_annuel: r.taux,
+      revente: Math.round(r.revente), plus_value: Math.round(pv),
+      impot: r.imp.exonere ? 0 : Math.round(r.imp.total), net: Math.round(r.net),
+    })
     $('#pv-abattements').innerHTML = courbeAbattements(horizon)
   }
 
@@ -382,5 +391,5 @@ export function mount(root, { apiBase = '', prefill } = {}) {
   $('#pv-precision').textContent = 'Choisissez un secteur, un prix et un horizon, puis cliquez sur « Simuler la plus-value ».'
   chargerSecteurs().then(() => { if (!actif) return; resilience(); if (prefill?.prix) simuler() })
 
-  return () => { actif = false }
+  return () => { actif = false; historique.annuler() }
 }

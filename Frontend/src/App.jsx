@@ -36,9 +36,15 @@ export default function App() {
   const [estimationFaite, setEstimationFaite] = useState(false)
   // « Ré-estimer » depuis l'historique : le bien à réestimer, transmis à la page Estimation
   const [relance, setRelance] = useState(null)
+  // Pages Estimation, Financement et Plus-value déjà ouvertes : elles restent montées
+  // (simplement masquées) quand on change d'onglet, comme le résultat de la v1.4 qui
+  // vivait dans App. Le formulaire, l'estimation et les simulations sont ainsi conservés.
+  const [ouvertes, setOuvertes] = useState(() => new Set(['estimation']))
   // Action mise en attente de connexion (estimation lancée sans être connecté)
   const actionApresConnexion = useRef(null)
   const [dpeInfo, setDpeInfo] = useState(null)
+  // Incrémentée à la déconnexion : remonte les pages pour effacer les résultats
+  const [pageCle, setPageCle] = useState(0)
   const [darkMode, setDarkMode] = useState(() => {
     try { return localStorage.getItem('reai_theme') === 'dark' } catch { return false }
   })
@@ -64,13 +70,20 @@ export default function App() {
   }
 
   function ouvrirOnglet(id) {
-    if (id !== 'estimation') setRelance(null)
+    setOuvertes((s) => (s.has(id) ? s : new Set(s).add(id)))
     setActiveTab(id)
   }
 
   function handleLogout() {
     clearToken()
     setUser(null)
+    // Le résultat d'un compte ne doit pas rester visible pour le suivant
+    setOuvertes(new Set(['estimation']))
+    setEstimationFaite(false)
+    setRelance(null)
+    setFinancementPrefill(null)
+    setPlusValuePrefill(null)
+    setPageCle((k) => k + 1)
     setActiveTab((t) => (TABS.find((tab) => tab.id === t)?.protected ? 'estimation' : t))
   }
 
@@ -136,9 +149,9 @@ export default function App() {
 
       <main className="flex-1 w-full">
         {/* ONGLET ESTIMATION — reprise de l'artefact Claude Design, rebranchée sur le backend */}
-        {activeTab === 'estimation' && (
-          <div className="w-full pb-8">
+        <div className="w-full pb-8" hidden={activeTab !== 'estimation'}>
             <VanillaPage
+              key={`estimation-${pageCle}`}
               page={estimationPage}
               apiBase={API_BASE}
               options={{
@@ -154,20 +167,19 @@ export default function App() {
                 relance,
               }}
             />
-          </div>
-        )}
+        </div>
 
         {/* ONGLET FINANCEMENT — moteur réel /api/financing/dossier */}
-        {activeTab === 'financement' && (
-          <div className="w-full pb-8">
-            <VanillaPage page={financementPage} apiBase={API_BASE} options={{ prefill: financementPrefill }} />
+        {user && ouvertes.has('financement') && (
+          <div className="w-full pb-8" hidden={activeTab !== 'financement'}>
+            <VanillaPage key={`financement-${pageCle}`} page={financementPage} apiBase={API_BASE} options={{ prefill: financementPrefill }} />
           </div>
         )}
 
         {/* ONGLET PLUS-VALUE — calculateur local (scénarios + fiscalité CGI) */}
-        {activeTab === 'plusvalue' && (
-          <div className="w-full pb-8">
-            <VanillaPage page={plusvaluePage} apiBase={API_BASE} options={{ prefill: plusValuePrefill }} />
+        {ouvertes.has('plusvalue') && (
+          <div className="w-full pb-8" hidden={activeTab !== 'plusvalue'}>
+            <VanillaPage key={`plusvalue-${pageCle}`} page={plusvaluePage} apiBase={API_BASE} options={{ prefill: plusValuePrefill }} />
           </div>
         )}
 
@@ -209,11 +221,15 @@ export default function App() {
                 Historique
               </h1>
               <p className="text-sm text-ink-muted mt-3 whitespace-nowrap">
-                Vos estimations enregistrées, les plus récentes d'abord.
+                Vos biens estimés, avec leur évolution et leurs simulations.
               </p>
             </div>
             <div className="max-w-4xl">
-              <History key={historyKey} onReEstimate={(item) => { setRelance({ ...item, _demande: Date.now() }); setActiveTab('estimation') }} />
+              <History
+                key={historyKey}
+                onReEstimate={(item) => { setRelance({ ...item, _demande: Date.now() }); ouvrirOnglet('estimation') }}
+                onVoir={(item) => { setRelance({ ...item, _mode: 'voir', _demande: Date.now() }); ouvrirOnglet('estimation') }}
+              />
             </div>
           </div>
         )}

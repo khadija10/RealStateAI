@@ -3,6 +3,7 @@
 // vrai moteur de financement du backend (POST /api/financing/dossier),
 // au lieu du calcul JS local de l'artefact.
 import { heroFinancement } from '../illustrations.js'
+import { enregistreurSimulation } from './historique.js'
 
 export const html = `
 <section class="heros heros-simple">
@@ -159,6 +160,7 @@ export function mount(root, { apiBase = '', prefill } = {}) {
   const $ = (sel) => root.querySelector(sel)
   const $$ = (sel) => root.querySelectorAll(sel)
   const DOSSIER_URL = apiBase + '/api/financing/dossier'
+  const historique = enregistreurSimulation(apiBase, prefill?.historique_id, 'financement')
 
   $('#fin-illus-heros').innerHTML = heroFinancement()
   $('#fin-illus-dossier').innerHTML = interieur()
@@ -300,6 +302,14 @@ export function mount(root, { apiBase = '', prefill } = {}) {
     const verdict = $('#fin-verdict').textContent.toLowerCase()
     $('#fin-decision').textContent = decision && !verdict.includes(decision.toLowerCase()) ? decision : ''
 
+    historique.planifier({
+      prix: p.prix, apport: p.apport, revenus: p.revenus, duree: credit.duree_annees || p.duree,
+      departement: p.departement, verdict: $('#fin-verdict').textContent.trim(),
+      conforme_hcsf: conforme, taux_endettement: endettement,
+      mensualite: Math.round(credit.mensualite_totale || 0), taux: credit.taux_nominal_retenu || null,
+      montant_emprunte: Math.round(plan.montant_emprunte || 0),
+      score: Math.round(d.score_dossier?.score_sur_100 || 0),
+    })
     $('#fin-jauge').innerHTML = jauge(endettement)
     const rav = d.reste_a_vivre || {}
     $('#fin-encart-endett').innerHTML = conforme
@@ -414,6 +424,7 @@ export function mount(root, { apiBase = '', prefill } = {}) {
 
   return () => {
     if (timer) clearTimeout(timer)
+    historique.annuler()
     fetch(apiBase + '/api/financing/agent/' + sessionId, { method: 'DELETE' }).catch(() => {})
   }
 }
