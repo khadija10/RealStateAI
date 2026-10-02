@@ -249,8 +249,8 @@ export default function App() {
 
       {/* Barre de navigation onglets */}
       <nav className="border-b border-stone-100 bg-white sticky top-0 z-20">
-        <div className="max-w-5xl mx-auto px-6">
-          <div className="flex gap-0 overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3">
+          <div className="flex gap-1 overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none] bg-stone-50 rounded-full p-1 w-fit max-w-full">
             {TABS.map((tab) => (
               <button
                 key={tab.id}
@@ -259,10 +259,10 @@ export default function App() {
                   setActiveTab(tab.id)
                   if (tab.id === 'historique') setHistoryKey((k) => k + 1)
                 }}
-                className={`px-3 sm:px-5 py-4 text-sm font-medium border-b-2 shrink-0 transition-colors ${
+                className={`px-3.5 sm:px-5 py-2 text-sm font-medium rounded-full shrink-0 transition-colors ${
                   activeTab === tab.id
-                    ? 'border-seine text-seine'
-                    : 'border-transparent text-ink-muted hover:text-ink hover:border-stone-100'
+                    ? 'bg-ink text-white'
+                    : 'text-ink-muted hover:text-ink'
                 }`}
               >
                 {tab.label}
@@ -281,7 +281,7 @@ export default function App() {
         {activeTab === 'estimation' && (
           <>
             <div className="mb-10">
-              <h1 className="font-[var(--font-display)] text-4xl sm:text-5xl text-ink leading-[1.05]">
+              <h1 className="font-display text-4xl sm:text-5xl text-ink leading-[1.05]">
                 Estimez la valeur de votre bien
               </h1>
               <p className="text-sm text-ink-muted mt-3">
@@ -319,7 +319,7 @@ export default function App() {
         {activeTab === 'financement' && (
           <>
             <div className="max-w-xl mb-10">
-              <h1 className="font-[var(--font-display)] text-4xl sm:text-5xl text-ink leading-[1.05] whitespace-nowrap">
+              <h1 className="font-display text-4xl sm:text-5xl text-ink leading-[1.05] whitespace-nowrap">
                 Simulez votre financement
               </h1>
               <p className="text-sm text-ink-muted mt-3 whitespace-nowrap">
@@ -334,7 +334,7 @@ export default function App() {
         {activeTab === 'carte' && (
           <>
             <div className="max-w-xl mb-8">
-              <h1 className="font-[var(--font-display)] text-4xl sm:text-5xl text-ink leading-[1.05] whitespace-nowrap">
+              <h1 className="font-display text-4xl sm:text-5xl text-ink leading-[1.05] whitespace-nowrap">
                 Carte des prix par commune
               </h1>
               <p className="text-sm text-ink-muted mt-3 whitespace-nowrap">
@@ -349,7 +349,7 @@ export default function App() {
         {activeTab === 'marche' && (
           <>
             <div className="max-w-xl mb-8">
-              <h1 className="font-[var(--font-display)] text-4xl sm:text-5xl text-ink leading-[1.05] whitespace-nowrap">
+              <h1 className="font-display text-4xl sm:text-5xl text-ink leading-[1.05] whitespace-nowrap">
                 Référence du marché
               </h1>
               <p className="text-sm text-ink-muted mt-3 whitespace-nowrap">
@@ -364,7 +364,7 @@ export default function App() {
         {activeTab === 'historique' && (
           <>
             <div className="max-w-xl mb-8">
-              <h1 className="font-[var(--font-display)] text-4xl sm:text-5xl text-ink leading-[1.05] whitespace-nowrap">
+              <h1 className="font-display text-4xl sm:text-5xl text-ink leading-[1.05] whitespace-nowrap">
                 Historique
               </h1>
               <p className="text-sm text-ink-muted mt-3 whitespace-nowrap">
@@ -381,7 +381,7 @@ export default function App() {
         {activeTab === 'profil' && (
           <>
             <div className="max-w-xl mb-8">
-              <h1 className="font-[var(--font-display)] text-4xl sm:text-5xl text-ink leading-[1.05] whitespace-nowrap">
+              <h1 className="font-display text-4xl sm:text-5xl text-ink leading-[1.05] whitespace-nowrap">
                 Mon profil
               </h1>
               <p className="text-sm text-ink-muted mt-3 whitespace-nowrap">

@@ -3,17 +3,11 @@ export default function Header({ datasetStatus, dpeInfo, user, onOpenAuth, onLog
     <header className="border-b border-stone-100 bg-white">
       <div className="max-w-5xl mx-auto px-6 py-6 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          {/* Monogramme — clé de voûte stylisée */}
-          <svg width="34" height="34" viewBox="0 0 34 34" fill="none" aria-hidden="true">
-            <path d="M6 28 L11 8 L23 8 L28 28 Z" stroke="var(--color-ink)" strokeWidth="1.6" fill="none" />
-            <line x1="14.3" y1="8" x2="11.6" y2="28" stroke="var(--color-limestone)" strokeWidth="1.4" />
-            <line x1="19.7" y1="8" x2="22.4" y2="28" stroke="var(--color-limestone)" strokeWidth="1.4" />
-          </svg>
           <div>
-            <p className="font-[var(--font-display)] text-2xl leading-none tracking-tight text-[var(--color-ink)]">
-              RealEstate<span className="text-[var(--color-seine)]">AI</span>
+            <p className="text-xl leading-none tracking-tight text-ink font-medium">
+              RealState<span className="font-display text-[1.15em]">AI</span>
             </p>
-            <p className="text-[11px] uppercase tracking-[0.14em] text-[var(--color-ink-muted)] mt-1">
+            <p className="text-[11px] uppercase tracking-[0.14em] text-ink-muted mt-1.5">
               Estimation immobilière · Île-de-France
             </p>
           </div>
@@ -68,7 +62,7 @@ export default function Header({ datasetStatus, dpeInfo, user, onOpenAuth, onLog
               <span className="text-xs text-ink-muted hidden sm:block max-w-[140px] truncate">{user.email}</span>
               <button
                 onClick={onLogout}
-                className="text-xs text-ink-muted border border-stone-200 rounded-lg px-3 py-1.5 hover:border-stone-400 hover:text-ink transition-colors"
+                className="text-xs text-ink-muted border border-stone-200 rounded-full px-3.5 py-1.5 hover:border-stone-400 hover:text-ink transition-colors"
               >
                 Déconnexion
               </button>
@@ -76,7 +70,7 @@ export default function Header({ datasetStatus, dpeInfo, user, onOpenAuth, onLog
           ) : (
             <button
               onClick={onOpenAuth}
-              className="text-xs font-medium text-seine border border-seine/30 rounded-lg px-3 py-1.5 hover:bg-seine/5 transition-colors"
+              className="text-xs font-medium text-white bg-ink rounded-full px-4 py-1.5 hover:bg-seine-dark transition-colors"
             >
               Connexion
             </button>

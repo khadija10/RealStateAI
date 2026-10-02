@@ -1,23 +1,31 @@
-@import url('https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  /* Palette — "Pierre de Paris" */
-  --color-stone-50: #F2EFEA;
-  --color-stone-100: #E6E1DA;
-  --color-stone-600: #8A8171;
-  --color-ink: #1F1F1F;
-  --color-ink-muted: #6B6558;
-  --color-seine: #2E86C1;
-  --color-seine-dark: #226694;
-  --color-limestone: #B08D57;
-  --color-limestone-light: #D9C6A3;
-  --color-surface: #FFFFFF;
+  /* Palette — reprise du design system "RealStateAI" (artefacts Claude) */
+  --color-stone-50: #F3F1EC;   /* fond */
+  --color-stone-100: #E3DED6;  /* ligne */
+  --color-stone-600: #77716A;  /* gris */
+  --color-ink: #141311;        /* encre */
+  --color-ink-muted: #77716A;  /* gris */
+  --color-seine: #2A1F17;      /* accent principal — brun profond, boutons et liens */
+  --color-seine-dark: #000000;
+  --color-limestone: #A38C77;  /* taupe — accent secondaire, décoratif */
+  --color-limestone-light: #D9CBB9; /* sable */
+  --color-surface: #FFFFFF;    /* blanc */
 
-  --font-display: 'Cormorant Garamond', Georgia, serif;
+  --color-vert: #3E7A5B;
+  --color-rouge: #B5533F;
+  --color-ambre: #C2893A;
+
+  --font-display: 'Instrument Serif', Georgia, serif;
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
 
-  --shadow-card: 0 1px 2px rgba(31,31,31,0.04), 0 8px 24px -8px rgba(31,31,31,0.08);
+  --radius-xl: 1rem;
+  --radius-2xl: 1.5rem;
+  --radius-3xl: 1.75rem;
+
+  --shadow-card: 0 1px 2px rgba(20,19,17,0.04), 0 10px 34px -8px rgba(20,19,17,0.12);
 }
 
 @layer base {
@@ -39,99 +47,133 @@
   }
 }
 
-/* ── Dark mode ───────────────────────────────────────────────────────────── */
-
-:root[data-theme="dark"],
-:root:not([data-theme="light"]):has(body) {
-  /* écrasement uniquement si système = dark, via le selecteur ci-dessous */
+/* Emphase "serif" du design — toujours en italique, comme dans les artefacts */
+.font-display {
+  font-family: var(--font-display);
+  font-style: italic;
+  font-weight: 400;
 }
+
+/* ── Dark mode ───────────────────────────────────────────────────────────── */
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --color-stone-50: #1A1A1A;
-    --color-stone-100: #282828;
-    --color-stone-600: #8A8179;
-    --color-ink: #EDE9E3;
-    --color-ink-muted: #9C9890;
-    --color-surface: #222222;
-    --color-limestone-light: rgba(176,141,87,0.18);
-    --shadow-card: 0 1px 3px rgba(0,0,0,0.3), 0 8px 24px -8px rgba(0,0,0,0.5);
+    --color-stone-50: #121110;
+    --color-stone-100: #2E2B27;
+    --color-stone-600: #A39C93;
+    --color-ink: #F1EEE8;
+    --color-ink-muted: #A39C93;
+    --color-seine: #D9CBB9;
+    --color-seine-dark: #EFE3D2;
+    --color-limestone: #C2A68C;
+    --color-limestone-light: rgba(163,140,119,0.2);
+    --color-surface: #1C1A18;
+    --shadow-card: 0 1px 3px rgba(0,0,0,0.3), 0 10px 34px -8px rgba(0,0,0,0.5);
   }
 }
 
 :root[data-theme="dark"] {
-  --color-stone-50: #1A1A1A;
-  --color-stone-100: #323232;
-  --color-stone-600: #8A8179;
-  --color-ink: #EDE9E3;
-  --color-ink-muted: #9C9890;
-  --color-surface: #222222;
-  --color-limestone-light: rgba(176,141,87,0.18);
-  --shadow-card: 0 1px 3px rgba(0,0,0,0.3), 0 8px 24px -8px rgba(0,0,0,0.5);
+  --color-stone-50: #121110;
+  --color-stone-100: #2E2B27;
+  --color-stone-600: #A39C93;
+  --color-ink: #F1EEE8;
+  --color-ink-muted: #A39C93;
+  --color-seine: #D9CBB9;
+  --color-seine-dark: #EFE3D2;
+  --color-limestone: #C2A68C;
+  --color-limestone-light: rgba(163,140,119,0.2);
+  --color-surface: #1C1A18;
+  --shadow-card: 0 1px 3px rgba(0,0,0,0.3), 0 10px 34px -8px rgba(0,0,0,0.5);
 }
 
 /* Surfaces blanches en mode sombre */
 :root[data-theme="dark"] .bg-white,
 :root[data-theme="dark"] header,
-:root[data-theme="dark"] nav { background-color: #222222 !important; }
+:root[data-theme="dark"] nav { background-color: #1C1A18 !important; }
 
-:root[data-theme="dark"] .bg-stone-50 { background-color: #2a2a2a !important; }
-:root[data-theme="dark"] .bg-stone-50\/50 { background-color: rgba(42,42,42,0.5) !important; }
-:root[data-theme="dark"] .hover\:bg-stone-50\/60:hover { background-color: rgba(42,42,42,0.6) !important; }
-:root[data-theme="dark"] .bg-red-50 { background-color: rgba(127,29,29,0.15) !important; }
-:root[data-theme="dark"] .bg-emerald-50 { background-color: rgba(6,78,59,0.15) !important; }
-:root[data-theme="dark"] .bg-amber-50 { background-color: rgba(92,65,0,0.2) !important; }
+:root[data-theme="dark"] .bg-stone-50 { background-color: #1C1A18 !important; }
+:root[data-theme="dark"] .bg-stone-50\/50 { background-color: rgba(28,26,24,0.5) !important; }
+:root[data-theme="dark"] .hover\:bg-stone-50\/60:hover { background-color: rgba(28,26,24,0.6) !important; }
+:root[data-theme="dark"] .bg-red-50 { background-color: rgba(181,83,63,0.16) !important; }
+:root[data-theme="dark"] .bg-emerald-50 { background-color: rgba(62,122,91,0.16) !important; }
+:root[data-theme="dark"] .bg-amber-50 { background-color: rgba(194,137,58,0.18) !important; }
 
-/* bg-ink utilisé comme fond de bouton (ex: "Estimer le prix", filtres carte) */
-:root[data-theme="dark"] .bg-ink { background-color: #3a3a3a !important; }
-:root[data-theme="dark"] .border-ink { border-color: #3a3a3a !important; }
-:root[data-theme="dark"] .hover\:bg-seine-dark:hover { background-color: #1a5a8a !important; }
+/* bg-ink / bg-seine utilisés comme fond de bouton : rester sombres même en dark mode */
+:root[data-theme="dark"] .bg-ink { background-color: #3A2B21 !important; }
+:root[data-theme="dark"] .border-ink { border-color: #3A2B21 !important; }
+:root[data-theme="dark"] .bg-seine { background-color: #3A2B21 !important; }
+:root[data-theme="dark"] .hover\:bg-seine-dark:hover,
+:root[data-theme="dark"] .hover\:bg-seine\/90:hover { background-color: #54402F !important; }
 
 /* Bordures visibles en dark mode */
-:root[data-theme="dark"] .border-stone-200 { border-color: #3f3f3f !important; }
-:root[data-theme="dark"] .border-stone-100 { border-color: #323232 !important; }
-:root[data-theme="dark"] .hover\:border-stone-400:hover { border-color: #666 !important; }
+:root[data-theme="dark"] .border-stone-200 { border-color: #3D372F !important; }
+:root[data-theme="dark"] .border-stone-100 { border-color: #2E2B27 !important; }
+:root[data-theme="dark"] .hover\:border-stone-400:hover { border-color: #6B6256 !important; }
 
 /* Inputs, selects, textarea */
 :root[data-theme="dark"] input,
 :root[data-theme="dark"] select,
 :root[data-theme="dark"] textarea {
-  background-color: #2a2a2a !important;
-  border-color: #3f3f3f !important;
+  background-color: #1C1A18 !important;
+  border-color: #3D372F !important;
   color: var(--color-ink) !important;
 }
 :root[data-theme="dark"] input::placeholder,
 :root[data-theme="dark"] textarea::placeholder { color: var(--color-ink-muted) !important; }
 :root[data-theme="dark"] input:focus,
 :root[data-theme="dark"] select:focus,
-:root[data-theme="dark"] textarea:focus { background-color: #2a2a2a !important; }
+:root[data-theme="dark"] textarea:focus { background-color: #1C1A18 !important; }
 
 @media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --color-stone-50: #1A1A1A;
-    --color-stone-100: #323232;
-    --color-stone-600: #8A8179;
-    --color-ink: #EDE9E3;
-    --color-ink-muted: #9C9890;
-    --color-surface: #222222;
-    --color-limestone-light: rgba(176,141,87,0.18);
-    --shadow-card: 0 1px 3px rgba(0,0,0,0.3), 0 8px 24px -8px rgba(0,0,0,0.5);
-  }
   :root:not([data-theme="light"]) .bg-white,
   :root:not([data-theme="light"]) header,
-  :root:not([data-theme="light"]) nav { background-color: #222222 !important; }
-  :root:not([data-theme="light"]) .bg-stone-50 { background-color: #2a2a2a !important; }
-  :root:not([data-theme="light"]) .bg-ink { background-color: #3a3a3a !important; }
-  :root:not([data-theme="light"]) .border-ink { border-color: #3a3a3a !important; }
-  :root:not([data-theme="light"]) .border-stone-200 { border-color: #3f3f3f !important; }
-  :root:not([data-theme="light"]) .border-stone-100 { border-color: #323232 !important; }
+  :root:not([data-theme="light"]) nav { background-color: #1C1A18 !important; }
+  :root:not([data-theme="light"]) .bg-stone-50 { background-color: #1C1A18 !important; }
+  :root:not([data-theme="light"]) .bg-ink { background-color: #3A2B21 !important; }
+  :root:not([data-theme="light"]) .bg-seine { background-color: #3A2B21 !important; }
+  :root:not([data-theme="light"]) .border-ink { border-color: #3A2B21 !important; }
+  :root:not([data-theme="light"]) .border-stone-200 { border-color: #3D372F !important; }
+  :root:not([data-theme="light"]) .border-stone-100 { border-color: #2E2B27 !important; }
   :root:not([data-theme="light"]) input,
   :root:not([data-theme="light"]) select,
   :root:not([data-theme="light"]) textarea {
-    background-color: #2a2a2a !important;
-    border-color: #3f3f3f !important;
+    background-color: #1C1A18 !important;
+    border-color: #3D372F !important;
     color: var(--color-ink) !important;
   }
+}
+
+/* ── Formulaires : curseurs type "artefact" ─────────────────────────────── */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--color-stone-100);
+  outline: none;
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-surface);
+  border: 4px solid var(--color-ink);
+  cursor: pointer;
+}
+input[type="range"]::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--color-surface);
+  border: 4px solid var(--color-ink);
+  cursor: pointer;
+}
+
+/* ── Pastille / "puce" de statut, reprise des artefacts ─────────────────── */
+.pill-tab {
+  border-radius: 999px;
+  white-space: nowrap;
 }
 
 @keyframes fadeIn {

@@ -150,7 +150,7 @@ export default function ProfilePanel({ user, onLogout }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-seine text-white rounded-lg py-2.5 text-sm font-medium hover:bg-seine/90 disabled:opacity-60 transition-colors"
+            className="w-full bg-seine text-white rounded-full py-2.5 text-sm font-medium hover:bg-seine/90 disabled:opacity-60 transition-colors"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">

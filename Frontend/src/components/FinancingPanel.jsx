@@ -118,7 +118,7 @@ export default function FinancingPanel({ defaultPrix, defaultDep }) {
 
       {/* Formulaire */}
       <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-stone-100 shadow-[var(--shadow-card)] p-6 space-y-5">
-        <h2 className="font-[var(--font-display)] text-2xl text-ink">Votre projet</h2>
+        <h2 className="font-display text-2xl text-ink">Votre projet</h2>
 
         <div className="grid grid-cols-2 gap-4">
           <Field label="Prix du bien (€)">
@@ -181,7 +181,7 @@ export default function FinancingPanel({ defaultPrix, defaultDep }) {
         </div>
 
         <button type="submit" disabled={status === 'loading'}
-          className="w-full py-3 rounded-xl bg-seine text-white text-sm font-medium hover:bg-seine-dark transition-colors disabled:opacity-50">
+          className="w-full py-3.5 rounded-full bg-seine text-white text-sm font-medium hover:bg-seine-dark transition-colors disabled:opacity-50">
           {status === 'loading' ? 'Calcul en cours…' : 'Calculer mon financement'}
         </button>
 
@@ -192,7 +192,7 @@ export default function FinancingPanel({ defaultPrix, defaultDep }) {
 
       {/* Résultat */}
       <div className="bg-white rounded-2xl border border-stone-100 shadow-[var(--shadow-card)] p-6 flex flex-col gap-6">
-        <h2 className="font-[var(--font-display)] text-2xl text-ink">Résultat</h2>
+        <h2 className="font-display text-2xl text-ink">Résultat</h2>
 
         {status === 'idle' && (
           <div className="flex-1 flex flex-col items-center justify-center text-center gap-3 py-14">
