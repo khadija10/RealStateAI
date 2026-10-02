@@ -1028,7 +1028,11 @@ def estimate(
     surface = req.area_m2
     type_bien = req.property_type
 
-    if ML_ESTIMATOR is not None and (req.address or req.commune or req.postal_code):
+    # Le modèle ML a besoin d'une adresse : il géolocalise le bien, retrouve sa
+    # parcelle, son immeuble, son IRIS. Une commune seule se géocode au centre
+    # de la commune, ce qui n'a pas de sens pour lui : elle passe par la médiane
+    # des ventes comparables (repli DVF).
+    if ML_ESTIMATOR is not None and req.address and req.address.strip():
         try:
             payload: dict[str, Any] = {
                 "adresse": req.address,
@@ -1038,8 +1042,6 @@ def estimate(
                 "type_bien": type_bien,
                 "a_terrain": type_bien == "house",
             }
-            if req.commune and not req.address:
-                payload["adresse"] = req.commune
             # zone_part_dpe_fg : feature DPE de zone, indexée par code postal
             _dpe_zone = getattr(request.app.state, "dpe_zone", {})
             if req.postal_code and req.postal_code in _dpe_zone:
