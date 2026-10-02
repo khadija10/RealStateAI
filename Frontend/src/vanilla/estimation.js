@@ -4,6 +4,7 @@
 import { heroEstimation, heroTour, heroVilla, heroInterieur, heroBois } from './illustrations-vanilla.js'
 
 export const html = `
+<div class="fond-page" id="rsai-fond-page" aria-hidden="true"></div>
 <section class="heros" id="haut">
   <div class="illus" id="illus-heros"></div>
   <div class="etat-api" id="etat-api"><i></i><span>Vérification…</span></div>
@@ -56,24 +57,20 @@ export const html = `
 </section>
 
 <h2 class="titre-section" id="rsai-resultat">Votre <em>estimation</em></h2>
-<section class="resultat">
-  <div class="sombre">
-    <div class="illus" id="illus-resultat"></div>
-    <div>
+<section>
+  <div class="clair clair-grid">
+    <div class="bloc bloc-resume">
       <div class="lib" id="rsai-lib-secteur">Estimation</div>
       <div class="valeur" id="rsai-valeur">—</div>
       <div class="fourchette" id="rsai-fourchette"></div>
       <div class="jauge-ci"><i id="rsai-curseur-ci" style="left:50%"></i></div>
       <div class="bornes-ci"><span id="rsai-ci-bas"></span><span id="rsai-ci-haut"></span></div>
+      <div class="mesures">
+        <div class="mesure"><b id="rsai-m2">—</b><span>€ par m²</span></div>
+        <div class="mesure"><b id="rsai-med">—</b><span>Médiane du secteur</span></div>
+        <div class="mesure"><b id="rsai-ecart">—</b><span>Écart au marché</span></div>
+      </div>
     </div>
-    <div class="mesures">
-      <div class="mesure"><b id="rsai-m2">—</b><span>€ par m²</span></div>
-      <div class="mesure"><b id="rsai-med">—</b><span>Médiane du secteur</span></div>
-      <div class="mesure"><b id="rsai-ecart">—</b><span>Écart au marché</span></div>
-    </div>
-  </div>
-
-  <div class="clair clair-grid">
     <div class="bloc">
       <div class="bloc-tete"><h3>Fiabilité <em>de l'estimation</em></h3><span id="rsai-src-modele"></span></div>
       <div class="fiab">
@@ -159,7 +156,7 @@ export function mount(root, { apiBase = '', onPlusValue } = {}) {
   let secteurCourant = '75111'
   let dernierBien = null
   $('#illus-heros').innerHTML = heroEstimation()
-  $('#illus-resultat').innerHTML = heroInterieur()
+  $('#rsai-fond-page').innerHTML = heroEstimation()
 
   const selecteur = $('#rsai-secteur')
   for (const [code, s] of Object.entries(SECTEURS)) {

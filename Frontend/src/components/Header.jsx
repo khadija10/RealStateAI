@@ -1,11 +1,12 @@
 export default function Header({ datasetStatus, dpeInfo, user, onOpenAuth, onLogout, darkMode, onToggleDark }) {
   return (
-    <header className="border-b border-stone-100 bg-white">
+    <header className="relative border-b border-stone-100 bg-[linear-gradient(100deg,var(--color-stone-50)_0%,var(--color-surface)_45%,var(--color-limestone-light)_100%)]">
+      <div className="h-[3px] w-full bg-[linear-gradient(90deg,var(--color-seine)_0%,var(--color-ambre)_50%,var(--color-vert)_100%)]" />
       <div className="max-w-5xl mx-auto px-6 py-6 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div>
             <p className="text-xl leading-none tracking-tight text-ink font-medium">
-              RealState<span className="font-display text-[1.15em]">AI</span>
+              RealState<span className="font-display text-[1.15em] text-[var(--color-ambre)]">AI</span>
             </p>
             <p className="text-[11px] uppercase tracking-[0.14em] text-ink-muted mt-1.5">
               Estimation immobilière · Île-de-France
@@ -70,7 +71,7 @@ export default function Header({ datasetStatus, dpeInfo, user, onOpenAuth, onLog
           ) : (
             <button
               onClick={onOpenAuth}
-              className="text-xs font-medium text-white bg-ink rounded-full px-4 py-1.5 hover:bg-seine-dark transition-colors"
+              className="text-xs font-medium text-white rounded-full px-4 py-1.5 bg-[linear-gradient(100deg,var(--color-seine),var(--color-ambre))] hover:opacity-90 transition-opacity"
             >
               Connexion
             </button>

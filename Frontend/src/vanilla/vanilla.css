@@ -31,6 +31,13 @@
 }
 
 .rsai-vanilla *, .rsai-vanilla *::before, .rsai-vanilla *::after { box-sizing: border-box; }
+
+/* Illustration du héros reprise en arrière-plan de toute la page
+   (Estimation), en filigrane derrière le contenu, qui s'estompe avant
+   le bas de l'écran pour rester lisible. */
+.rsai-vanilla .fond-page{position:fixed;inset:0;z-index:-5;overflow:hidden;opacity:.14;pointer-events:none}
+.rsai-vanilla .fond-page svg{width:100%;height:100%;object-fit:cover}
+.rsai-vanilla .fond-page::after{content:"";position:absolute;inset:0;background:linear-gradient(180deg,transparent 0%,var(--fond) 70%)}
 .rsai-vanilla em, .rsai-vanilla .it { font-family: var(--serif); font-style: italic; font-weight: 400; }
 .rsai-vanilla .illus svg { display:block; width:100%; height:100%; }
 
@@ -111,17 +118,28 @@
 .rsai-vanilla .clair{background:var(--blanc);border-radius:24px;padding:28px;container-type:inline-size}
 .rsai-vanilla .bloc+.bloc{border-top:1px solid var(--ligne);margin-top:22px;padding-top:22px}
 
+/* Résumé du prix fusionné en tête de la carte claire — centré, pleine
+   largeur, avec une variante claire des "mesures" (pensées à l'origine
+   pour la carte sombre). */
+.rsai-vanilla .bloc-resume{text-align:center}
+.rsai-vanilla .bloc-resume .lib{color:var(--gris)}
+.rsai-vanilla .bloc-resume .fourchette{color:var(--gris)}
+.rsai-vanilla .bloc-resume .jauge-ci{background:var(--ligne);max-width:420px;margin:16px auto 8px}
+.rsai-vanilla .bloc-resume .jauge-ci i{background:var(--encre)}
+.rsai-vanilla .bloc-resume .bornes-ci{color:var(--gris);max-width:420px;margin:0 auto}
+.rsai-vanilla .bloc-resume .mesures{max-width:520px;margin:22px auto 0}
+.rsai-vanilla .bloc-resume .mesure{background:var(--fond);border:1px solid var(--ligne);backdrop-filter:none}
+.rsai-vanilla .bloc-resume .mesure span{color:var(--gris)}
+
 /* Carte claire du résultat : 2 colonnes seulement quand la carte a
    elle-même assez de place pour que le texte respire (requête de
    conteneur, pas de viewport — sinon le texte se tasse dès que la page
    est partagée en deux colonnes plus étroites que prévu). En dessous,
    une seule colonne, plus confortable à lire. */
-@media (min-width:860px){
-  .rsai-vanilla .resultat .sombre{min-height:400px}
-}
 @container (min-width:680px){
   .rsai-vanilla .clair-grid{display:grid;grid-template-columns:1fr 1fr;column-gap:28px}
-  .rsai-vanilla .clair-grid .bloc:nth-child(2){border-top:none;margin-top:0;padding-top:0}
+  .rsai-vanilla .clair-grid .bloc-resume{grid-column:1/-1}
+  .rsai-vanilla .clair-grid .bloc:nth-child(3){border-top:none;margin-top:0;padding-top:0}
   .rsai-vanilla .clair-grid .bloc:last-child{grid-column:1/-1}
 }
 

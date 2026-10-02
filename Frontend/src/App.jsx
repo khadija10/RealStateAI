@@ -96,7 +96,7 @@ export default function App() {
       {/* Barre de navigation onglets */}
       <nav className="border-b border-stone-100 bg-white sticky top-0 z-20">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3">
-          <div className="flex gap-1 overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none] bg-stone-50 rounded-full p-1 w-fit max-w-full">
+          <div className="flex gap-1 overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none] bg-[linear-gradient(100deg,var(--color-stone-50),var(--color-limestone-light))] rounded-full p-1 w-fit max-w-full">
             {TABS.map((tab) => (
               <button
                 key={tab.id}
@@ -106,7 +106,9 @@ export default function App() {
                   if (tab.id === 'historique') setHistoryKey((k) => k + 1)
                 }}
                 className={`px-3.5 sm:px-5 py-2 text-sm font-medium rounded-full shrink-0 transition-colors ${
-                  activeTab === tab.id ? 'bg-ink text-white' : 'text-ink-muted hover:text-ink'
+                  activeTab === tab.id
+                    ? 'text-white bg-[linear-gradient(100deg,var(--color-seine),var(--color-ambre))] shadow-sm'
+                    : 'text-ink-muted hover:text-ink'
                 }`}
               >
                 {tab.label}
