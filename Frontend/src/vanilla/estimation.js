@@ -422,7 +422,9 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
     if (r.adresse) tech.push(['Adresse normalisée (BAN)', r.adresse])
     if (r.mape != null) tech.push([`Erreur moyenne locale${r.mape_n ? ` (${nb(r.mape_n)} ventes)` : ''}`, `${String(r.mape).replace('.', ',')} %`])
     if (mi.validation) tech.push([`Erreur moyenne validée (${periode(mi.validation.periode_test)})`, `${String(mi.validation.mape).replace('.', ',')} %`])
-    tech.push(['Fourchette', r.reel ? `Intervalle à ${r.confiance || '85 %'}, calibré` : `Estimation ± ${Math.round(100 * MAPE_MODELE)} % (démonstration)`])
+    tech.push(['Fourchette', !r.reel ? `Estimation ± ${Math.round(100 * MAPE_MODELE)} % (démonstration)`
+      : r.modele === 'ml' ? `Intervalle à ${r.confiance || '85 %'}, calibré sur des ventes de contrôle`
+      : 'Dispersion des ventes comparables de la commune'])
     if (mi.nFeatures) tech.push(['Variables', String(mi.nFeatures)])
     if (mi.trainedAt) tech.push(['Entraîné le', new Date(mi.trainedAt).toLocaleDateString('fr-FR')])
     if (mi.nTrain) tech.push(["Données d'entraînement", `${nb(mi.nTrain)} transactions DVF 2021–2025`])
