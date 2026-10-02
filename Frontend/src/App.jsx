@@ -234,7 +234,9 @@ export default function App() {
         )}
       </main>
 
-      <Footer />
+      {/* Les pages Estimation, Financement et Plus-value ont leur propre pied de
+          page (sources, références légales) : pas de second pied de page. */}
+      {!['estimation', 'financement', 'plusvalue'].includes(activeTab) && <Footer />}
     </div>
   )
 }

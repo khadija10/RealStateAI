@@ -40,10 +40,10 @@ export const html = `
     <div class="illus" id="pv-illus-carte"></div>
     <div>
       <div class="lib" id="pv-lib-scen"></div>
-      <div class="grand" id="pv-pv">—</div>
+      <div class="grand" id="pv-pv"></div>
       <div class="precision" id="pv-precision"></div>
     </div>
-    <div class="mesures">
+    <div class="mesures" data-resultat hidden>
       <div class="mesure"><b id="pv-revente">—</b><span>Prix de revente</span></div>
       <div class="mesure"><b id="pv-impot">—</b><span>Impôt sur la plus-value</span></div>
       <div class="mesure"><b id="pv-net">—</b><span>Gain net après frais</span></div>
@@ -51,9 +51,9 @@ export const html = `
   </div>
 </section>
 
-<section class="scen" id="pv-scen"></section>
+<section class="scen" id="pv-scen" data-resultat hidden></section>
 
-<section class="graphe">
+<section class="graphe" data-resultat hidden>
   <div class="graphe-tete">
     <h3>Trajectoire <em>du prix au m²</em></h3>
     <div class="legende-graphe">
@@ -66,6 +66,7 @@ export const html = `
   <div id="pv-eventail"></div>
 </section>
 
+<div data-resultat hidden>
 <h2 class="titre-section">La <em>fiscalité</em></h2>
 <p class="sous">Barème 2026 : 19 % d'impôt sur le revenu et 17,2 % de prélèvements sociaux,
   allégés par la durée de détention.</p>
@@ -82,6 +83,7 @@ export const html = `
   </div>
 </section>
 
+</div>
 <h2 class="titre-section">La résilience <em>des secteurs</em></h2>
 <p class="sous">Variation du prix au m² entre 2021 et 2025. La baisse n'a pas frappé tous les
   quartiers de la même façon — c'est ce qui rend l'emplacement décisif.</p>
@@ -109,6 +111,7 @@ export const html = `
 <div class="bas">
   <span>Données : DVF — DGFiP / Etalab · Fiscalité : CGI art. 150 U, 150 VC, 200 B, 1609 nonies G</span>
   <span>Simulation indicative : ni conseil fiscal, ni conseil en investissement.</span>
+  <span>RealStateAI — v${__APP_VERSION__}</span>
 </div>
 `
 
@@ -218,6 +221,7 @@ export function mount(root, { apiBase = '', prefill } = {}) {
     if (!SECTEURS[sel.value]) { $('#pv-etat').textContent = 'Choisissez un secteur pour lancer la simulation.'; return }
     $('#pv-etat').textContent = ''
     simule = true
+    root.querySelectorAll('[data-resultat]').forEach((el) => { el.hidden = false })
     calculer()
   }
 
@@ -351,7 +355,9 @@ export function mount(root, { apiBase = '', prefill } = {}) {
         const yy = i * hLigne + 6, act = l.c === sel.value
         return `<text x="${mg - 10}" y="${yy + 13}" text-anchor="end" font-size="12" font-family="Inter" fill="${act ? 'var(--encre)' : 'var(--gris)'}" font-weight="${act ? 600 : 400}">${l.nom}</text>
         <rect x="${Math.min(zero, x(l.v))}" y="${yy + 3}" width="${Math.abs(x(l.v) - zero)}" height="14" rx="4" fill="${act ? 'var(--brun)' : l.v < -0.1 ? 'var(--rouge)' : 'var(--taupe)'}" opacity="${act ? 1 : 0.55}"/>
-        <text x="${x(l.v) - 6}" y="${yy + 14}" text-anchor="end" font-size="11" font-family="Inter" fill="var(--encre)">${pct(l.v)}</text>`
+        ${Math.abs(x(l.v) - zero) > 64
+          ? `<text x="${Math.min(zero, x(l.v)) + 8}" y="${yy + 14}" text-anchor="start" font-size="12" font-weight="600" font-family="Inter" fill="${act ? '#fff' : 'var(--encre)'}">${pct(l.v)}</text>`
+          : `<text x="${x(l.v) - 6}" y="${yy + 14}" text-anchor="end" font-size="12" font-family="Inter" fill="var(--encre)">${pct(l.v)}</text>`}`
       }).join('')}
     </svg>`
   }
@@ -373,6 +379,7 @@ export function mount(root, { apiBase = '', prefill } = {}) {
   // Rien n'est simulé à l'ouverture. Venir de l'onglet Estimation via
   // « Simuler la plus-value » est une demande explicite : on simule ce bien.
   curseurs()
+  $('#pv-precision').textContent = 'Choisissez un secteur, un prix et un horizon, puis cliquez sur « Simuler la plus-value ».'
   chargerSecteurs().then(() => { if (!actif) return; resilience(); if (prefill?.prix) simuler() })
 
   return () => { actif = false }

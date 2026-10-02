@@ -378,3 +378,16 @@
 .rsai-vanilla .carte-prix span{font-size:13px;opacity:.78}
 /* L'adresse est le critère le plus long : la case s'élargit pour l'afficher en entier */
 .rsai-vanilla .recherche .critere:first-child{flex:1.7}
+
+/* Fiabilité en points (page Estimation) */
+.rsai-vanilla .points-fiab{display:flex;flex-wrap:wrap;gap:7px;align-items:center;width:110px}
+.rsai-vanilla .points-fiab i{width:18px;height:18px;border-radius:50%;background:var(--ligne)}
+.rsai-vanilla .points-fiab i.plein.puce-vert{background:var(--vert)}
+.rsai-vanilla .points-fiab i.plein.puce-ambre{background:var(--ambre)}
+.rsai-vanilla .points-fiab i.plein.puce-rouge{background:var(--rouge)}
+.rsai-vanilla .points-fiab i.plein.puce-gris{background:var(--gris)}
+.rsai-vanilla .points-fiab span{flex-basis:100%;font-size:13px;letter-spacing:.08em;color:var(--gris)}
+/* Les pastilles d'en-tête de bloc gardent leur texte clair (la règle
+   .bloc-tete span les passait en gris sur fond foncé) */
+.rsai-vanilla .bloc-tete .puce{color:var(--blanc)}
+.rsai-vanilla .bloc-tete .puce.claire{color:var(--encre)}

@@ -63,11 +63,11 @@ export const html = `
     <div class="illus" id="fin-illus-dossier"></div>
     <div>
       <span class="verdict" id="fin-verdict"><i></i><span>En attente de votre situation</span></span>
-      <div class="mensualite" id="fin-mensualite">—</div>
+      <div class="mensualite" id="fin-mensualite"></div>
       <div class="precision" id="fin-precision"></div>
       <div class="precision" id="fin-decision"></div>
     </div>
-    <div class="mesures">
+    <div class="mesures" data-resultat hidden>
       <div class="mesure"><b id="fin-emprunt">—</b><span>Montant emprunté</span></div>
       <div class="mesure"><b id="fin-endett">—</b><span>Taux d'endettement</span></div>
       <div class="mesure"><b id="fin-score">—</b><span id="fin-score-lib">Score du dossier</span></div>
@@ -75,7 +75,7 @@ export const html = `
   </div>
 </section>
 
-<section class="trois">
+<section class="trois" data-resultat hidden>
   <div class="clair analyse">
     <h3>Taux <em>d'endettement</em></h3>
     <p class="aide">Plafond HCSF : 35 %, assurance comprise</p>
@@ -95,6 +95,7 @@ export const html = `
   </div>
 </section>
 
+<div data-resultat hidden>
 <h2 class="titre-section">Points <em>forts et vigilance</em></h2>
 <p class="sous">Évalués automatiquement par le moteur déterministe à partir de votre dossier.</p>
 <section class="deux">
@@ -108,6 +109,7 @@ export const html = `
   </div>
 </section>
 
+</div>
 <h2 class="titre-section">Posez <em>vos questions</em></h2>
 <p class="sous">Agent connecté au même moteur déterministe : il appelle les calculs réels, il n'invente jamais de chiffre.</p>
 <section class="clair" style="display:flex;flex-direction:column;gap:14px">
@@ -119,6 +121,7 @@ export const html = `
   </form>
 </section>
 
+<div data-resultat hidden>
 <h2 class="titre-section">Vos <em>pièces</em> justificatives</h2>
 <section class="pieces">
   <div class="pieces-tete"><h3 id="fin-titre-pieces">Dossier</h3><span id="fin-compte" style="font-size:12.5px;color:var(--gris)"></span></div>
@@ -126,9 +129,11 @@ export const html = `
   <div class="liste" id="fin-liste"></div>
 </section>
 
+</div>
 <div class="bas">
   <span>Normes HCSF · Barèmes DMTO et émoluments 2026 · Moteur de règles RealStateAI</span>
   <span>Simulation indicative : ni conseil en financement, ni offre de prêt.</span>
+  <span>RealStateAI — v${__APP_VERSION__}</span>
 </div>
 `
 
@@ -269,6 +274,7 @@ export function mount(root, { apiBase = '', prefill } = {}) {
   }
 
   function afficherDossier(d, p) {
+    $$('[data-resultat]').forEach((el) => { el.hidden = false })
     const conf = d.conformite_hcsf || {}
     const endettement = conf.criteres?.taux_endettement?.valeur ?? 0
     const conforme = !!conf.conforme_hcsf
@@ -363,6 +369,7 @@ export function mount(root, { apiBase = '', prefill } = {}) {
   }))
 
   $('#fin-calculer').addEventListener('click', calculer)
+  $('#fin-precision').textContent = 'Renseignez votre situation, puis cliquez sur « Calculer mon financement ».'
   $('#fin-departement').addEventListener('input', planifier)
   majCurseurs()
 

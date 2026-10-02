@@ -32,7 +32,7 @@ export default function Header({ datasetStatus, dpeInfo, user, onOpenAuth, onLog
                 <div className="flex items-center gap-1.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                   <span className="text-[var(--color-ink-muted)]">
-                    DPE {dpeInfo.coveragePct != null ? `${dpeInfo.coveragePct}%` : ''}
+                    DPE {dpeInfo.coveragePct != null ? `${dpeInfo.coveragePct.toLocaleString('fr-FR')} %` : ''}
                   </span>
                 </div>
               )}

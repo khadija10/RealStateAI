@@ -22,7 +22,7 @@ function ComparisonSummary({ a, b, onClear }) {
   const ppmA = a.area_m2 ? a.estimated_price / a.area_m2 : null
   const ppmB = b.area_m2 ? b.estimated_price / b.area_m2 : null
   const diff = b.estimated_price - a.estimated_price
-  const diffPct = ((diff / a.estimated_price) * 100).toFixed(1)
+  const diffPct = ((diff / a.estimated_price) * 100).toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })
   const cheaper = diff < 0 ? 'B' : diff > 0 ? 'A' : null
 
   const rows = [
@@ -298,10 +298,10 @@ export default function History({ onReEstimate }) {
           {filtered.length} estimation{filtered.length > 1 ? 's' : ''}{totalPages > 1 ? ` · page ${page + 1}/${totalPages}` : ''}
         </p>
         {filtered.length >= 2 && selected.length === 0 && (
-          <p className="text-xs text-ink-muted">Sélectionne 2 biens pour les comparer</p>
+          <p className="text-xs text-ink-muted">Sélectionnez 2 biens pour les comparer</p>
         )}
         {selected.length > 0 && selected.length < 2 && (
-          <p className="text-xs text-seine">Sélectionne un 2ème bien</p>
+          <p className="text-xs text-seine">Sélectionnez un second bien</p>
         )}
         {selected.length === 2 && (
           <button onClick={() => setSelected([])} className="text-xs text-ink-muted hover:text-ink transition-colors">

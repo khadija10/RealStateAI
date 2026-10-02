@@ -147,6 +147,7 @@ export const html = `
 <div class="bas">
   <span>Données : DVF — DGFiP / Etalab · DPE — ADEME · IRIS — INSEE · BDNB — CSTB · Modèle LightGBM<span id="rsai-pied-variables"></span></span>
   <span>Estimation indicative, ne constitue pas une expertise immobilière.</span>
+  <span>RealStateAI — v${__APP_VERSION__}</span>
 </div>
 `
 
@@ -448,7 +449,7 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
       prix_m2: d.price_per_m2,
       basse: ci.lower ?? d.price_range?.low,
       haute: ci.upper ?? d.price_range?.high,
-      confiance: ci.confidence ?? '85%',
+      confiance: String(ci.confidence ?? '85%').replace(/\s?%/, ' %'),
       fiabilite: d.reliability,
       mape: d.local_mape, mape_n: d.local_mape_n,
       modele: d.model, adresse: d.meta?.adresse_normalisee,
@@ -492,7 +493,7 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
       $('#rsai-ecart').textContent = (e > 0 ? '+' : '') + e + ' %'
     }
 
-    $('#rsai-anneau').innerHTML = anneau(r.fiabilite)
+    $('#rsai-anneau').innerHTML = points(r.classe)
     afficherAlertes(r)
     afficherClasse(r)
     afficherDpe(r)
@@ -607,6 +608,17 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
     if (r.modele !== 'ml' && r.meta?.n_transactions) tech.push(['Transactions comparables', `${nb(r.meta.n_transactions)} ventes`])
     $('#rsai-detail-tech').innerHTML = tech.map(([l, v]) => `<tr><td>${l}</td><td class="n">${v}</td></tr>`).join('')
 
+  }
+
+  // Fiabilité en points (4 = fiable … 1 = données insuffisantes), fixée par la
+  // classe mesurée du protocole : plus de chiffre qui contredise la classe.
+  function points(classe) {
+    const n = { fiable: 4, indicative: 3, a_completer: 2, donnees_insuffisantes: 1 }[classe]
+    if (!n) return ''
+    const ton = CLASSES[classe]?.ton || 'gris'
+    return `<div class="points-fiab" role="img" aria-label="Fiabilité : ${n} sur 4">
+      ${[1, 2, 3, 4].map((i) => `<i class="${i <= n ? 'plein puce-' + ton : ''}"></i>`).join('')}
+      <span>FIABILITÉ</span></div>`
   }
 
   function anneau(f) {

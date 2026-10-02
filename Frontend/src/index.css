@@ -7,7 +7,7 @@
   --color-stone-100: #E3DED6;  /* ligne */
   --color-stone-600: #77716A;  /* gris */
   --color-ink: #141311;        /* encre */
-  --color-ink-muted: #77716A;  /* gris */
+  --color-ink-muted: #5E5952;  /* gris — contraste 6,2 sur le fond */
   --color-seine: #2A1F17;      /* accent principal — brun profond, boutons et liens */
   --color-seine-dark: #000000;
   --color-limestone: #A38C77;  /* taupe — accent secondaire, décoratif */
