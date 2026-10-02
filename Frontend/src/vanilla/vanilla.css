@@ -177,8 +177,12 @@
 .rsai-vanilla .bien h4{margin:0 0 9px;font-family:var(--serif);font-style:italic;font-weight:400;font-size:23px;line-height:1.1}
 .rsai-vanilla .puces{display:flex;gap:6px;flex-wrap:wrap}
 .rsai-vanilla .charger{display:block;width:100%;margin:24px 0 0;background:var(--blanc);border:1px solid var(--ligne);border-radius:999px;padding:13px;font:500 13px var(--sans);color:var(--encre);cursor:pointer}
-.rsai-vanilla .bouton-accent{display:block;width:100%;background:var(--ambre);border:none;border-radius:999px;padding:14px;font:600 13.5px var(--sans);color:#fff;cursor:pointer;transition:transform .15s,background .15s}
+.rsai-vanilla .bouton-accent{display:block;width:100%;background:var(--ambre);border:none;border-radius:999px;padding:14px 10px;font:600 13px var(--sans);color:#fff;cursor:pointer;transition:transform .15s,background .15s}
 .rsai-vanilla .bouton-accent:hover{background:var(--brun);transform:scale(1.015)}
+.rsai-vanilla .bouton-neutre{display:block;width:100%;background:var(--blanc);border:1px solid var(--ligne);border-radius:999px;padding:14px 10px;font:600 13px var(--sans);color:var(--encre);cursor:pointer;transition:border-color .15s,background .15s}
+.rsai-vanilla .bouton-neutre:hover{border-color:var(--encre);background:var(--fond)}
+.rsai-vanilla .boutons-action{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:14px}
+@media (max-width:680px){.rsai-vanilla .boutons-action{grid-template-columns:1fr 1fr}}
 
 /* ---------- historique ---------- */
 .rsai-vanilla .histo{background:var(--blanc);border-radius:24px;padding:26px 28px}

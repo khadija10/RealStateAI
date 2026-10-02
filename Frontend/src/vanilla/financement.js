@@ -121,13 +121,20 @@ function interieur() {
     <rect x="40" y="318" width="220" height="70" rx="16" fill="#C9B8A3"/><rect x="52" y="296" width="196" height="40" rx="14" fill="#DDCDB9"/></svg>`
 }
 
-export function mount(root, { apiBase = '' } = {}) {
+export function mount(root, { apiBase = '', prefill } = {}) {
   const $ = (sel) => root.querySelector(sel)
   const $$ = (sel) => root.querySelectorAll(sel)
   const DOSSIER_URL = apiBase + '/api/financing/dossier'
 
   $('#fin-illus-heros').innerHTML = heroFinancement()
   $('#fin-illus-dossier').innerHTML = interieur()
+
+  // Préremplissage depuis l'onglet Estimation : reprend le prix du bien
+  // estimé comme point de départ de la simulation.
+  if (prefill?.prix) {
+    const prix = $('#fin-prix')
+    prix.value = Math.min(+prix.max, Math.max(+prix.min, Math.round(prefill.prix / 5000) * 5000))
+  }
 
   const val = (i) => +$('#' + i).value
 

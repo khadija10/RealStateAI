@@ -94,7 +94,12 @@ export const html = `
     <div class="bloc">
       <div class="bloc-tete"><h3>Plus-value <em>projetée</em></h3><span>scénario central · 10 ans</span></div>
       <p class="fiab-txt" id="rsai-pv-resume"></p>
-      <button type="button" class="bouton-accent" id="rsai-pv-voir" style="margin-top:14px">Simuler la plus-value de ce bien →</button>
+      <div class="boutons-action">
+        <button type="button" class="bouton-accent" id="rsai-pv-voir">Simuler la plus-value →</button>
+        <button type="button" class="bouton-accent" id="rsai-fin-voir">Simuler le financement →</button>
+        <button type="button" class="bouton-neutre" id="rsai-pdf">Exporter PDF</button>
+        <button type="button" class="bouton-neutre" id="rsai-partager">Partager</button>
+      </div>
     </div>
   </div>
 </section>
@@ -143,7 +148,67 @@ const MAPE_MODELE = 0.164
 const euro = (n) => Math.round(n).toLocaleString('fr-FR') + ' €'
 const nb = (n) => Math.round(n).toLocaleString('fr-FR')
 
-export function mount(root, { apiBase = '', onPlusValue } = {}) {
+const TYPE_LABEL = { apartment: 'Appartement', house: 'Maison', other: 'Autre' }
+
+/** Fiche imprimable — même principe que l'ancien frontend (fenêtre + print()). */
+function exporterPDF(bien) {
+  if (!bien) return
+  const { r, s, adresse, surface, pieces } = bien
+  const date = new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long', timeStyle: 'short' }).format(new Date())
+  const lieu = adresse || s.nom
+  const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">
+<title>Estimation RealStateAI</title>
+<style>
+  body{font-family:Georgia,serif;max-width:680px;margin:40px auto;color:#141311;padding:0 20px}
+  h1{font-size:2rem;margin-bottom:4px}
+  .sub{color:#77716A;font-size:.9rem;margin-bottom:32px}
+  .price{font-size:3rem;font-weight:600;margin:16px 0 4px}
+  .per-m2{color:#77716A;font-size:.95rem;margin-bottom:24px}
+  table{width:100%;border-collapse:collapse;margin-top:24px}
+  td{padding:10px 0;border-bottom:1px solid #E3DED6;font-size:.9rem}
+  td:last-child{text-align:right;font-weight:500}
+  .range{display:flex;gap:24px;margin:16px 0}
+  .range-item{flex:1;background:#F3F1EC;padding:12px 16px;border-radius:8px}
+  .range-label{font-size:.75rem;color:#77716A;text-transform:uppercase;letter-spacing:.08em}
+  .range-val{font-size:1.1rem;font-weight:600;margin-top:4px}
+  .footer{margin-top:40px;padding-top:16px;border-top:1px solid #E3DED6;font-size:.75rem;color:#A38C77}
+</style></head><body>
+<h1>Fiche d'estimation</h1>
+<p class="sub">RealStateAI · ${date}</p>
+<table>
+  <tr><td>Bien</td><td>${lieu}</td></tr>
+  <tr><td>Surface</td><td>${surface} m²</td></tr>
+  <tr><td>Pièces</td><td>${pieces}</td></tr>
+  <tr><td>Méthode</td><td>${r.reel ? 'Modèle ' + (r.modele || 'ml') : 'Démonstration (médianes DVF)'}</td></tr>
+</table>
+<p class="price">${euro(r.valeur)}</p>
+<p class="per-m2">soit ${euro(r.prix_m2)} / m²</p>
+<div class="range">
+  <div class="range-item"><p class="range-label">Fourchette basse</p><p class="range-val">${euro(r.basse)}</p></div>
+  <div class="range-item"><p class="range-label">Fourchette haute</p><p class="range-val">${euro(r.haute)}</p></div>
+</div>
+<p class="footer">Estimation fournie à titre indicatif, sans valeur contractuelle. Modèle entraîné sur les ventes notariées DVF d'Île-de-France 2021–2025.${r.mape != null ? ` Erreur locale mesurée sur ce secteur : ${String(r.mape).replace('.', ',')} %.` : ''}</p>
+</body></html>`
+  const w = window.open('', '_blank')
+  if (!w) return
+  w.document.write(html)
+  w.document.close()
+  w.focus()
+  setTimeout(() => w.print(), 400)
+}
+
+/** Lien partageable — reconstitue le formulaire via les paramètres d'URL. */
+function construireLienPartage(bien) {
+  const p = new URLSearchParams()
+  if (bien.surface) p.set('area_m2', bien.surface)
+  if (bien.pieces) p.set('rooms', bien.pieces)
+  if (bien.type) p.set('type', bien.type)
+  if (bien.adresse) p.set('address', bien.adresse)
+  if (bien.secteur) p.set('secteur', bien.secteur)
+  return `${window.location.origin}${window.location.pathname}?${p.toString()}`
+}
+
+export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
   const API = {
     BASE: apiBase,
     COMMUNES: '/api/metadata/communes',
@@ -220,7 +285,7 @@ export function mount(root, { apiBase = '', onPlusValue } = {}) {
     if (!r) r = demonstration(secteur, surface, pieces, type)
 
     bouton.disabled = false; bouton.textContent = 'Estimer'
-    afficher(r, secteur, adresse, surface, pieces)
+    afficher(r, secteur, adresse, surface, pieces, type)
     memoriser({ query: adresse || secteur.nom, area_m2: surface, prix: r.valeur })
     if (defiler) $('#rsai-resultat').scrollIntoView({ behavior: 'smooth' })
   }
@@ -252,7 +317,7 @@ export function mount(root, { apiBase = '', onPlusValue } = {}) {
     return { valeur: v, prix_m2: m2, basse: v * (1 - MAPE_MODELE), haute: v * (1 + MAPE_MODELE), confiance: '85%', fiabilite: null, facteurs: f, base, modele: 'demo', reel: false }
   }
 
-  function afficher(r, s, adresse, surface, pieces) {
+  function afficher(r, s, adresse, surface, pieces, type) {
     $('#rsai-lib-secteur').textContent = (r.adresse || adresse || s.nom) + ' · ' + surface + ' m² · ' + pieces + (pieces > 1 ? ' pièces' : ' pièce')
     $('#rsai-valeur').textContent = euro(r.valeur)
     $('#rsai-fourchette').textContent = `Fourchette ${r.confiance || '85 %'} : ${euro(r.basse)} — ${euro(r.haute)}`
@@ -304,7 +369,7 @@ export function mount(root, { apiBase = '', onPlusValue } = {}) {
     $('#rsai-pv-resume').innerHTML =
       `Au rythme observé sur ce secteur depuis 2021 (<b>${v >= 0 ? '+' : ''}${(100 * tendance).toFixed(1).replace('.', ',')} %/an</b>), ` +
       `ce bien pourrait valoir <b>${euro(revente10)}</b> dans 10 ans, soit ${pv10 >= 0 ? 'une plus-value brute de' : 'une moins-value de'} <b>${euro(Math.abs(pv10))}</b> avant fiscalité.`
-    dernierBien = { secteur: secteurCourant, prix: Math.round(r.valeur) }
+    dernierBien = { secteur: secteurCourant, prix: Math.round(r.valeur), r, s, adresse, surface, pieces, type }
   }
 
   function anneau(f) {
@@ -372,9 +437,31 @@ export function mount(root, { apiBase = '', onPlusValue } = {}) {
   $('#rsai-pv-voir').addEventListener('click', () => {
     if (dernierBien && onPlusValue) onPlusValue(dernierBien)
   })
+  $('#rsai-fin-voir').addEventListener('click', () => {
+    if (dernierBien && onFinancement) onFinancement(dernierBien)
+  })
+  $('#rsai-pdf').addEventListener('click', () => exporterPDF(dernierBien))
+  $('#rsai-partager').addEventListener('click', () => {
+    if (!dernierBien) return
+    const bouton = $('#rsai-partager')
+    navigator.clipboard?.writeText(construireLienPartage(dernierBien)).then(() => {
+      const texte = bouton.textContent
+      bouton.textContent = 'Lien copié !'
+      setTimeout(() => { bouton.textContent = texte }, 2000)
+    })
+  })
   $('#formulaire').addEventListener('submit', (e) => { e.preventDefault(); estimer(true) })
   ;['rsai-type', 'rsai-secteur'].forEach((i) => $('#' + i).addEventListener('change', () => estimer(false)))
   ;['rsai-surface', 'rsai-pieces'].forEach((i) => $('#' + i).addEventListener('input', () => estimer(false)))
+
+  // Préremplissage depuis un lien partagé.
+  const params = new URLSearchParams(window.location.search)
+  if (params.get('area_m2')) $('#rsai-surface').value = params.get('area_m2')
+  if (params.get('rooms')) $('#rsai-pieces').value = params.get('rooms')
+  if (params.get('type')) $('#rsai-type').value = params.get('type')
+  if (params.get('address')) $('#rsai-adresse').value = params.get('address')
+  if (params.get('secteur') && SECTEURS[params.get('secteur')]) selecteur.value = params.get('secteur')
+  if ([...params.keys()].length) window.history.replaceState({}, '', window.location.pathname)
 
   chargerSecteurs(); estimer(false); verifierApi()
 

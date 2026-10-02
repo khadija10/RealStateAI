@@ -33,6 +33,7 @@ export default function App() {
   const [datasetInfo, setDatasetInfo] = useState(null)
   const [historyKey, setHistoryKey] = useState(0)
   const [plusValuePrefill, setPlusValuePrefill] = useState(null)
+  const [financementPrefill, setFinancementPrefill] = useState(null)
   const [dpeInfo, setDpeInfo] = useState(null)
   const [darkMode, setDarkMode] = useState(() => {
     try { return localStorage.getItem('reai_theme') === 'dark' } catch { return false }
@@ -125,7 +126,10 @@ export default function App() {
             <VanillaPage
               page={estimationPage}
               apiBase={API_BASE}
-              options={{ onPlusValue: (bien) => { setPlusValuePrefill(bien); setActiveTab('plusvalue') } }}
+              options={{
+                onPlusValue: (bien) => { setPlusValuePrefill(bien); setActiveTab('plusvalue') },
+                onFinancement: (bien) => { setFinancementPrefill(bien); setActiveTab('financement') },
+              }}
             />
           </div>
         )}
@@ -133,7 +137,7 @@ export default function App() {
         {/* ONGLET FINANCEMENT — moteur réel /api/financing/dossier */}
         {activeTab === 'financement' && (
           <div className="w-full px-4 sm:px-6 py-8">
-            <VanillaPage page={financementPage} apiBase={API_BASE} />
+            <VanillaPage page={financementPage} apiBase={API_BASE} options={{ prefill: financementPrefill }} />
           </div>
         )}
 
