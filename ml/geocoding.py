@@ -76,6 +76,7 @@ def geocoder_adresse(adresse: str, code_postal: str | None = None) -> dict:
         "nom_commune": props.get("city", ""),
         "adresse_normalisee": props.get("label", adresse),
         "numero": props.get("housenumber"),
+        "code_postal": props.get("postcode"),
         "score": score,
         "score_bas": score < 0.6,
     }

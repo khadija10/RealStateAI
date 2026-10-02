@@ -83,7 +83,8 @@ def _gold(gold_path: Path) -> duckdb.DuckDBPyConnection:
         con = duckdb.connect()
         con.execute(f"""
             CREATE TABLE g AS
-            SELECT id_parcelle, code_type_local, code_commune, latitude, longitude, adresse_numero,
+            SELECT id_parcelle, code_type_local, code_commune, code_postal, zone_part_dpe_fg,
+                   latitude, longitude, adresse_numero,
                    date_mutation, mois_index, surface_bati, nb_pieces, valeur_fonciere,
                    prix_m2, prix_m2_reference_12m, lot1_numero, code_iris,
                    revenu_median_iris, part_logements_collectifs_iris, part_proprietaires_iris
@@ -163,6 +164,18 @@ def features_iris(latitude: float, longitude: float, code_commune: str,
     return dict(zip(cols, row)) if row else dict.fromkeys(cols)
 
 
+def zone_dpe(code_postal: str | None, gold_path: Path = GOLD_PATH) -> float | None:
+    """Part de passoires thermiques (F+G) du code postal, telle que calculée
+    par le pipeline (feature zone_part_dpe_fg) : sans elle, une estimation
+    faite sans code postal saisi recevait cette feature vide."""
+    if not code_postal or not Path(gold_path).exists():
+        return None
+    row = _gold(gold_path).execute(
+        "SELECT any_value(zone_part_dpe_fg) FROM g WHERE CAST(code_postal AS VARCHAR) = ? AND zone_part_dpe_fg IS NOT NULL",
+        [str(code_postal)]).fetchone()
+    return float(row[0]) if row and row[0] is not None else None
+
+
 def features_bdnb(id_parcelle: str | None, bdnb_path: Path = BDNB_PATH) -> dict:
     cols = ["bdnb_nb_niveaux", "bdnb_hauteur_max", "bdnb_annee_construction", "bdnb_nb_logements",
             "bdnb_mat_mur", "bdnb_distance_monument", "bdnb_part_logement_social", "bdnb_qpv"]
@@ -177,6 +190,51 @@ def features_bdnb(id_parcelle: str | None, bdnb_path: Path = BDNB_PATH) -> dict:
     d = dict(zip(cols, row))
     d["bdnb_qpv"] = int(d["bdnb_qpv"]) if d["bdnb_qpv"] is not None else None
     return d
+
+
+def chercher_dpe(adresse: str | None, code_postal: str | None, surface: float,
+                 code_type_local: str) -> dict:
+    """DPE du bien retrouvé à partir de son adresse, sans rien demander à
+    l'utilisateur (personne ne connaît le numéro de son DPE).
+
+    Même règle que l'appariement du pipeline (enrichment/dpe.py) : même
+    adresse BAN, même type de logement, surface à 10 % près ; puis la surface
+    la plus proche, puis le diagnostic le plus récent (à l'estimation, la
+    « vente » a lieu aujourd'hui, tout DPE lui est antérieur)."""
+    vide = {"dpe_classe": None, "dpe_deperdition_enveloppe_m2": None, "dpe_type_chauffage": None,
+            "annee_construction": None, "dpe_date": None, "dpe_appariement": None}
+    if not adresse or not code_postal or not surface:
+        return vide
+    numero_voie = adresse.split(str(code_postal))[0].strip().rstrip(",")
+    data = _get_json(ADEME_URL, {
+        "q": numero_voie, "q_fields": "adresse_ban", "code_postal_ban_eq": str(code_postal), "size": 100,
+        "select": "adresse_ban,surface_habitable_logement,etiquette_dpe,type_batiment,date_etablissement_dpe,"
+                  "deperditions_enveloppe,type_generateur_chauffage_principal,annee_construction",
+    })
+    if not data:
+        return vide
+    type_attendu = "maison" if code_type_local == "1" else "appartement"
+    cible = adresse.strip().lower()
+    candidats = [r for r in data.get("results", [])
+                 if (r.get("adresse_ban") or "").strip().lower() == cible
+                 and (r.get("type_batiment") or "").lower() == type_attendu
+                 and r.get("surface_habitable_logement")
+                 and abs(r["surface_habitable_logement"] - surface) <= TOLERANCE_SURFACE * surface]
+    if not candidats:
+        return vide
+    candidats.sort(key=lambda r: (round(abs(r["surface_habitable_logement"] - surface) / surface, 2),
+                                  [-int(x) for x in (r.get("date_etablissement_dpe") or "0000-00-00").split("-")]))
+    r = candidats[0]
+    dep = r.get("deperditions_enveloppe")
+    return {
+        "dpe_classe": r.get("etiquette_dpe"),
+        "dpe_deperdition_enveloppe_m2": round(float(dep) / surface, 3) if dep else None,
+        "dpe_type_chauffage": r.get("type_generateur_chauffage_principal"),
+        "annee_construction": int(r["annee_construction"]) if r.get("annee_construction") else None,
+        "dpe_date": r.get("date_etablissement_dpe"),
+        # Comme dans le pipeline : « exacte » si un seul diagnostic compatible
+        "dpe_appariement": "exacte" if len(candidats) == 1 else "probable",
+    }
 
 
 def features_dpe(numero_dpe: str | None, surface: float) -> dict:

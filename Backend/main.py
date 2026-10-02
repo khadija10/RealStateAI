@@ -261,6 +261,16 @@ class EstimationResponse(BaseModel):
     secteur: dict[str, Any] | None = None
     comparables_immeuble: list[dict[str, Any]] | None = None
     dpe_trouve: bool | None = None
+    dpe_source: str | None = None          # numero | adresse | saisi
+    dpe_date: str | None = None
+    dpe_appariement: str | None = None     # exacte | probable (DPE retrouvé à l'adresse)
+    code_postal: str | None = None
+    historique_id: int | None = None       # ligne d'historique, pour y rattacher les simulations
+
+
+class SimulationRequest(BaseModel):
+    type: Literal["plusvalue", "financement"]
+    donnees: dict[str, Any]
 
 
 class HealthResponse(BaseModel):
@@ -359,6 +369,36 @@ def _construire_secteurs(df: "pd.DataFrame | None") -> dict:
     return secteurs
 
 
+_CACHE_DATASET: dict = {}
+
+
+def _empreinte(path: Path) -> tuple:
+    """Taille et date de modification des fichiers : change si le dataset change."""
+    fichiers = sorted(path.rglob("*.parquet")) if path.is_dir() else [path]
+    return tuple((str(f), f.stat().st_size, f.stat().st_mtime_ns) for f in fichiers)
+
+
+def _charger_dataset(path: Path) -> dict:
+    """Dataset, communes et statistiques de secteur, mis en cache dans le
+    processus tant que les fichiers ne changent pas.
+
+    Le chargement coûte ~7 s et les secteurs ~2,5 s : sans cache, chaque
+    démarrage de l'application (un par test dans la suite de tests) les
+    payait à nouveau."""
+    cle = (str(path), _empreinte(path))
+    if cle not in _CACHE_DATASET:
+        dvf = load_dvf(path)
+        secteurs = _construire_secteurs(dvf)
+        _CACHE_DATASET.clear()
+        _CACHE_DATASET[cle] = {
+            "dvf": dvf,
+            "communes": commune_display_names(dvf),
+            "secteurs": secteurs,
+            "secteurs_par_nom": {(normalize_commune(s["nom"]), typ): s for (_, typ), s in secteurs.items()},
+        }
+    return _CACHE_DATASET[cle]
+
+
 def _type_secteur(property_type: str | None) -> str:
     return "house" if property_type == "house" else "apartment"
 
@@ -418,12 +458,12 @@ async def lifespan(app: FastAPI):
         logger.warning(app.state.dvf_error)
     else:
         try:
-            app.state.dvf = load_dvf(path)
+            donnees = _charger_dataset(path)
+            app.state.dvf = donnees["dvf"]
             app.state.dvf_path = str(path)
-            app.state.communes = commune_display_names(app.state.dvf)
-            app.state.secteurs = _construire_secteurs(app.state.dvf)
-            app.state.secteurs_par_nom = {
-                (normalize_commune(s["nom"]), typ): s for (_, typ), s in app.state.secteurs.items()}
+            app.state.communes = donnees["communes"]
+            app.state.secteurs = donnees["secteurs"]
+            app.state.secteurs_par_nom = donnees["secteurs_par_nom"]
         except Exception as exc:  # noqa: BLE001 — on veut démarrer malgré tout
             app.state.dvf_error = f"{type(exc).__name__} : {exc}"
             logger.exception("Échec du chargement du dataset DVF")
@@ -750,6 +790,19 @@ def change_password(body: ChangePasswordRequest, request: Request) -> dict[str, 
     return {"message": "Mot de passe modifié avec succès."}
 
 
+@app.put(f"{API_PREFIX}/history/{{item_id}}/simulation", tags=["historique"],
+         summary="Rattacher une simulation à une estimation")
+def attach_history_simulation(item_id: int, body: SimulationRequest, request: Request) -> dict[str, Any]:
+    """Garde la dernière simulation de plus-value ou de financement faite sur ce bien."""
+    user_id = _current_user(request)
+    service: SearchHistoryService = request.app.state.search_history
+    if len(json.dumps(body.donnees, default=str)) > 20_000:
+        raise HTTPException(413, "Simulation trop volumineuse.")
+    if not service.attach_simulation(item_id, user_id, body.type, body.donnees):
+        raise HTTPException(404, "Estimation introuvable ou accès refusé.")
+    return {"message": "Simulation enregistrée."}
+
+
 @app.delete(f"{API_PREFIX}/history/{{item_id}}", tags=["historique"], summary="Supprimer une estimation")
 def delete_history_item(item_id: int, request: Request) -> dict[str, Any]:
     user_id = _current_user(request)
@@ -949,7 +1002,7 @@ def list_communes(
 )
 def list_search_history(
     request: Request,
-    limit: int = Query(default=10, ge=1, le=50, description="Nombre maximum de résultats (1–50)"),
+    limit: int = Query(default=10, ge=1, le=200, description="Nombre maximum de résultats (1–200)"),
 ) -> list[dict[str, Any]]:
     """Retourne les estimations récentes.
 
@@ -960,6 +1013,43 @@ def list_search_history(
     service: SearchHistoryService = request.app.state.search_history
     user_id = _current_user(request)
     return service.list_recent(limit=limit, user_id=user_id)
+
+
+def _inscrire_historique(request: Request, req: Any, surface: float, reponse: EstimationResponse,
+                         *, adresse_normalisee: str | None = None, query: str | None = None) -> None:
+    """Inscrit l'estimation dans l'historique avec sa réponse complète.
+
+    La réponse (fourchette, classe de fiabilité, DPE retrouvé, ventes de l'immeuble)
+    et la date d'entraînement du modèle sont gardées : l'historique peut ainsi
+    réafficher le résultat tel qu'il était, sans le recalculer. L'identifiant de la
+    ligne est renvoyé dans la réponse pour y rattacher les simulations.
+    """
+    try:
+        info = getattr(request.app.state, "model_info", None) or {}
+        resultat = {**reponse.model_dump(exclude={"historique_id"}),
+                    "modele_entraine_le": info.get("trained_at"),
+                    "saisie": {"address": req.address, "commune": req.commune, "postal_code": req.postal_code,
+                               "property_type": req.property_type, "surface": surface, "rooms": req.rooms,
+                               "dpe_classe": req.dpe_classe, "annee_construction": req.annee_construction}}
+        texte = " ".join(filter(None, [req.address, req.postal_code, req.commune])).strip()
+        ligne = request.app.state.search_history.add_search(
+            query=adresse_normalisee or texte or query or "",
+            commune=req.commune,
+            property_type=req.property_type,
+            area_m2=surface,
+            estimated_price=reponse.estimated_price,
+            user_id=_current_user(request),
+            rooms=req.rooms,
+            address=req.address,
+            postal_code=req.postal_code,
+            adresse_normalisee=adresse_normalisee,
+            dpe_classe=req.dpe_classe,
+            annee_construction=req.annee_construction,
+            resultat=resultat,
+        )
+        reponse.historique_id = ligne.get("id")
+    except Exception as exc:  # pragma: no cover - la persistance ne doit pas casser la réponse
+        logger.warning("Historique de recherche non inscrit : %s", exc)
 
 
 def _mock_estimate(surface: float, property_type: str) -> EstimationResponse:
@@ -1027,7 +1117,11 @@ def estimate(
     surface = req.area_m2
     type_bien = req.property_type
 
-    if ML_ESTIMATOR is not None and (req.address or req.commune or req.postal_code):
+    # Le modèle ML a besoin d'une adresse : il géolocalise le bien, retrouve sa
+    # parcelle, son immeuble, son IRIS. Une commune seule se géocode au centre
+    # de la commune, ce qui n'a pas de sens pour lui : elle passe par la médiane
+    # des ventes comparables (repli DVF).
+    if ML_ESTIMATOR is not None and req.address and req.address.strip():
         try:
             payload: dict[str, Any] = {
                 "adresse": req.address,
@@ -1037,8 +1131,6 @@ def estimate(
                 "type_bien": type_bien,
                 "a_terrain": type_bien == "house",
             }
-            if req.commune and not req.address:
-                payload["adresse"] = req.commune
             # zone_part_dpe_fg : feature DPE de zone, indexée par code postal
             _dpe_zone = getattr(request.app.state, "dpe_zone", {})
             if req.postal_code and req.postal_code in _dpe_zone:
@@ -1063,6 +1155,9 @@ def estimate(
                     normalized.classe_fiabilite = ml_result.get("classe_fiabilite")
                     normalized.comparables_immeuble = ml_result.get("comparables_immeuble") or []
                     normalized.dpe_trouve = ml_result.get("dpe_trouve")
+                    normalized.dpe_source = ml_result.get("dpe_source")
+                    normalized.dpe_date = ml_result.get("dpe_date")
+                    normalized.dpe_appariement = ml_result.get("dpe_appariement")
                     normalized.secteur = getattr(request.app.state, "secteurs", {}).get(
                         (str(ml_result.get("code_commune") or ""), _type_secteur(type_bien)))
                 if lm.get("mape"):
@@ -1080,28 +1175,17 @@ def estimate(
                     normalized.dpe_classe = req.dpe_classe or dpe_retrouve.get("dpe_classe")
                 if req.annee_construction or dpe_retrouve.get("annee_construction"):
                     normalized.annee_construction = req.annee_construction or dpe_retrouve.get("annee_construction")
-                dpe_zone = getattr(request.app.state, "dpe_zone", {})
-                if req.postal_code and req.postal_code in dpe_zone:
-                    normalized.dpe_zone_fg_pct = round(float(dpe_zone[req.postal_code]) * 100, 1)
-                try:
-                    _adresse_norm = ml_result.get("adresse_normalisee") if isinstance(ml_result, dict) else None
-                    _full_query = _adresse_norm or " ".join(filter(None, [req.address, req.postal_code, req.commune])).strip() or ""
-                    request.app.state.search_history.add_search(
-                        query=_full_query,
-                        commune=req.commune,
-                        property_type=req.property_type,
-                        area_m2=surface,
-                        estimated_price=normalized.estimated_price,
-                        user_id=_current_user(request),
-                        rooms=req.rooms,
-                        address=req.address,
-                        postal_code=req.postal_code,
-                        adresse_normalisee=_adresse_norm,
-                        dpe_classe=req.dpe_classe,
-                        annee_construction=req.annee_construction,
-                    )
-                except Exception as exc:  # pragma: no cover - la persistance ne doit pas casser la réponse
-                    logger.warning("Historique de recherche non inscrit : %s", exc)
+                # Part de passoires du code postal : saisi, sinon retrouvé par le géocodage
+                zone = ml_result.get("zone_part_dpe_fg") if isinstance(ml_result, dict) else None
+                if zone is None:
+                    dpe_zone = getattr(request.app.state, "dpe_zone", {})
+                    zone = dpe_zone.get(req.postal_code) if req.postal_code else None
+                if zone is not None:
+                    normalized.dpe_zone_fg_pct = round(float(zone) * 100, 1)
+                if isinstance(ml_result, dict) and ml_result.get("code_postal"):
+                    normalized.code_postal = ml_result["code_postal"]
+                _inscrire_historique(request, req, surface, normalized, adresse_normalisee=(
+                    ml_result.get("adresse_normalisee") if isinstance(ml_result, dict) else None))
                 return normalized
         except ValueError as exc:
             # Erreur métier lisible (adresse introuvable, hors périmètre IDF…)
@@ -1120,22 +1204,7 @@ def estimate(
             raise HTTPException(503, "Le service d'estimation est momentanément indisponible.")
         logger.warning("Dataset indisponible : réponse mock renvoyée")
         result = _mock_estimate(surface, req.property_type)
-        try:
-            request.app.state.search_history.add_search(
-                query=" ".join(filter(None, [req.address, req.postal_code, req.commune])).strip() or "",
-                commune=req.commune,
-                property_type=req.property_type,
-                area_m2=surface,
-                estimated_price=result.estimated_price,
-                user_id=_current_user(request),
-                rooms=req.rooms,
-                address=req.address,
-                postal_code=req.postal_code,
-                dpe_classe=req.dpe_classe,
-                annee_construction=req.annee_construction,
-            )
-        except Exception as exc:  # pragma: no cover - la persistance ne doit pas casser la réponse
-            logger.warning("Historique de recherche non inscrit : %s", exc)
+        _inscrire_historique(request, req, surface, result)
         return result
 
     # Localisation : commune explicite en priorité, sinon parsing de l'adresse.
@@ -1238,22 +1307,7 @@ def estimate(
     if req.postal_code and req.postal_code in dpe_zone:
         response.dpe_zone_fg_pct = round(float(dpe_zone[req.postal_code]) * 100, 1)
 
-    try:
-        request.app.state.search_history.add_search(
-            query=" ".join(filter(None, [req.address, req.postal_code, req.commune])).strip() or commune_norm or "",
-            commune=req.commune,
-            property_type=req.property_type,
-            area_m2=surface,
-            estimated_price=response.estimated_price,
-            user_id=_current_user(request),
-            rooms=req.rooms,
-            address=req.address,
-            postal_code=req.postal_code,
-            dpe_classe=req.dpe_classe,
-            annee_construction=req.annee_construction,
-        )
-    except Exception as exc:  # pragma: no cover - la persistance ne doit pas casser l'estimation
-        logger.warning("Historique de recherche non inscrit : %s", exc)
+    _inscrire_historique(request, req, surface, response, query=commune_norm)
 
     return response
 

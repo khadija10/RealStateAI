@@ -457,6 +457,27 @@ def test_history_endpoint_returns_recent_searches(client):
     assert payload[0]["commune"] == "PARIS 15"
 
 
+def test_historique_garde_le_resultat_et_les_simulations(client):
+    est = client.post(
+        "/api/predictions/estimate",
+        json={"area_m2": 60, "rooms": 3, "property_type": "apartment", "commune": "PARIS 15"},
+    ).json()
+    hid = est["historique_id"]
+    assert isinstance(hid, int)
+    r = client.put(f"/api/history/{hid}/simulation",
+                   json={"type": "financement", "donnees": {"mensualite": 1500, "verdict": "conforme"}})
+    assert r.status_code == 200
+    ligne = next(e for e in client.get("/api/search-history?limit=200").json() if e["id"] == hid)
+    assert ligne["resultat"]["estimated_price"] == est["estimated_price"]
+    assert ligne["resultat"]["price_range"] == est["price_range"]
+    assert ligne["resultat"]["saisie"]["surface"] == 60
+    assert ligne["simulations"]["financement"]["mensualite"] == 1500
+    assert client.put("/api/history/999999/simulation",
+                      json={"type": "plusvalue", "donnees": {}}).status_code == 404
+    assert client.put(f"/api/history/{hid}/simulation",
+                      json={"type": "autre", "donnees": {}}).status_code == 422
+
+
 def test_financing_dossier_endpoint_uses_deterministic_module(client):
     response = client.post(
         "/api/financing/dossier",

@@ -152,7 +152,7 @@ export default function ProfilePanel({ user, onLogout }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full text-white rounded-full py-2.5 text-sm font-medium disabled:opacity-60 transition-opacity hover:opacity-90 bg-[linear-gradient(100deg,var(--color-seine),var(--color-ambre))]"
+            className="w-full text-white rounded-full py-2.5 text-sm font-medium disabled:opacity-60 transition-opacity hover:opacity-90 bg-[#9C6A26]"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">

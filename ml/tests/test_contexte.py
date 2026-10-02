@@ -40,6 +40,7 @@ def gold(tmp_path: Path) -> Path:
     df["date_mutation"] = pd.Timestamp("2025-01-01")
     df["code_commune"], df["latitude"], df["longitude"] = "75111", 48.86, 2.37
     df["adresse_numero"] = "12"
+    df["code_postal"], df["zone_part_dpe_fg"] = "75011", 0.12
     df.loc[df["id_parcelle"] == "P2", ["latitude", "revenu_median_iris"]] = [48.8601, 50_000.0]
     df["code_iris"] = "751114403"
     df["revenu_median_iris"] = df["revenu_median_iris"].fillna(30_000.0) if "revenu_median_iris" in df else 30_000.0
@@ -89,6 +90,15 @@ class TestImmeuble:
         assert r["comparables_immeuble"] == []
 
 
+class TestZoneDpe:
+    def test_part_de_passoires_du_code_postal(self, gold):
+        assert ctx.zone_dpe("75011", gold_path=gold) == pytest.approx(0.12)
+
+    def test_code_postal_inconnu(self, gold):
+        assert ctx.zone_dpe("99999", gold_path=gold) is None
+        assert ctx.zone_dpe(None, gold_path=gold) is None
+
+
 class TestBdnb:
     def test_lecture_par_parcelle(self, tmp_path):
         chemin = tmp_path / "bdnb.parquet"
@@ -126,6 +136,48 @@ class TestDpe:
         appel.assert_not_called()
 
 
+class TestDpeParAdresse:
+    ADRESSE = "54 Rue de Malte 75011 Paris"
+
+    def _dpe(self, surface, classe, date, adresse=None, type_batiment="appartement"):
+        return {"adresse_ban": adresse or self.ADRESSE, "surface_habitable_logement": surface,
+                "etiquette_dpe": classe, "type_batiment": type_batiment, "date_etablissement_dpe": date,
+                "deperditions_enveloppe": 400.0, "type_generateur_chauffage_principal": "Chaudière gaz",
+                "annee_construction": 1930}
+
+    def _chercher(self, resultats, surface=66.0, type_local="2"):
+        with patch.object(ctx, "_get_json", return_value={"results": resultats}):
+            return ctx.chercher_dpe(self.ADRESSE, "75011", surface, type_local)
+
+    def test_surface_la_plus_proche_d_abord(self):
+        # Écart relatif arrondi à 2 décimales, comme le pipeline : 66 vs 70 m² (6 %) l'emporte sur 66 vs 60 (9 %)
+        r = self._chercher([self._dpe(60.0, "C", "2024-01-01"), self._dpe(70.0, "D", "2021-11-27")])
+        assert r["dpe_classe"] == "D"
+        assert r["dpe_appariement"] == "probable"
+        assert r["dpe_deperdition_enveloppe_m2"] == round(400 / 66, 3)   # arrondi comme dans le pipeline
+
+    def test_a_ecart_egal_le_plus_recent(self):
+        # 66,8 et 66,4 m² : même écart arrondi (1 %) pour 66 m² → le diagnostic de 2022
+        r = self._chercher([self._dpe(66.4, "D", "2021-11-27"), self._dpe(66.8, "C", "2022-06-24")])
+        assert r["dpe_classe"] == "C"
+
+    def test_un_seul_diagnostic_compatible_exacte(self):
+        assert self._chercher([self._dpe(65.0, "B", "2023-01-01"), self._dpe(30.0, "G", "2023-01-01")])[
+            "dpe_appariement"] == "exacte"
+
+    def test_surface_hors_tolerance_ignoree(self):
+        assert self._chercher([self._dpe(80.0, "C", "2023-01-01")])["dpe_classe"] is None
+
+    def test_autre_adresse_ou_autre_type_ignores(self):
+        assert self._chercher([self._dpe(66.0, "C", "2023-01-01", adresse="56 Rue de Malte 75011 Paris"),
+                               self._dpe(66.0, "C", "2023-01-01", type_batiment="maison")])["dpe_classe"] is None
+
+    def test_sans_code_postal_pas_d_appel(self):
+        with patch.object(ctx, "_get_json") as appel:
+            assert ctx.chercher_dpe(self.ADRESSE, None, 66.0, "2")["dpe_classe"] is None
+        appel.assert_not_called()
+
+
 class TestParcelle:
     def test_parcelle_dvf_au_meme_numero_avant_l_api(self, gold):
         with patch.object(ctx, "_get_json") as api:
@@ -150,3 +202,15 @@ class TestParcelle:
     def test_reseau_indisponible(self):
         with patch.object(ctx, "_get_json", return_value=None):
             assert ctx.parcelle_de(48.8566, 2.3522) is None
+
+
+class TestSignatureEstimateur:
+    def test_code_postal_facultatif(self):
+        """Le formulaire principal n'a pas de champ code postal : l'estimateur
+        doit accepter une adresse seule, sinon tout retombe sur le repli DVF."""
+        import inspect
+
+        import estimator
+        params = inspect.signature(estimator.estimer_prix).parameters
+        assert params["code_postal"].default is None
+        assert params["surface_m2"].kind is inspect.Parameter.KEYWORD_ONLY

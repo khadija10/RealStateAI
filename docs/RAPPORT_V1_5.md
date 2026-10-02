@@ -157,12 +157,12 @@ Nouveau module [`ml/contexte.py`](../ml/contexte.py). Pour une adresse saisie, i
 |---|---|
 | Parcelle | vente DVF au même numéro à moins d'environ 60 m du point BAN, sinon API Carto de l'IGN |
 | Immeuble | ventes de la parcelle sur 24 mois, ramenées au marché du jour ; elles sont aussi renvoyées comme **comparables** |
-| Revente | si l'agent saisit le **numéro de lot** de copropriété |
+| Revente | si le numéro de lot de copropriété est transmis à l'API (champ `numero_lot`, non demandé dans l'interface) |
 | IRIS | IRIS de la parcelle, sinon celui de la vente connue la plus proche |
 | BDNB | caractéristiques de la parcelle |
-| DPE | à partir du **numéro de DPE** (13 caractères, figurant sur tout diagnostic obligatoire) : classe, déperditions, chauffage et année, retrouvés via l'API ADEME |
+| DPE | **retrouvé automatiquement à l'adresse** dans la base de l'ADEME (même adresse, même type, surface à 10 % près), comme dans le pipeline : classe, déperditions, chauffage, année. Rien à saisir ; une classe saisie prime |
 
-Exemple au 54 rue de Malte, 75011, sur 66 m² : avec le numéro de DPE, la fourchette passe de 503 k€–1 020 k€ à **556 k€–893 k€**.
+Exemple au 54 rue de Malte, 75011, sur 66 m² : avec le DPE retrouvé à l'adresse, la fourchette passe de 486 k€–902 k€ à **556 k€–874 k€**. Avant, l'inférence ne recevait le DPE que s'il était saisi, presque jamais, alors que 58,7 % des ventes d'entraînement l'avaient.
 
 ### 5.2 Défauts corrigés
 
@@ -173,6 +173,9 @@ Exemple au 54 rue de Malte, 75011, sur 66 m² : avec le numéro de DPE, la fourc
 | Pour une surface < 30 m², la fourchette était **remplacée** par ±20 %, parfois plus étroite que la fourchette calibrée | **oui** | elle ne peut plus qu'être élargie |
 | L'estimation plantait avec le modèle à 33 features (IRIS absent à l'inférence) | non (introduit le 2 octobre, jamais déployé) | inférence complète |
 | La classe DPE retrouvée par son numéro n'était pas renvoyée | — | renvoyée avec l'année de construction |
+| Le formulaire de la nouvelle interface n'a pas de code postal ; `estimer_prix()` l'exigeait : **toutes les estimations par adresse retombaient sur la médiane DVF** | — (nouvelle interface, non déployée) | code postal facultatif, test de signature |
+| La part de passoires du code postal (feature du modèle) restait vide sans code postal saisi | — | code postal retrouvé par le géocodage, part de passoires lue dans le gold |
+| Une commune seule était envoyée au modèle, géocodée au centre de la commune | — | le modèle seulement à partir d'une adresse ; la commune seule passe par le repli DVF |
 
 **Effet mesuré** (section 6.3) : l'écart médian entre l'application et le modèle hors ligne passe de 5,9 % à **2,2 %**, et la part des ventes à moins de 5 % d'écart de 45 % à **70 %**.
 
@@ -180,7 +183,7 @@ Exemple au 54 rue de Malte, 75011, sur 66 m² : avec le numéro de DPE, la fourc
 
 | Endpoint | Nouveau contenu |
 |---|---|
-| `POST /api/predictions/estimate` | champs `numero_dpe` et `numero_lot` ; réponse avec `comparables_immeuble`, `classe_fiabilite`, `secteur` (médiane, déciles, ventes, évolution 2021-2025), `dpe_trouve` |
+| `POST /api/predictions/estimate` | champs facultatifs `numero_dpe` et `numero_lot` ; réponse avec `comparables_immeuble`, `classe_fiabilite`, `secteur` (médiane, déciles, ventes, évolution 2021-2025), `dpe_source`, `dpe_date`, `dpe_appariement`, `code_postal`, `dpe_zone_fg_pct` |
 | `GET /api/market/secteurs` | **nouveau** : 308 secteurs (appartements, ≥ 200 ventes) classés par prix médian |
 | `GET /api/health` | `model_validation` : résultats officiels du protocole |
 
@@ -212,7 +215,7 @@ Même test que le protocole (31 696 ventes), modèles figés : on découpe la me
 | Ventes antérieures dans l'immeuble | 18 324 | 15,4 % | **13,4 %** | 81,6 % |
 | Aucune vente antérieure dans l'immeuble | 13 372 | 18,5 % | **17,0 %** | 72,9 % |
 
-**À retenir pour le jury.** Quand l'immeuble a un historique de ventes ou que le DPE est connu, le modèle **dépasse l'objectif de 80 % à ±20 %**. L'écart restant se concentre sur Paris, les maisons, les très petites surfaces et les biens sans DPE. C'est l'argument pour demander le numéro de DPE à l'agent : il est obligatoire pour toute vente.
+**À retenir pour le jury.** Quand l'immeuble a un historique de ventes ou que le DPE est connu, le modèle **dépasse l'objectif de 80 % à ±20 %**. L'écart restant se concentre sur Paris, les maisons, les très petites surfaces et les biens sans DPE. C'est pourquoi l'application retrouve désormais le DPE à l'adresse, sans rien demander.
 
 ### 6.2 Cohérence métier via l'API
 
@@ -250,11 +253,11 @@ Les écarts restants s'expliquent :
 | Limite | Ce que nous en faisons |
 |---|---|
 | Objectif ±20 % manqué de 2 points (78,0 % pour 80 % visés) | atteint quand l'immeuble a un historique ou que le DPE est connu (section 6.1) ; à reconfirmer sur les ventes du 1ᵉʳ semestre 2026 dès leur publication DVF |
-| Fourchette large (50 % du prix en médiane) | elle est honnête (84,7 % de couverture) ; elle se resserre avec le numéro de DPE et l'historique de l'immeuble |
+| Fourchette large (50 % du prix en médiane) | elle est honnête (84,7 % de couverture) ; elle se resserre avec le DPE retrouvé à l'adresse et l'historique de l'immeuble |
 | Effet surface et pièces inversé (section 6.2) | à corriger : contrainte de monotonie ou feature de prime aux petites surfaces, réglée sur la validation uniquement |
 | Paris, maisons, petites surfaces | segments les plus difficiles, à afficher comme tels via la classe de fiabilité de la commune |
 | Dépendance aux API externes (BAN, API Carto, ADEME) | un délai dépassé sur la BAN fait basculer sur le repli DVF (constaté une fois pendant les scénarios, sur Clichy) ; à rendre plus robuste |
-| Comparables, numéro de DPE et numéro de lot pas encore dans l'interface | l'API les renvoie déjà ; intégration prévue dans l'interface de Skander |
+| DPE retrouvé à l'adresse parfois ambigu (plusieurs logements de surface proche dans l'immeuble) | signalé à l'utilisateur, qui peut corriger la classe |
 | Démarrage du backend : 2,5 Go de pic mémoire (dataset chargé en entier) | à réduire avant le déploiement (Render) |
 | v1.5 pas encore déployée | branches à fusionner, image Docker à reconstruire (elle embarque désormais la BDNB agrégée, 27 Mo) |
 

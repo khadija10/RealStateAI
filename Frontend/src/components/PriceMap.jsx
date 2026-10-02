@@ -241,7 +241,7 @@ export default function PriceMap() {
       <div className="relative">
         {/* Tooltip hover — en dehors du overflow-hidden */}
         {hovered && (
-          <div className="absolute top-3 left-3 z-[400] bg-white rounded-xl shadow-lg border border-stone-100 px-4 py-3 w-56 pointer-events-none" style={{ zIndex: 1000 }}>
+          <div className="absolute top-3 right-3 z-[400] bg-white rounded-xl shadow-lg border border-stone-100 px-4 py-3 w-56 pointer-events-none" style={{ zIndex: 1000 }}>
             <p className="text-sm font-semibold text-ink leading-tight">{hovered.nom}</p>
             <p className="text-[11px] text-ink-muted mt-0.5">
               Dept. {hovered.dep}{hovered.n != null ? ` · ${hovered.n.toLocaleString('fr-FR')} ventes` : ''}

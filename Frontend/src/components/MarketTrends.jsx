@@ -23,46 +23,54 @@ const DEP_COLORS = {
   '95': '#8A8171',  // gris chaud
 }
 
-const MOIS_LABELS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc']
+const fmtFr = new Intl.NumberFormat('fr-FR')
 
-function formatK(v) {
-  return v >= 1000 ? `${Math.round(v / 1000)}k` : String(Math.round(v))
-}
+/**
+ * Évolution mensuelle de plusieurs départements sur UNE échelle commune :
+ * avec une échelle par courbe, Paris (~10 000 €/m²) et la Seine-Saint-Denis
+ * (~4 000 €/m²) se superposaient comme s'ils valaient le même prix.
+ */
+function GraphiqueTendances({ series, width = 900, height = 300 }) {
+  const valeurs = series.flatMap((s) => s.rows.map((r) => r.prix_m2_median))
+  if (valeurs.length < 2) return null
+  const pas = 2000
+  const min = Math.floor(Math.min(...valeurs) / pas) * pas
+  const max = Math.ceil(Math.max(...valeurs) / pas) * pas
+  const reperes = []
+  for (let v = min; v <= max; v += pas) reperes.push(v)
 
-function SparkLine({ data, color, width = 600, height = 140 }) {
-  if (!data || data.length < 2) return null
-
-  const prices = data.map((d) => d.prix_m2_median)
-  const minP = Math.min(...prices)
-  const maxP = Math.max(...prices)
-  const range = maxP - minP || 1
-
-  const padX = 8
-  const padY = 12
-  const usableW = width - padX * 2
-  const usableH = height - padY * 2
-
-  const points = data.map((d, i) => {
-    const x = padX + (i / (data.length - 1)) * usableW
-    const y = padY + (1 - (d.prix_m2_median - minP) / range) * usableH
-    return [x, y]
-  })
-
-  const pathD = points.map(([x, y], i) => `${i === 0 ? 'M' : 'L'}${x.toFixed(1)},${y.toFixed(1)}`).join(' ')
-  const areaD = `${pathD} L${points.at(-1)[0].toFixed(1)},${(padY + usableH).toFixed(1)} L${padX},${(padY + usableH).toFixed(1)} Z`
+  const mg = 64, md = 16, mh = 14, mb = 30
+  const tous = series.flatMap((s) => s.rows.map((r) => r.mois_index))
+  const i0 = Math.min(...tous), i1 = Math.max(...tous)
+  const x = (i) => mg + ((i - i0) / (i1 - i0 || 1)) * (width - mg - md)
+  const y = (v) => mh + (1 - (v - min) / (max - min || 1)) * (height - mh - mb)
+  const janviers = [...new Map(series.flatMap((s) => s.rows)
+    .filter((r) => Number(r.mois) === 1).map((r) => [r.annee, r.mois_index])).entries()]
 
   return (
-    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto" aria-hidden="true">
-      <defs>
-        <linearGradient id={`grad-${color.replace('#', '')}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={color} stopOpacity="0.18" />
-          <stop offset="100%" stopColor={color} stopOpacity="0.02" />
-        </linearGradient>
-      </defs>
-      <path d={areaD} fill={`url(#grad-${color.replace('#', '')})`} />
-      <path d={pathD} fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      {/* Dernier point */}
-      <circle cx={points.at(-1)[0]} cy={points.at(-1)[1]} r="3.5" fill={color} />
+    <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto" role="img"
+      aria-label="Évolution mensuelle du prix médian au m² par département">
+      {reperes.map((v) => (
+        <g key={v}>
+          <line x1={mg} x2={width - md} y1={y(v)} y2={y(v)} stroke="var(--color-stone-100)" />
+          <text x={mg - 10} y={y(v) + 4} textAnchor="end" fontSize="12" fill="var(--color-ink-muted)">
+            {fmtFr.format(v)} €
+          </text>
+        </g>
+      ))}
+      {janviers.map(([annee, i]) => (
+        <g key={annee}>
+          <line x1={x(i)} x2={x(i)} y1={mh} y2={height - mb} stroke="var(--color-stone-100)" strokeDasharray="3 4" />
+          <text x={x(i)} y={height - 8} textAnchor="middle" fontSize="12" fill="var(--color-ink-muted)">{annee}</text>
+        </g>
+      ))}
+      {series.map(({ code, rows, color }) => rows.length > 1 && (
+        <g key={code}>
+          <path d={rows.map((r, k) => `${k ? 'L' : 'M'}${x(r.mois_index).toFixed(1)},${y(r.prix_m2_median).toFixed(1)}`).join(' ')}
+            fill="none" stroke={color} strokeWidth="2.2" strokeLinejoin="round" strokeLinecap="round" />
+          <circle cx={x(rows.at(-1).mois_index)} cy={y(rows.at(-1).prix_m2_median)} r="4" fill={color} />
+        </g>
+      ))}
     </svg>
   )
 }
@@ -93,12 +101,6 @@ export default function MarketTrends() {
     return { code, label: DEPS.find((d) => d.code === code)?.label ?? code, rows, color: DEP_COLORS[code] }
   })
 
-  // Axe X : labels mois communs (on prend les labels du premier dept)
-  const xLabels = byDep[0]?.rows.map((r) => {
-    const m = Number(r.mois)
-    return m === 1 ? String(r.annee) : MOIS_LABELS[m - 1]
-  }) ?? []
-
   // Valeur courante (dernier point)
   const currentPrices = byDep.map((d) => ({
     ...d,
@@ -121,10 +123,10 @@ export default function MarketTrends() {
               <p className="font-display text-2xl text-ink tabular-nums">
                 {new Intl.NumberFormat('fr-FR').format(Math.round(current))} €
               </p>
-              <p className="text-[11px] text-ink-muted">/ m²</p>
+              <p className="text-xs text-ink-muted">/ m²</p>
               {delta !== null && (
-                <p className={`text-xs font-medium mt-1 ${delta >= 0 ? 'text-red-500' : 'text-emerald-600'}`}>
-                  {delta >= 0 ? '+' : ''}{delta.toFixed(1)}% sur 1 an
+                <p className="text-xs font-medium mt-1 text-ink-muted">
+                  {delta >= 0 ? '▲ +' : '▼ '}{delta.toLocaleString('fr-FR', { minimumFractionDigits: 1, maximumFractionDigits: 1 })} % sur 1 an
                 </p>
               )}
             </div>
@@ -157,25 +159,7 @@ export default function MarketTrends() {
             <div className="h-5 w-5 rounded-full border-2 border-stone-100 border-t-seine animate-spin" />
           </div>
         ) : (
-          <div className="relative">
-            {byDep.map(({ code, rows, color }) => (
-              <div key={code} className="absolute inset-0" style={{ pointerEvents: 'none' }}>
-                <SparkLine data={rows} color={color} />
-              </div>
-            ))}
-            {/* Même hauteur pour les sparklines superposés */}
-            <div style={{ height: 140 }} />
-
-            {/* Axe X — années */}
-            <div className="flex justify-between mt-1 px-2">
-              {xLabels
-                .map((l, i) => ({ l, i }))
-                .filter(({ l }) => /^\d{4}$/.test(l))
-                .map(({ l, i }) => (
-                  <span key={i} className="text-[10px] text-ink-muted">{l}</span>
-                ))}
-            </div>
-          </div>
+          <GraphiqueTendances series={byDep} />
         )}
 
         {/* Légende inline */}

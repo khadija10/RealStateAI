@@ -2,7 +2,7 @@ export default function Header({ datasetStatus, dpeInfo, user, onOpenAuth, onLog
   return (
     <header className="relative border-b border-stone-100 bg-[linear-gradient(100deg,var(--color-stone-50)_0%,var(--color-surface)_45%,var(--color-limestone-light)_100%)]">
       <div className="h-[3px] w-full bg-[linear-gradient(90deg,var(--color-seine)_0%,var(--color-ambre)_50%,var(--color-vert)_100%)]" />
-      <div className="max-w-5xl mx-auto px-6 py-6 flex items-center justify-between gap-4">
+      <div className="w-full px-4 sm:px-6 lg:px-10 py-6 flex items-center justify-between gap-4">
         <div className="flex items-center gap-3">
           <div>
             <p className="text-xl leading-none tracking-tight text-ink font-medium">
@@ -32,7 +32,7 @@ export default function Header({ datasetStatus, dpeInfo, user, onOpenAuth, onLog
                 <div className="flex items-center gap-1.5">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                   <span className="text-[var(--color-ink-muted)]">
-                    DPE {dpeInfo.coveragePct != null ? `${dpeInfo.coveragePct}%` : ''}
+                    DPE {dpeInfo.coveragePct != null ? `${dpeInfo.coveragePct.toLocaleString('fr-FR')} %` : ''}
                   </span>
                 </div>
               )}
