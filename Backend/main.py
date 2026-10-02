@@ -1007,11 +1007,12 @@ def estimate(
                         f"Adresse localisée avec une confiance faible ({score_geocodage:.0%}) "
                         "— vérifiez que l'adresse est correcte."
                     )
-                # Enrichissement DPE
-                if req.dpe_classe:
-                    normalized.dpe_classe = req.dpe_classe
-                if req.annee_construction:
-                    normalized.annee_construction = req.annee_construction
+                # Enrichissement DPE : saisi par l'agent, sinon retrouvé par son numéro ADEME
+                dpe_retrouve = ml_result if isinstance(ml_result, dict) else {}
+                if req.dpe_classe or dpe_retrouve.get("dpe_classe"):
+                    normalized.dpe_classe = req.dpe_classe or dpe_retrouve.get("dpe_classe")
+                if req.annee_construction or dpe_retrouve.get("annee_construction"):
+                    normalized.annee_construction = req.annee_construction or dpe_retrouve.get("annee_construction")
                 dpe_zone = getattr(request.app.state, "dpe_zone", {})
                 if req.postal_code and req.postal_code in dpe_zone:
                     normalized.dpe_zone_fg_pct = round(float(dpe_zone[req.postal_code]) * 100, 1)
