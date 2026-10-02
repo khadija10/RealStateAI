@@ -108,7 +108,7 @@ export default function App() {
 
       {/* Barre de navigation onglets */}
       <nav className="border-b border-stone-100 bg-white sticky top-0 z-20">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 py-3">
+        <div className="w-full px-4 sm:px-6 lg:px-10 py-3">
           <div className="flex gap-1 overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none] bg-[linear-gradient(100deg,var(--color-stone-50),var(--color-limestone-light))] rounded-full p-1 w-fit max-w-full">
             {TABS.map((tab) => (
               <button
@@ -137,7 +137,7 @@ export default function App() {
       <main className="flex-1 w-full">
         {/* ONGLET ESTIMATION — reprise de l'artefact Claude Design, rebranchée sur le backend */}
         {activeTab === 'estimation' && (
-          <div className="w-full px-4 sm:px-6 py-8">
+          <div className="w-full pb-8">
             <VanillaPage
               page={estimationPage}
               apiBase={API_BASE}
@@ -159,21 +159,21 @@ export default function App() {
 
         {/* ONGLET FINANCEMENT — moteur réel /api/financing/dossier */}
         {activeTab === 'financement' && (
-          <div className="w-full px-4 sm:px-6 py-8">
+          <div className="w-full pb-8">
             <VanillaPage page={financementPage} apiBase={API_BASE} options={{ prefill: financementPrefill }} />
           </div>
         )}
 
         {/* ONGLET PLUS-VALUE — calculateur local (scénarios + fiscalité CGI) */}
         {activeTab === 'plusvalue' && (
-          <div className="w-full px-4 sm:px-6 py-8">
+          <div className="w-full pb-8">
             <VanillaPage page={plusvaluePage} apiBase={API_BASE} options={{ prefill: plusValuePrefill }} />
           </div>
         )}
 
         {/* ONGLET CARTE */}
         {activeTab === 'carte' && (
-          <div className="max-w-5xl w-full mx-auto px-6 py-10">
+          <div className="w-full px-4 sm:px-6 lg:px-10 py-10">
             <div className="max-w-xl mb-8">
               <h1 className="font-display text-4xl sm:text-5xl text-ink leading-[1.05] whitespace-nowrap">
                 Carte des prix par commune
@@ -188,7 +188,7 @@ export default function App() {
 
         {/* ONGLET RÉFÉRENCE */}
         {activeTab === 'marche' && (
-          <div className="max-w-5xl w-full mx-auto px-6 py-10">
+          <div className="w-full px-4 sm:px-6 lg:px-10 py-10">
             <div className="max-w-xl mb-8">
               <h1 className="font-display text-4xl sm:text-5xl text-ink leading-[1.05] whitespace-nowrap">
                 Référence du marché
@@ -203,7 +203,7 @@ export default function App() {
 
         {/* ONGLET HISTORIQUE */}
         {activeTab === 'historique' && (
-          <div className="max-w-5xl w-full mx-auto px-6 py-10">
+          <div className="w-full px-4 sm:px-6 lg:px-10 py-10">
             <div className="max-w-xl mb-8">
               <h1 className="font-display text-4xl sm:text-5xl text-ink leading-[1.05] whitespace-nowrap">
                 Historique
@@ -212,7 +212,7 @@ export default function App() {
                 Vos estimations enregistrées, les plus récentes d'abord.
               </p>
             </div>
-            <div className="max-w-2xl">
+            <div className="max-w-4xl">
               <History key={historyKey} onReEstimate={(item) => { setRelance({ ...item, _demande: Date.now() }); setActiveTab('estimation') }} />
             </div>
           </div>
@@ -220,7 +220,7 @@ export default function App() {
 
         {/* ONGLET PROFIL */}
         {activeTab === 'profil' && (
-          <div className="max-w-5xl w-full mx-auto px-6 py-10">
+          <div className="w-full px-4 sm:px-6 lg:px-10 py-10">
             <div className="max-w-xl mb-8">
               <h1 className="font-display text-4xl sm:text-5xl text-ink leading-[1.05] whitespace-nowrap">
                 Mon profil

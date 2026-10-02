@@ -23,9 +23,11 @@
   font-size:15px;
   line-height:1.55;
   -webkit-font-smoothing:antialiased;
-  max-width:1480px;
-  margin:0 auto;
-  padding:0 0 40px;
+  /* Pleine largeur avec une gouttière latérale ; le bandeau, lui, va bord à bord */
+  --gouttiere:clamp(16px,2.6vw,40px);
+  max-width:none;
+  margin:0;
+  padding:0 var(--gouttiere) 40px;
 }
 :root:not([data-theme="light"]) .rsai-vanilla {
   --fond:#121110; --blanc:#1C1A18; --encre:#F1EEE8; --gris:#A39C93; --ligne:#2E2B27;
@@ -50,22 +52,25 @@
 .rsai-vanilla .illus svg { display:block; width:100%; height:100%; }
 
 /* ---------- héros ---------- */
-.rsai-vanilla .heros{position:relative;border-radius:28px;overflow:hidden;min-height:400px;background:#8BA3C0;isolation:isolate}
+.rsai-vanilla .heros{position:relative;border-radius:0;overflow:hidden;min-height:360px;background:#8BA3C0;isolation:isolate;margin:0 calc(-1 * var(--gouttiere))}
 .rsai-vanilla .heros .illus{position:absolute;inset:0;z-index:-1}
-.rsai-vanilla .heros::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(15,20,30,.34) 0%,rgba(15,20,30,0) 38%,rgba(15,20,30,0) 66%,rgba(15,20,30,.3) 100%)}
-.rsai-vanilla .heros.heros-simple{min-height:340px}
+.rsai-vanilla .heros::after{content:"";position:absolute;inset:0;z-index:-1;
+  /* voile sombre à gauche, sous le titre (lisibilité), puis assombrissement haut et bas */
+  background:linear-gradient(90deg,rgba(12,16,26,.62) 0%,rgba(12,16,26,.38) 34%,rgba(12,16,26,0) 62%),
+    linear-gradient(180deg,rgba(15,20,30,.34) 0%,rgba(15,20,30,0) 38%,rgba(15,20,30,0) 66%,rgba(15,20,30,.3) 100%)}
+.rsai-vanilla .heros.heros-simple{min-height:250px}
 .rsai-vanilla .heros.heros-simple::after{background:linear-gradient(90deg,rgba(20,14,10,.62) 0%,rgba(20,14,10,.2) 58%,rgba(20,14,10,0) 100%)}
 .rsai-vanilla .etat-api{position:absolute;top:20px;right:20px;display:flex;align-items:center;gap:7px;background:color-mix(in srgb,var(--blanc) 92%,transparent);color:var(--encre);font-size:13px;padding:7px 13px;border-radius:999px}
 .rsai-vanilla .etat-api i{width:7px;height:7px;border-radius:50%;background:var(--ambre)}
 .rsai-vanilla .etat-api.direct i{background:#3E9E6E}
-.rsai-vanilla .accroche{position:absolute;top:60px;left:36px;right:36px;color:#fff;max-width:600px}
-.rsai-vanilla .heros.heros-simple .accroche{top:auto;bottom:52px;left:44px;right:44px;max-width:620px}
-.rsai-vanilla .accroche h1{margin:0;font-weight:400;font-size:clamp(38px,6.2vw,72px);line-height:.98;letter-spacing:-.03em}
+.rsai-vanilla .accroche{position:absolute;top:36px;left:var(--gouttiere);right:var(--gouttiere);color:#fff;max-width:620px;text-shadow:0 1px 18px rgba(10,14,22,.45)}
+.rsai-vanilla .heros.heros-simple .accroche{top:auto;bottom:40px;left:var(--gouttiere);right:var(--gouttiere);max-width:620px}
+.rsai-vanilla .accroche h1{margin:0;font-weight:400;font-size:clamp(34px,4.8vw,60px);line-height:.98;letter-spacing:-.03em}
 .rsai-vanilla .accroche h1 em{display:block;font-size:1.05em}
-.rsai-vanilla .accroche p{margin:20px 0 0;font-size:14px;max-width:420px;color:rgba(255,255,255,.88);font-weight:300}
+.rsai-vanilla .accroche p{margin:14px 0 0;font-size:15px;max-width:600px;color:#fff;font-weight:400}
 
 /* ---------- recherche (barre héros estimation) ---------- */
-.rsai-vanilla .recherche{position:absolute;left:22px;right:22px;bottom:22px;background:var(--blanc);border-radius:26px;padding:10px;box-shadow:0 10px 34px rgba(0,0,0,.16)}
+.rsai-vanilla .recherche{position:absolute;left:var(--gouttiere);right:var(--gouttiere);bottom:22px;background:var(--blanc);border-radius:26px;padding:10px;box-shadow:0 10px 34px rgba(0,0,0,.16)}
 .rsai-vanilla .rangee{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
 .rsai-vanilla .critere{flex:1;display:flex;align-items:center;gap:10px;padding:6px 10px;min-width:150px}
 .rsai-vanilla .critere+.critere{border-left:1px solid var(--ligne)}
@@ -76,7 +81,7 @@
 .rsai-vanilla .estimer:hover{transform:scale(1.03)}
 .rsai-vanilla .estimer:disabled{opacity:.5;cursor:default;transform:none}
 @media (max-width:980px){
-  .rsai-vanilla .heros{min-height:680px}
+  .rsai-vanilla .heros{min-height:560px}
   .rsai-vanilla .critere{flex:1 1 44%}.rsai-vanilla .critere+.critere{border-left:none}
   .rsai-vanilla .estimer{flex:1 1 100%;margin-top:6px}
 }

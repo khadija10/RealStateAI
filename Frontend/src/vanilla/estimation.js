@@ -139,10 +139,6 @@ export const html = `
   </div>
 </section>
 
-<h2 class="titre-section" id="rsai-marche">Le marché <em>par secteur</em></h2>
-<p class="sous" id="rsai-marche-etat">Chargement des secteurs…</p>
-<section class="marche" id="rsai-grille-marche"></section>
-<button class="charger" id="rsai-charger" hidden>Voir plus de secteurs</button>
 
 <div class="bas">
   <span>Données : DVF — DGFiP / Etalab · DPE — ADEME · IRIS — INSEE · BDNB — CSTB · Modèle LightGBM<span id="rsai-pied-variables"></span></span>
@@ -236,7 +232,6 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
     COMMUNES: '/api/metadata/communes',
     ESTIMER: '/api/predictions/estimate',
     SANTE: '/api/health',
-    SECTEURS: '/api/market/secteurs',
   }
   const $ = (sel) => root.querySelector(sel)
   const $$ = (sel) => root.querySelectorAll(sel)
@@ -649,52 +644,6 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
         <text x="${x(i)}" y="${H - 2}" text-anchor="middle" font-size="10.5" font-family="Inter,sans-serif" fill="var(--gris)">${annees[i]}</text>`).join('')}</svg>`
   }
 
-  let ordre = []
-  // Même échelle et mêmes couleurs que la carte des prix (components/PriceMap.jsx)
-  const TRANCHES = [
-    { max: 3000, couleur: '#4ade80', libelle: 'moins de 3 000 €' },
-    { max: 5000, couleur: '#a3e635', libelle: '3 000 à 5 000 €' },
-    { max: 7000, couleur: '#facc15', libelle: '5 000 à 7 000 €' },
-    { max: 9000, couleur: '#fb923c', libelle: '7 000 à 9 000 €' },
-    { max: 12000, couleur: '#f87171', libelle: '9 000 à 12 000 €' },
-    { max: Infinity, couleur: '#dc2626', libelle: 'plus de 12 000 €' },
-  ]
-  let affiches = 0
-  async function chargerSecteursApi() {
-    try {
-      const r = await fetch(API.BASE + API.SECTEURS, { signal: AbortSignal.timeout(8000) })
-      const liste = r.ok ? await r.json() : []
-      if (!actif) return
-      if (!Array.isArray(liste) || !liste.length) throw new Error('vide')
-      ordre = liste.map((s) => [s.code, avecAnnees(s)]).filter(([, s]) => s.eco.length >= 2)
-      $('#rsai-marche-etat').hidden = true
-      $('#rsai-charger').hidden = false
-      chargerSecteurs()
-    } catch {
-      $('#rsai-marche-etat').textContent = 'Statistiques de marché indisponibles pour le moment.'
-    }
-  }
-  function chargerSecteurs() {
-    const grille = $('#rsai-grille-marche')
-    ordre.slice(affiches, affiches + 8).forEach(([, s]) => {
-      const v = 100 * (s.eco[s.eco.length - 1] / s.eco[0] - 1)
-      const b = document.createElement('button'); b.className = 'bien'; b.type = 'button'
-      const t = TRANCHES.find((x) => s.med < x.max)
-      b.innerHTML = `<div class="carte-prix" style="--teinte:${t.couleur}"><b>${nb(s.med)} €/m²</b><span>médiane ${s.annee} · ${t.libelle}</span></div>
-        <h4>${s.nom}</h4>
-        <div class="puces"><span class="puce">${nb(s.n)} ventes</span>
-          <span class="puce">${v > 0 ? '+' : ''}${v.toFixed(1).replace('.', ',')} % depuis ${s.annees[0]}</span></div>`
-      b.addEventListener('click', () => {
-        selecteur.value = communes.includes(s.nom) ? s.nom : ''
-        $('#rsai-adresse').value = ''; $('#rsai-cp').value = ''; estimer(true)
-      })
-      grille.appendChild(b)
-    })
-    affiches += 8
-    if (affiches >= ordre.length) $('#rsai-charger').hidden = true
-  }
-
-  $('#rsai-charger').addEventListener('click', chargerSecteurs)
   $('#rsai-pv-voir').addEventListener('click', () => {
     if (dernierBien && onPlusValue) onPlusValue(dernierBien)
   })
@@ -733,7 +682,7 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
             dpe: params.get('dpe'), year: params.get('year') })
   if ([...params.keys()].length) window.history.replaceState({}, '', window.location.pathname)
 
-  verifierApi(); chargerSecteursApi()
+  verifierApi()
   // « Ré-estimer » depuis l'historique : demande explicite, on relance l'estimation du bien.
   // Lancée au tour suivant et annulée au démontage : React monte la page deux
   // fois en développement, ce qui envoyait deux estimations (doublons d'historique).
