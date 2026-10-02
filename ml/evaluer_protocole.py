@@ -112,16 +112,31 @@ def _jeux(config: dict, test_debut: str, test_fin: str):
     jeux = [preparer_features(d, config, cat_dtypes) for d in (train_df, val_df, test_df)]
     sw_cfg = config.get("sample_weights", {})
     poids = train_df["annee"].map({int(k): v for k, v in sw_cfg.items()}).fillna(1.0).values
-    return jeux, poids, test_df
+    return jeux, poids, val_df, test_df
 
 
-def evaluer_fourchette(test_debut: str, test_fin: str, config_path: str = "ml/config.yaml") -> dict:
-    """Section 6 ter : couverture et largeur de la fourchette q7,5–q92,5."""
+def _corrections_conformes(y: np.ndarray, bas: np.ndarray, haut: np.ndarray,
+                           classes: np.ndarray, cible: float = 0.85) -> dict:
+    """CQR par classe, en échelle log — même calcul que ml/train.py (_calibrer)."""
+    score = np.maximum(np.log(bas) - np.log(y), np.log(y) - np.log(haut))
+    corrections = {}
+    for c in np.unique(classes):
+        s = np.sort(score[classes == c])
+        corrections[c] = float(s[min(int(np.ceil((len(s) + 1) * cible)) - 1, len(s) - 1)])
+    return corrections
+
+
+def evaluer_fourchette(test_debut: str, test_fin: str, config_path: str = "ml/config.yaml",
+                       version: str = "") -> dict:
+    """Section 6 ter : couverture et largeur de la fourchette q7,5–q92,5.
+
+    Modèle en log (v2) : la fourchette mesurée est la fourchette CALIBRÉE,
+    celle qu'affiche l'application (section 8)."""
     config = charger_config(config_path)
-    resultats = Path("docs") / f"resultats_protocole_{test_debut}_{test_fin}.json"
+    resultats = Path("docs") / f"resultats_protocole_{version}{test_debut}_{test_fin}.json"
     classes = {k: v["classe"] for k, v in json.loads(resultats.read_text())["communes"].items()}
 
-    jeux, poids, test_df = _jeux(config, test_debut, test_fin)
+    jeux, poids, val_df, test_df = _jeux(config, test_debut, test_fin)
     (X_train, y_train), (X_val, y_val), (X_test, y_test) = jeux
     params = dict(config["lightgbm"])
     early_stopping = params.pop("early_stopping_rounds", 50)
@@ -135,13 +150,31 @@ def evaluer_fourchette(test_debut: str, test_fin: str, config_path: str = "ml/co
     # Contrôle de reproductibilité : doit redonner la MAPE de la mesure principale
     mape_controle = round(float(_erreurs(y_test.values, y_pred).mean()), 2)
 
-    bornes = {}
+    bornes, bornes_val = {}, {}
     for alpha in (0.075, 0.925):
         q = lgb.LGBMRegressor(**{**params, "objective": "quantile", "metric": "quantile",
                                  "alpha": alpha, "n_estimators": n_arbres}, verbose=-1)
         q.fit(X_train, f(y_train), sample_weight=poids)
         bornes[alpha] = inv(q.predict(X_test))
+        bornes_val[alpha] = inv(q.predict(X_val))
     bas, haut = np.minimum(bornes[0.075], bornes[0.925]), np.maximum(bornes[0.075], bornes[0.925])
+
+    brute = None
+    if config.get("target_transform") == "log":
+        # Calibration sur la validation : classes des communes établies sur
+        # la validation, comme en production (le test n'y entre pas).
+        ape_val = _erreurs(y_val.values, inv(model.predict(X_val)))
+        loc = pd.DataFrame({"c": val_df["code_commune"].values, "ape": ape_val}).groupby("c")["ape"].agg(["mean", "count"])
+        classe_val = {c: _classe(r["mean"], r["count"]) for c, r in loc.iterrows()}
+        cl_val = val_df["code_commune"].map(classe_val).fillna("donnees_insuffisantes").values
+        bas_v = np.minimum(bornes_val[0.075], bornes_val[0.925])
+        haut_v = np.maximum(bornes_val[0.075], bornes_val[0.925])
+        corr = _corrections_conformes(y_val.values, bas_v, haut_v, cl_val)
+        cl_test = test_df["code_commune"].map(classe_val).fillna("donnees_insuffisantes").values
+        d = np.array([corr.get(c, corr.get("donnees_insuffisantes", 0.0)) for c in cl_test])
+        brute = {"couverture": round(float(((y_test.values >= bas) & (y_test.values <= haut)).mean() * 100), 1),
+                 "largeur_mediane": round(float(np.median((haut - bas) / y_pred * 100)), 1)}
+        bas, haut = bas * np.exp(-d), haut * np.exp(d)
 
     df = pd.DataFrame({
         "classe": test_df["code_commune"].map(classes).fillna("donnees_insuffisantes").values,
@@ -161,7 +194,9 @@ def evaluer_fourchette(test_debut: str, test_fin: str, config_path: str = "ml/co
     }
     return {"mesure_le": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
             "mape_controle": mape_controle, "n_arbres": n_arbres,
+            "fourchette": "calibrée (CQR sur la validation)" if brute else "brute",
             "globale": globale, "par_classe": par_classe,
+            "fourchette_brute_avant_calibration": brute,
             "criteres": criteres, "tenue": all(criteres.values())}
 
 
@@ -286,20 +321,24 @@ def main() -> None:
     parseur = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parseur.add_argument("--test-debut", required=True, help="AAAA-MM")
     parseur.add_argument("--test-fin", required=True, help="AAAA-MM")
+    parseur.add_argument("--version", default="",
+                         help="préfixe des fichiers de résultats, ex. v2_ (n'écrase pas une mesure précédente)")
     parseur.add_argument("--fourchette", action="store_true",
                          help="section 6 ter : couverture de la fourchette (après la mesure principale)")
     args = parseur.parse_args()
 
     if args.fourchette:
-        res = evaluer_fourchette(args.test_debut, args.test_fin)
-        sortie = Path("docs") / f"resultats_fourchette_{args.test_debut}_{args.test_fin}.json"
+        res = evaluer_fourchette(args.test_debut, args.test_fin, version=args.version)
+        sortie = Path("docs") / f"resultats_fourchette_{args.version}{args.test_debut}_{args.test_fin}.json"
         sortie.write_text(json.dumps(res, ensure_ascii=False, indent=2), encoding="utf-8")
         print(json.dumps(res, ensure_ascii=False, indent=2))
         return
 
     res = evaluer(args.test_debut, args.test_fin)
     par_commune = res.pop("_par_commune")
-    sortie = Path("docs") / f"resultats_protocole_{args.test_debut}_{args.test_fin}"
+    sortie = Path("docs") / f"resultats_protocole_{args.version}{args.test_debut}_{args.test_fin}"
+    if sortie.with_suffix(".json").exists():
+        raise SystemExit(f"{sortie}.json existe déjà : mesure unique, choisir un autre --version")
     res["communes"] = {
         r.code_commune: {"mape": round(r.mape, 2), "n": int(r.n), "classe": r.classe}
         for r in par_commune.itertuples()
