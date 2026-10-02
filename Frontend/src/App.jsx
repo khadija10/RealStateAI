@@ -119,7 +119,7 @@ export default function App() {
       <main className="flex-1 w-full">
         {/* ONGLET ESTIMATION — reprise de l'artefact Claude Design, rebranchée sur le backend */}
         {activeTab === 'estimation' && (
-          <div className="max-w-5xl w-full mx-auto px-4 sm:px-6 py-8">
+          <div className="w-full px-4 sm:px-6 py-8">
             <VanillaPage
               page={estimationPage}
               apiBase={API_BASE}
@@ -130,14 +130,14 @@ export default function App() {
 
         {/* ONGLET FINANCEMENT — moteur réel /api/financing/dossier */}
         {activeTab === 'financement' && (
-          <div className="max-w-5xl w-full mx-auto px-4 sm:px-6 py-8">
+          <div className="w-full px-4 sm:px-6 py-8">
             <VanillaPage page={financementPage} apiBase={API_BASE} />
           </div>
         )}
 
         {/* ONGLET PLUS-VALUE — calculateur local (scénarios + fiscalité CGI) */}
         {activeTab === 'plusvalue' && (
-          <div className="max-w-5xl w-full mx-auto px-4 sm:px-6 py-8">
+          <div className="w-full px-4 sm:px-6 py-8">
             <VanillaPage page={plusvaluePage} apiBase={API_BASE} options={{ prefill: plusValuePrefill }} />
           </div>
         )}

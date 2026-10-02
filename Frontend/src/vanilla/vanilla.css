@@ -84,7 +84,7 @@
 .rsai-vanilla .sous{font-size:14px;color:var(--gris);margin:-16px 8px 26px;max-width:640px}
 
 /* ---------- résultat (carte sombre + carte claire) ---------- */
-.rsai-vanilla .resultat{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.15fr);gap:14px}
+.rsai-vanilla .resultat{display:grid;grid-template-columns:minmax(0,0.9fr) minmax(0,1.3fr);gap:14px}
 @media (max-width:900px){.rsai-vanilla .resultat{grid-template-columns:1fr}}
 .rsai-vanilla .sombre{position:relative;border-radius:24px;overflow:hidden;color:#fff;padding:34px;min-height:460px;display:flex;flex-direction:column;justify-content:space-between;isolation:isolate;background:var(--brun)}
 .rsai-vanilla .sombre .illus{position:absolute;inset:0;z-index:-2;opacity:.9}
@@ -108,14 +108,18 @@
 .rsai-vanilla .mensualite{font-family:var(--serif);font-style:italic;font-size:clamp(56px,8vw,92px);line-height:.92;letter-spacing:-.02em;margin-top:22px}
 .rsai-vanilla .mensualite small{font-family:var(--sans);font-style:normal;font-size:16px;opacity:.8;margin-left:6px}
 
-.rsai-vanilla .clair{background:var(--blanc);border-radius:24px;padding:28px}
+.rsai-vanilla .clair{background:var(--blanc);border-radius:24px;padding:28px;container-type:inline-size}
 .rsai-vanilla .bloc+.bloc{border-top:1px solid var(--ligne);margin-top:22px;padding-top:22px}
 
-/* Carte claire du résultat : 2 colonnes sur grand écran pour réduire la
-   hauteur totale de la section (le dernier bloc — plus-value — s'étend
-   sur toute la largeur). */
+/* Carte claire du résultat : 2 colonnes seulement quand la carte a
+   elle-même assez de place pour que le texte respire (requête de
+   conteneur, pas de viewport — sinon le texte se tasse dès que la page
+   est partagée en deux colonnes plus étroites que prévu). En dessous,
+   une seule colonne, plus confortable à lire. */
 @media (min-width:860px){
   .rsai-vanilla .resultat .sombre{min-height:400px}
+}
+@container (min-width:680px){
   .rsai-vanilla .clair-grid{display:grid;grid-template-columns:1fr 1fr;column-gap:28px}
   .rsai-vanilla .clair-grid .bloc:nth-child(2){border-top:none;margin-top:0;padding-top:0}
   .rsai-vanilla .clair-grid .bloc:last-child{grid-column:1/-1}
