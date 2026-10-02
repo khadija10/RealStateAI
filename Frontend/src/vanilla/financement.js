@@ -85,10 +85,18 @@ export const html = `
   </div>
 </section>
 
-<h2 class="titre-section">Vos <em>leviers</em></h2>
-<p class="sous">Chaque levier est recalculé par le moteur déterministe : c'est un
-  chiffre, pas un conseil générique.</p>
-<section class="leviers" id="fin-leviers"></section>
+<h2 class="titre-section">Points <em>forts et vigilance</em></h2>
+<p class="sous">Évalués automatiquement par le moteur déterministe à partir de votre dossier.</p>
+<section class="deux">
+  <div class="clair">
+    <h3 style="margin:0 0 14px;font-weight:400;font-size:22px">Points <em>forts</em></h3>
+    <div id="fin-points-forts"></div>
+  </div>
+  <div class="clair">
+    <h3 style="margin:0 0 14px;font-weight:400;font-size:22px">Points de <em>vigilance</em></h3>
+    <div id="fin-points-vigilance"></div>
+  </div>
+</section>
 
 <h2 class="titre-section">Vos <em>pièces</em> justificatives</h2>
 <section class="pieces">
@@ -286,15 +294,14 @@ export function mount(root, { apiBase = '', prefill } = {}) {
       ...(p.charges > 0 ? ["Tableaux d'amortissement des crédits en cours"] : []),
       ...(p.primo ? ["Attestation sur l'honneur de primo-accession"] : [])]
 
-    const leviers = []
-    if (p.duree < 25) {
-      const empruntMax25 = capitalEmpruntableMax({ ...p, duree: 25 })
-      leviers.push({ description: 'Allonger la durée à 25 ans', gain_capacite_emprunt: empruntMax25 - empruntTotal, contrepartie: 'Le coût total du crédit augmente.' })
-    }
-    if (p.charges > 0) {
-      const empruntSansCharges = capitalEmpruntableMax({ ...p, charges: 0 })
-      leviers.push({ description: `Solder ${Math.round(p.charges)} € de mensualités de crédits`, gain_capacite_emprunt: empruntSansCharges - empruntTotal, contrepartie: "Mobilise une partie de l'épargne disponible." })
-    }
+    const pointsForts = []
+    const pointsVigilance = []
+    if (p.situation === 'CDI' || p.situation === 'fonctionnaire') pointsForts.push('Situation professionnelle stable.')
+    if (p.apport / besoin >= 0.2) pointsForts.push("Apport personnel supérieur au niveau généralement attendu.")
+    if (ravDispo >= ravMin * 1.3) pointsForts.push(`Reste à vivre de ${euro(ravDispo)}, confortablement au-dessus du minimum d'usage.`)
+    if (endettement > 0.35) pointsVigilance.push(`Taux d'endettement de ${Math.round(endettement * 100)} %, au-delà du plafond HCSF de 35 %.`)
+    if (p.apport === 0) pointsVigilance.push("Aucun apport personnel renseigné.")
+    if (ravDispo < ravMin) pointsVigilance.push("Reste à vivre en dessous du minimum d'usage recommandé.")
 
     return {
       demo: true,
@@ -307,15 +314,8 @@ export function mount(root, { apiBase = '', prefill } = {}) {
       score_dossier: { score_sur_100: score },
       reste_a_vivre: { reste_a_vivre: ravDispo, minimum_requis: ravMin, marge: ravDispo - ravMin },
       pieces_justificatives: { situation: p.situation, pieces },
-      synthese: { leviers },
+      synthese: { points_forts: pointsForts, points_de_vigilance: pointsVigilance },
     }
-  }
-  function capitalEmpruntableMax(p) {
-    const taux = tauxIndicatif(p.duree)
-    const mMax = Math.max(0, p.revenus * 0.35 - p.charges)
-    const n = p.duree * 12, i = taux / 12
-    const facteur = taux === 0 ? 1 / n : i / (1 - Math.pow(1 + i, -n))
-    return mMax / (facteur + BAREME.assurance / 12)
   }
 
   let seq = 0, timer = null
@@ -386,14 +386,14 @@ export function mount(root, { apiBase = '', prefill } = {}) {
     $('#fin-legende').innerHTML = parts.map((x) => `<div><i style="background:${x.c}"></i>${x.l}<span>${euro(x.v)}</span></div>`).join('') +
       `<div class="encart">Le notaire ne perçoit que <b>${pct(acq.part_revenant_au_notaire || 0, 0)}</b> des frais : l'essentiel est constitué de taxes.</div>`
 
-    const leviers = (d.synthese?.leviers || [])
-    $('#fin-leviers').innerHTML = leviers.length
-      ? leviers.map((l, i) => `
-        <div class="levier"><div class="num">${i + 1}</div><h4>${l.description || l.levier}</h4>
-          <div class="gain ${(l.gain_capacite_emprunt || 0) > 0 ? 'pos' : ''}">${(l.gain_capacite_emprunt || 0) > 0 ? '+' : ''}${nb((l.gain_capacite_emprunt || 0) / 1000)}k €</div>
-          <p>de capacité d'emprunt${l.surcout_total_credit ? ` · ${euro(l.surcout_total_credit)} de surcoût total` : ''}</p>
-          <p>${l.contrepartie || ''}</p></div>`).join('')
-      : `<div class="levier"><h4>Aucun levier <em>nécessaire</em></h4><p>Votre dossier est déjà optimisé.</p></div>`
+    const pointsForts = d.synthese?.points_forts || []
+    const pointsVigilance = d.synthese?.points_de_vigilance || []
+    $('#fin-points-forts').innerHTML = pointsForts.length
+      ? pointsForts.map((p) => `<p style="display:flex;gap:8px;font-size:13px;color:var(--gris);margin:0 0 10px"><span style="color:var(--vert);flex:none">✓</span>${p}</p>`).join('')
+      : `<p style="font-size:13px;color:var(--gris)">Aucun point fort particulier identifié.</p>`
+    $('#fin-points-vigilance').innerHTML = pointsVigilance.length
+      ? pointsVigilance.map((p) => `<p style="display:flex;gap:8px;font-size:13px;color:var(--gris);margin:0 0 10px"><span style="color:var(--ambre);flex:none">⚠</span>${p}</p>`).join('')
+      : `<p style="font-size:13px;color:var(--gris)">Aucune vigilance particulière.</p>`
 
     pieces(d.pieces_justificatives)
   }
