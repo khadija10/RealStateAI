@@ -31,6 +31,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+import contexte as ctx
 from geocoding import geocoder_adresse, recuperer_features_marche
 from predict import charger_modele, predire
 
@@ -60,6 +61,8 @@ def estimer_prix(
     zone_part_dpe_fg: float | None = None,
     dpe_classe: str | None = None,
     annee_construction: int | None = None,
+    numero_dpe: str | None = None,
+    numero_lot: str | None = None,
 ) -> dict:
     """
     Estime le prix d'un bien immobilier à partir de son adresse.
@@ -94,6 +97,22 @@ def estimer_prix(
         gold_path=_GOLD_PATH,
     )
 
+    # Contexte du bien : parcelle, immeuble, quartier, bâtiment, DPE
+    id_parcelle = ctx.parcelle_de(geo["latitude"], geo["longitude"])
+    dpe = ctx.features_dpe(numero_dpe, surface_m2)
+    dpe_classe = dpe["dpe_classe"] or dpe_classe
+    annee_construction = dpe["annee_construction"] or annee_construction
+    immeuble = ctx.features_immeuble(
+        id_parcelle, code_type_local, marche["mois_index"],
+        marche["prix_m2_reference_12m"], surface_m2, lot=numero_lot)
+    contexte = {
+        **immeuble,
+        **ctx.features_iris(geo["latitude"], geo["longitude"], geo["code_commune"]),
+        **ctx.features_bdnb(id_parcelle),
+        "dpe_deperdition_enveloppe_m2": dpe["dpe_deperdition_enveloppe_m2"],
+        "dpe_type_chauffage": dpe["dpe_type_chauffage"],
+    }
+
     result = predire(
         surface_m2=surface_m2,
         nb_pieces=nb_pieces,
@@ -116,6 +135,7 @@ def estimer_prix(
         zone_part_dpe_fg=zone_part_dpe_fg,
         dpe_classe=dpe_classe,
         annee_construction=annee_construction,
+        contexte=contexte,
     )
 
     return {
@@ -125,4 +145,9 @@ def estimer_prix(
         "code_commune": geo["code_commune"],
         "score_geocodage": geo["score"],
         "geocodage_incertain": geo.get("score_bas", False),
+        "id_parcelle": id_parcelle,
+        "comparables_immeuble": immeuble["comparables_immeuble"],
+        "dpe_trouve": dpe["dpe_classe"] is not None,
+        "dpe_classe": dpe_classe,
+        "annee_construction": annee_construction,
     }

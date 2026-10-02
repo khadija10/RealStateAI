@@ -39,6 +39,13 @@ MIN_VENTES_COMMUNE = 30
 MOIS_VALIDATION = 3
 
 
+def _transformations(config: dict):
+    """Cible apprise (log ou brute) et retour à l'échelle des prix."""
+    if config.get("target_transform") == "log":
+        return np.log, np.exp
+    return (lambda v: v), (lambda v: v)
+
+
 def _periode(debut: str, fin: str) -> tuple[pd.Period, pd.Period]:
     return pd.Period(debut, "M"), pd.Period(fin, "M")
 
@@ -120,10 +127,11 @@ def evaluer_fourchette(test_debut: str, test_fin: str, config_path: str = "ml/co
     early_stopping = params.pop("early_stopping_rounds", 50)
     params.pop("verbose", None)
     model = lgb.LGBMRegressor(**params, verbose=-1)
-    model.fit(X_train, y_train, sample_weight=poids, eval_set=[(X_val, y_val)],
+    f, inv = _transformations(config)
+    model.fit(X_train, f(y_train), sample_weight=poids, eval_set=[(X_val, f(y_val))],
               callbacks=[lgb.early_stopping(early_stopping, verbose=False)])
     n_arbres = int(model.best_iteration_)
-    y_pred = model.predict(X_test)
+    y_pred = inv(model.predict(X_test))
     # Contrôle de reproductibilité : doit redonner la MAPE de la mesure principale
     mape_controle = round(float(_erreurs(y_test.values, y_pred).mean()), 2)
 
@@ -131,8 +139,8 @@ def evaluer_fourchette(test_debut: str, test_fin: str, config_path: str = "ml/co
     for alpha in (0.075, 0.925):
         q = lgb.LGBMRegressor(**{**params, "objective": "quantile", "metric": "quantile",
                                  "alpha": alpha, "n_estimators": n_arbres}, verbose=-1)
-        q.fit(X_train, y_train, sample_weight=poids)
-        bornes[alpha] = q.predict(X_test)
+        q.fit(X_train, f(y_train), sample_weight=poids)
+        bornes[alpha] = inv(q.predict(X_test))
     bas, haut = np.minimum(bornes[0.075], bornes[0.925]), np.maximum(bornes[0.075], bornes[0.925])
 
     df = pd.DataFrame({
@@ -188,16 +196,17 @@ def evaluer(test_debut: str, test_fin: str, config_path: str = "ml/config.yaml")
     early_stopping = params.pop("early_stopping_rounds", 50)
     params.pop("verbose", None)
     model = lgb.LGBMRegressor(**params, verbose=-1)
+    f, inv = _transformations(config)
     model.fit(
-        X_train, y_train,
+        X_train, f(y_train),
         sample_weight=poids,
-        eval_set=[(X_val, y_val)],
+        eval_set=[(X_val, f(y_val))],
         callbacks=[lgb.early_stopping(early_stopping, verbose=False), lgb.log_evaluation(200)],
     )
 
     # Mesure unique sur le test
-    ape = _erreurs(y_test.values, model.predict(X_test))
-    ape_brut = _erreurs(y_brut.values, model.predict(X_brut))
+    ape = _erreurs(y_test.values, inv(model.predict(X_test)))
+    ape_brut = _erreurs(y_brut.values, inv(model.predict(X_brut)))
     principal = _metriques(ape)
     classement, par_commune = _classement_communes(test_df, ape)
 

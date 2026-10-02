@@ -35,17 +35,35 @@ features:
     - part_logements_collectifs_iris
     - part_proprietaires_iris
     - dpe_deperdition_enveloppe_m2
+    # Même immeuble / même logement (gold, étape 5b) — prix passés ramenés au marché du jour
+    - prix_m2_immeuble_indexe
+    - nb_ventes_immeuble
+    - prix_m2_precedent_indexe
+    - mois_depuis_vente_precedente
+    # Caractéristiques de l'immeuble (BDNB, CSTB)
+    - bdnb_nb_niveaux
+    - bdnb_hauteur_max
+    - bdnb_annee_construction
+    - bdnb_nb_logements
+    - bdnb_distance_monument
+    - bdnb_part_logement_social
+    - bdnb_qpv
   categorical:
     - code_type_local
     - code_departement
     - code_commune
     - dpe_classe
     - dpe_type_chauffage
+    - bdnb_mat_mur
   boolean:
     - a_terrain
     - is_studio
 
 target: prix_m2
+# Le modèle apprend log(prix_m2) : l'erreur est jugée en pourcentage (MAPE,
+# part à ±10 %), et le log rend une erreur de 10 % équivalente à 3 000 comme
+# à 12 000 €/m². Choisi sur la période de développement (juil.–sept. 2025).
+target_transform: log
 
 # Pondération temporelle — donne plus de poids aux années récentes
 # pour réduire le biais dû au pic 2021-2022
@@ -57,13 +75,17 @@ sample_weights:
   2025: 1.30
 
 lightgbm:
-  n_estimators: 2000
+  # Huber sur log(prix) : robuste aux ventes atypiques restantes (alpha = 0,15
+  # soit ~15 % d'écart avant de passer en pénalité linéaire).
+  objective: huber
+  alpha: 0.15
+  n_estimators: 4000
   learning_rate: 0.05
   num_leaves: 255
   max_depth: -1
   min_child_samples: 20
   subsample: 0.8
-  colsample_bytree: 0.8
+  colsample_bytree: 0.5
   reg_alpha: 0.1
   reg_lambda: 1.0
   n_jobs: -1

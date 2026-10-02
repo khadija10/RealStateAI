@@ -178,6 +178,14 @@ class EstimationRequest(BaseModel):
     annee_construction: int | None = Field(
         default=None, ge=1800, le=2026, description="Année de construction (optionnel)"
     )
+    numero_dpe: str | None = Field(
+        default=None, pattern=r"^[0-9A-Za-z]{13}$",
+        description="Numéro ADEME du DPE (13 caractères, figure sur le diagnostic) — optionnel",
+    )
+    numero_lot: str | None = Field(
+        default=None, max_length=20,
+        description="Numéro de lot de copropriété (titre de propriété) — optionnel",
+    )
 
     @model_validator(mode="after")
     def require_location(self):
@@ -249,6 +257,9 @@ class EstimationResponse(BaseModel):
     confidence_interval: dict[str, Any] | None = None
     local_mape: float | None = None
     local_mape_n: int | None = None
+    classe_fiabilite: str | None = None
+    comparables_immeuble: list[dict[str, Any]] | None = None
+    dpe_trouve: bool | None = None
 
 
 class HealthResponse(BaseModel):
@@ -771,8 +782,9 @@ def _normalize_ml_result(raw: Any, surface: float) -> EstimationResponse:
         notes: list[str] = ["estimation fournie par le modèle ML"]
         if surface < 30:
             # Peu de transactions DVF pour les très petites surfaces → fourchette élargie
-            low = estimated * 0.80
-            high = estimated * 1.20
+            # On élargit seulement : rétrécir une fourchette calibrée la rendrait fausse
+            low = min(low, estimated * 0.80)
+            high = max(high, estimated * 1.20)
             reliability = min(reliability, 0.65)
             notes.append("petite surface (< 30 m²) — fourchette élargie, segment sous-représenté dans les données")
 
@@ -970,6 +982,10 @@ def estimate(
                 payload["dpe_classe"] = req.dpe_classe
             if req.annee_construction:
                 payload["annee_construction"] = req.annee_construction
+            if req.numero_dpe:
+                payload["numero_dpe"] = req.numero_dpe
+            if req.numero_lot:
+                payload["numero_lot"] = req.numero_lot
             ml_result = ML_ESTIMATOR(**{k: v for k, v in payload.items() if v is not None})
             if ml_result is not None:
                 logger.info("Réponse renvoyée par le modèle ML")
@@ -978,6 +994,10 @@ def estimate(
                 lm = getattr(request.app.state, "local_mape", {}).get(code_commune or "", {})
                 normalized.local_mape = lm.get("mape") if lm else None
                 normalized.local_mape_n = lm.get("n") if lm else None
+                if isinstance(ml_result, dict):
+                    normalized.classe_fiabilite = ml_result.get("classe_fiabilite")
+                    normalized.comparables_immeuble = ml_result.get("comparables_immeuble") or []
+                    normalized.dpe_trouve = ml_result.get("dpe_trouve")
                 if lm.get("mape"):
                     normalized.reliability = round(max(0.30, min(0.95, 1.0 - lm["mape"] / 100)), 2)
                 # Score géocodage BAN
