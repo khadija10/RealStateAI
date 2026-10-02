@@ -127,7 +127,7 @@ export default function ResultPanel({ status, error, result, query, modelInfo, o
 
   return (
     <div className="bg-white rounded-2xl border border-stone-100 shadow-[var(--shadow-card)] p-6 sm:p-8 flex flex-col">
-      <h2 className="font-[var(--font-display)] text-[1.6rem] text-ink leading-tight">Résultat</h2>
+      <h2 className="font-display text-[1.6rem] text-ink leading-tight">Résultat</h2>
 
       {status === 'idle' && (
         <div className="flex-1 flex flex-col items-center justify-center text-center gap-5 py-10">
@@ -181,7 +181,7 @@ export default function ResultPanel({ status, error, result, query, modelInfo, o
 
           {/* Prix */}
           <div>
-            <p className="font-[var(--font-display)] text-5xl text-ink tabular-nums leading-none">
+            <p className="font-display text-5xl text-ink tabular-nums leading-none">
               {formatEUR(result.price)}
             </p>
             <p className="text-sm text-ink-muted mt-1.5">

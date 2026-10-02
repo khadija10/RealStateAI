@@ -78,7 +78,7 @@ export default function AuthModal({ onSuccess, onClose }) {
     >
       <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-8">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="font-[var(--font-display)] text-xl text-ink">{titles[mode]}</h2>
+          <h2 className="font-display text-xl text-ink">{titles[mode]}</h2>
           <button onClick={onClose} className="text-ink-muted hover:text-ink transition-colors">
             <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-label="Fermer">
               <path d="M2 2l12 12M14 2L2 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
@@ -203,7 +203,7 @@ export default function AuthModal({ onSuccess, onClose }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-seine text-white rounded-lg py-2.5 text-sm font-medium hover:bg-seine/90 disabled:opacity-60 transition-colors"
+            className="w-full bg-seine text-white rounded-full py-2.5 text-sm font-medium hover:bg-seine/90 disabled:opacity-60 transition-colors"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">

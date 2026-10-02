@@ -13,14 +13,14 @@ const DEPS = [
 ]
 
 const DEP_COLORS = {
-  '75': '#2E86C1',  // seine
-  '92': '#B08D57',  // limestone
-  '93': '#e67e22',
-  '94': '#8e44ad',
-  '77': '#27ae60',
-  '78': '#e74c3c',
-  '91': '#16a085',
-  '95': '#7f8c8d',
+  '75': '#2A1F17',  // encre/brun — Paris
+  '92': '#A38C77',  // taupe
+  '93': '#C2893A',  // ambre
+  '94': '#54402F',  // brun-2
+  '77': '#3E7A5B',  // vert
+  '78': '#B5533F',  // rouge
+  '91': '#6B7C73',  // vert sourdine
+  '95': '#8A8171',  // gris chaud
 }
 
 const MOIS_LABELS = ['Jan', 'Fév', 'Mar', 'Avr', 'Mai', 'Jun', 'Jul', 'Aoû', 'Sep', 'Oct', 'Nov', 'Déc']
@@ -118,7 +118,7 @@ export default function MarketTrends() {
                 <span className="h-2 w-2 rounded-full" style={{ backgroundColor: color }} />
                 <p className="text-xs font-medium text-ink-muted truncate">{label}</p>
               </div>
-              <p className="font-[var(--font-display)] text-2xl text-ink tabular-nums">
+              <p className="font-display text-2xl text-ink tabular-nums">
                 {new Intl.NumberFormat('fr-FR').format(Math.round(current))} €
               </p>
               <p className="text-[11px] text-ink-muted">/ m²</p>

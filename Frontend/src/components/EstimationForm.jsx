@@ -241,7 +241,7 @@ export default function EstimationForm({ values, onChange, onSubmit, communes, l
   return (
     <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-stone-100 shadow-[var(--shadow-card)] p-6 sm:p-8 space-y-5">
       <div>
-        <h2 className="font-[var(--font-display)] text-[1.6rem] text-ink leading-tight">Le bien</h2>
+        <h2 className="font-display text-[1.6rem] text-ink leading-tight">Le bien</h2>
         <p className="text-sm text-ink-muted mt-1">
           Les champs marqués <span className="text-seine font-semibold">*</span> sont obligatoires.
         </p>
@@ -443,7 +443,7 @@ export default function EstimationForm({ values, onChange, onSubmit, communes, l
       <button
         type="submit"
         disabled={loading}
-        className="w-full rounded-lg bg-ink text-white py-3 text-sm font-medium tracking-wide hover:bg-seine-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+        className="w-full rounded-full bg-ink text-white py-3.5 text-sm font-medium tracking-wide hover:bg-seine-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
       >
         {loading ? 'Estimation en cours…' : 'Estimer le prix'}
       </button>
