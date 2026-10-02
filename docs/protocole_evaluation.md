@@ -111,6 +111,24 @@ mais il retire du test des ventes difficiles. On publie donc **deux mesures** :
 - **mesure complémentaire** : mêmes modèle et période de test, **sans** ce
   filtre ML, pour montrer l'écart. Elle ne change pas la décision.
 
+## 6 ter. Addendum — 2 octobre 2026 : fourchette annoncée (avant mesure)
+
+Seconde lecture de la remarque du jury : la marge **annoncée à l'agent** doit
+être tenue. L'outil affiche une fourchette à 85 % (modèles quantiles q7,5 et
+q92,5). Elle n'a jamais été vérifiée. Critères fixés avant toute mesure de
+couverture ; les modèles quantiles sont entraînés sur le seul jeu
+d'entraînement, avec le nombre d'arbres retenu sur la validation.
+
+| Critère | Seuil | Justification |
+|---|---|---|
+| Couverture globale (prix réel dans la fourchette) | **≥ 80 %** | Fourchette annoncée à 85 % ; 5 points de tolérance |
+| Couverture dans chaque classe de communes (fiable, indicative, à compléter) | **≥ 80 %** | La promesse doit tenir partout où une fiabilité est affichée, pas seulement en moyenne |
+| Largeur médiane de la fourchette (q92,5 − q7,5) / prix estimé | **≤ 30 %** | Au-delà de ±15 % autour de l'estimation, la fourchette n'aide plus à fixer un prix de mandat |
+
+Règle de décision : la fourchette est **tenue si les trois critères le sont**.
+La couverture et la largeur sont publiées ensemble : une couverture élevée
+obtenue avec une fourchette trop large ne compte pas.
+
 ## 7. Exécution
 
 ```bash
