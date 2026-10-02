@@ -4,6 +4,10 @@
    .rsai-vanilla pour cohabiter avec le reste de l'application React.
    ========================================================================== */
 
+/* L'attribut hidden doit l'emporter sur les display des composants (.charger,
+   .bloc, .mesure…) : les pages masquent ainsi les blocs sans donnée. */
+.rsai-vanilla [hidden]{display:none !important}
+
 .rsai-vanilla {
   --fond:#F3F1EC; --blanc:#FFFFFF; --encre:#141311; --gris:#77716A; --ligne:#E3DED6;
   --brun:#3A2B21; --brun-2:#54402F; --taupe:#A38C77; --sable:#D9CBB9;

@@ -33,8 +33,8 @@ export const html = `
         <div class="pic"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M3 21h18M6 21V8l6-4 6 4v13"/></svg></div>
         <div style="flex:1"><label for="rsai-surface">Surface · pièces</label>
           <div style="display:flex;gap:4px;align-items:baseline">
-            <input id="rsai-surface" type="number" value="58" min="9" max="400" style="width:42px"><span style="font-size:12px;color:var(--gris)">m²</span>
-            <input id="rsai-pieces" type="number" value="3" min="1" max="12" style="width:26px;margin-left:8px"><span style="font-size:12px;color:var(--gris)">p.</span>
+            <input id="rsai-surface" type="number" placeholder="58" min="9" max="400" style="width:42px"><span style="font-size:12px;color:var(--gris)">m²</span>
+            <input id="rsai-pieces" type="number" placeholder="3" min="1" max="12" style="width:26px;margin-left:8px"><span style="font-size:12px;color:var(--gris)">p.</span>
           </div></div>
       </div>
       <button type="submit" class="estimer" id="rsai-bouton">Estimer</button>
@@ -57,7 +57,9 @@ export const html = `
 </section>
 
 <h2 class="titre-section" id="rsai-resultat">Votre <em>estimation</em></h2>
-<section>
+<p class="sous" id="rsai-attente">Renseignez l'adresse du bien (ou son secteur), sa surface et son nombre
+  de pièces, puis cliquez sur « Estimer ».</p>
+<section id="rsai-bloc-resultat" hidden>
   <div class="clair clair-grid">
     <div class="bloc bloc-resume">
       <div class="lib" id="rsai-lib-secteur">Estimation</div>
@@ -67,8 +69,8 @@ export const html = `
       <div class="bornes-ci"><span id="rsai-ci-bas"></span><span id="rsai-ci-haut"></span></div>
       <div class="mesures">
         <div class="mesure"><b id="rsai-m2">—</b><span>€ par m²</span></div>
-        <div class="mesure"><b id="rsai-med">—</b><span>Médiane du secteur</span></div>
-        <div class="mesure"><b id="rsai-ecart">—</b><span>Écart au marché</span></div>
+        <div class="mesure" data-secteur><b id="rsai-med">—</b><span>Médiane du secteur</span></div>
+        <div class="mesure" data-secteur><b id="rsai-ecart">—</b><span>Écart au marché</span></div>
       </div>
     </div>
     <div class="bloc">
@@ -78,12 +80,12 @@ export const html = `
         <div class="fiab-txt" id="rsai-fiab-txt"></div>
       </div>
     </div>
-    <div class="bloc">
+    <div class="bloc" data-secteur>
       <div class="bloc-tete"><h3>Position <em>dans le secteur</em></h3><span id="rsai-volume"></span></div>
       <div class="reglette"><i id="rsai-curseur" style="left:50%"></i></div>
       <div class="bornes"><span id="rsai-bas"></span><span id="rsai-haut-d"></span></div>
     </div>
-    <div class="bloc">
+    <div class="bloc" data-secteur>
       <div class="bloc-tete"><h3>Évolution <em>depuis 2021</em></h3><span id="rsai-tendance"></span></div>
       <div id="rsai-courbe"></div>
     </div>
@@ -108,8 +110,9 @@ export const html = `
 </section>
 
 <h2 class="titre-section" id="rsai-marche">Le marché <em>par secteur</em></h2>
+<p class="sous" id="rsai-marche-etat">Chargement des secteurs…</p>
 <section class="marche" id="rsai-grille-marche"></section>
-<button class="charger" id="rsai-charger">Voir plus de secteurs</button>
+<button class="charger" id="rsai-charger" hidden>Voir plus de secteurs</button>
 
 <div class="bas">
   <span>Données : DVF — DGFiP / Etalab · DPE — ADEME · IRIS — INSEE · BDNB — CSTB · Modèle LightGBM<span id="rsai-pied-variables"></span></span>
@@ -117,37 +120,7 @@ export const html = `
 </div>
 `
 
-const SECTEURS = {
-  "75106": { nom: "Paris 6ᵉ", med: 14783, p10: 10761, p90: 21034, n: 3635, eco: [15101, 15000, 15000, 14501, 14146] },
-  "75107": { nom: "Paris 7ᵉ", med: 14486, p10: 10584, p90: 21163, n: 4273, eco: [14722, 15000, 14529, 13803, 14045] },
-  "75104": { nom: "Paris 4ᵉ", med: 13000, p10: 9416, p90: 17620, n: 2459, eco: [13086, 13143, 13152, 12603, 12842] },
-  "75101": { nom: "Paris 1ᵉʳ", med: 12857, p10: 9165, p90: 18290, n: 1418, eco: [13346, 13043, 12967, 12500, 12111] },
-  "75108": { nom: "Paris 8ᵉ", med: 12587, p10: 9261, p90: 18249, n: 3025, eco: [12886, 12923, 12756, 12222, 12060] },
-  "75105": { nom: "Paris 5ᵉ", med: 12327, p10: 9063, p90: 15973, n: 4159, eco: [12832, 12857, 12419, 11782, 11800] },
-  "75103": { nom: "Paris 3ᵉ", med: 12269, p10: 8929, p90: 16326, n: 3221, eco: [12653, 12533, 12269, 11719, 12000] },
-  "75102": { nom: "Paris 2ᵉ", med: 11711, p10: 8326, p90: 15353, n: 2056, eco: [12034, 12000, 11660, 11250, 11179] },
-  "75116": { nom: "Paris 16ᵉ", med: 11419, p10: 8421, p90: 15620, n: 11957, eco: [11728, 11881, 11453, 10845, 11000] },
-  "75109": { nom: "Paris 9ᵉ", med: 11333, p10: 8260, p90: 14531, n: 5556, eco: [11827, 11782, 11364, 10585, 10882] },
-  "75117": { nom: "Paris 17ᵉ", med: 10789, p10: 7877, p90: 13725, n: 12602, eco: [11350, 11333, 10762, 10056, 10147] },
-  "75111": { nom: "Paris 11ᵉ", med: 10471, p10: 7847, p90: 12917, n: 12100, eco: [11063, 10889, 10308, 9817, 10000] },
-  "75115": { nom: "Paris 15ᵉ", med: 10102, p10: 7692, p90: 12754, n: 15469, eco: [10752, 10556, 10000, 9461, 9506] },
-  "75110": { nom: "Paris 10ᵉ", med: 10000, p10: 7308, p90: 12833, n: 7562, eco: [10677, 10525, 10000, 9240, 9352] },
-  "75114": { nom: "Paris 14ᵉ", med: 10000, p10: 7505, p90: 12920, n: 7590, eco: [10706, 10483, 10000, 9305, 9488] },
-  "75112": { nom: "Paris 12ᵉ", med: 9651, p10: 7391, p90: 12037, n: 8199, eco: [10320, 10119, 9513, 8881, 9058] },
-  "75118": { nom: "Paris 18ᵉ", med: 9495, p10: 6667, p90: 12700, n: 15148, eco: [10244, 10000, 9322, 8661, 8881] },
-  "75113": { nom: "Paris 13ᵉ", med: 9204, p10: 6667, p90: 11750, n: 7260, eco: [9827, 9725, 9091, 8667, 8686] },
-  "75120": { nom: "Paris 20ᵉ", med: 8901, p10: 6667, p90: 11177, n: 9835, eco: [9646, 9375, 8829, 8241, 8379] },
-  "75119": { nom: "Paris 19ᵉ", med: 8667, p10: 6202, p90: 11099, n: 7933, eco: [9370, 9138, 8696, 7857, 8115] },
-  "92000": { nom: "Hauts-de-Seine", med: 6846, p10: 4478, p90: 10075, n: 90255, eco: [7150, 7290, 7020, 6640, 6720] },
-  "94000": { nom: "Val-de-Marne", med: 5000, p10: 3014, p90: 8298, n: 59968, eco: [5240, 5310, 5090, 4830, 4900] },
-  "93000": { nom: "Seine-Saint-Denis", med: 4231, p10: 2410, p90: 7143, n: 53450, eco: [4430, 4490, 4290, 4070, 4130] },
-  "78000": { nom: "Yvelines", med: 4116, p10: 2449, p90: 6863, n: 48612, eco: [4260, 4330, 4180, 3990, 4050] },
-  "77000": { nom: "Seine-et-Marne", med: 3547, p10: 2084, p90: 4958, n: 39959, eco: [3640, 3720, 3600, 3450, 3500] },
-  "95000": { nom: "Val-d'Oise", med: 3426, p10: 2202, p90: 4972, n: 36523, eco: [3540, 3610, 3480, 3330, 3380] },
-  "91000": { nom: "Essonne", med: 3116, p10: 1986, p90: 4692, n: 38465, eco: [3220, 3280, 3170, 3030, 3080] },
-}
 const ANNEES = [2021, 2022, 2023, 2024, 2025]
-const MAPE_MODELE = 0.164
 const euro = (n) => Math.round(n).toLocaleString('fr-FR') + ' €'
 const nb = (n) => Math.round(n).toLocaleString('fr-FR')
 
@@ -158,7 +131,7 @@ function exporterPDF(bien) {
   if (!bien) return
   const { r, s, adresse, surface, pieces } = bien
   const date = new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long', timeStyle: 'short' }).format(new Date())
-  const lieu = adresse || s.nom
+  const lieu = adresse || r.adresse || s?.nom || ''
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">
 <title>Estimation RealStateAI</title>
 <style>
@@ -182,7 +155,7 @@ function exporterPDF(bien) {
   <tr><td>Bien</td><td>${lieu}</td></tr>
   <tr><td>Surface</td><td>${surface} m²</td></tr>
   <tr><td>Pièces</td><td>${pieces}</td></tr>
-  <tr><td>Méthode</td><td>${r.reel ? 'Modèle ' + (r.modele || 'ml') : 'Démonstration (médianes DVF)'}</td></tr>
+  <tr><td>Méthode</td><td>${r.modele === 'ml' ? 'Modèle ML (LightGBM)' : 'Médiane DVF communale'}</td></tr>
 </table>
 <p class="price">${euro(r.valeur)}</p>
 <p class="per-m2">soit ${euro(r.prix_m2)} / m²</p>
@@ -207,7 +180,7 @@ function construireLienPartage(bien) {
   if (bien.pieces) p.set('rooms', bien.pieces)
   if (bien.type) p.set('type', bien.type)
   if (bien.adresse) p.set('address', bien.adresse)
-  if (bien.secteur) p.set('secteur', bien.secteur)
+  if (bien.commune) p.set('commune', bien.commune)
   return `${window.location.origin}${window.location.pathname}?${p.toString()}`
 }
 
@@ -222,32 +195,32 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
   const $ = (sel) => root.querySelector(sel)
   const $$ = (sel) => root.querySelectorAll(sel)
 
-  let secteurCourant = '75111'
   let dernierBien = null
   let modelInfo = null
+  // Une réponse arrivée après le démontage de la page (React monte deux fois
+  // en développement) ne doit rien écrire : sinon la grille se remplit en double.
+  let actif = true
   $('#illus-heros').innerHTML = heroEstimation()
   $('#rsai-fond-page').innerHTML = heroEstimation()
 
+  // Liste des communes servie par le backend ; aucune présélection.
   const selecteur = $('#rsai-secteur')
-  for (const [code, s] of Object.entries(SECTEURS)) {
-    const o = document.createElement('option')
-    o.value = code; o.textContent = s.nom
-    if (code === secteurCourant) o.selected = true
-    selecteur.appendChild(o)
-  }
+  selecteur.innerHTML = '<option value="">Chargement…</option>'
+  let communeDemandee = null   // commune d'un lien partagé, appliquée au chargement de la liste
 
   async function verifierApi() {
     const badge = $('#etat-api')
     try {
       const r = await fetch(API.BASE + API.SANTE, { signal: AbortSignal.timeout(5000) })
       const d = await r.json()
+      if (!actif) return
       if (d.model_loaded || d.dvf_loaded) {
         badge.className = 'etat-api direct'
         const mape = d.model_mape != null ? ` · MAPE ${String(d.model_mape).replace('.', ',')} %` : ''
         badge.innerHTML = `<i></i><span>Modèle connecté${mape}</span>`
         chargerCommunes()
       } else {
-        badge.innerHTML = `<i></i><span>Backend en mode démonstration</span>`
+        badge.innerHTML = `<i></i><span>Modèle indisponible</span>`
       }
       modelInfo = {
         mape: d.model_mape, r2: d.model_r2, nFeatures: d.model_n_features,
@@ -257,7 +230,8 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
       afficherStats()
       if (dernierBien) afficher(dernierBien.r, dernierBien.s, dernierBien.adresse, dernierBien.surface, dernierBien.pieces, dernierBien.type)
     } catch {
-      badge.innerHTML = `<i></i><span>Backend injoignable — démonstration</span>`
+      badge.innerHTML = `<i></i><span>Backend injoignable</span>`
+      selecteur.innerHTML = '<option value="">Indisponible</option>'
     }
   }
 
@@ -290,23 +264,34 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
       const r = await fetch(API.BASE + API.COMMUNES)
       const d = await r.json()
       const communes = Array.isArray(d) ? d.filter(Boolean) : Array.isArray(d?.communes) ? d.communes.filter(Boolean) : []
-      if (!communes.length) return
-      selecteur.innerHTML = communes.map((c) => `<option value="${c}">${c}</option>`).join('')
-    } catch { /* on conserve la liste de démonstration */ }
+      if (!actif || !communes.length) return
+      selecteur.innerHTML = '<option value="">— choisir —</option>' +
+        communes.map((c) => `<option value="${c}">${c}</option>`).join('')
+      if (communeDemandee && communes.includes(communeDemandee)) selecteur.value = communeDemandee
+    } catch {
+      selecteur.innerHTML = '<option value="">Indisponible</option>'
+    }
+  }
+
+  function message(texte) {
+    const m = $('#rsai-attente')
+    m.textContent = texte; m.hidden = false
+    $('#rsai-bloc-resultat').hidden = true
   }
 
   async function estimer(defiler) {
-    const surface = Math.max(9, +$('#rsai-surface').value || 50)
-    const pieces = +$('#rsai-pieces').value || 1
+    const surface = +$('#rsai-surface').value
+    const pieces = +$('#rsai-pieces').value
     const type = $('#rsai-type').value
     const adresse = $('#rsai-adresse').value.trim()
-    const secteur = SECTEURS[selecteur.value] || SECTEURS[secteurCourant]
-    if (SECTEURS[selecteur.value]) secteurCourant = selecteur.value
+    const commune = selecteur.value
+    if (!adresse && !commune) return message("Indiquez l'adresse du bien ou choisissez son secteur.")
+    if (!surface || surface < 9) return message('Indiquez la surface du bien (9 m² minimum).')
+    if (!pieces) return message('Indiquez le nombre de pièces.')
 
     const bouton = $('#rsai-bouton')
     bouton.disabled = true; bouton.textContent = 'Calcul…'
-
-    let r = null
+    let r = null, erreur = null
     try {
       // Jeton de connexion transmis si présent, pour que le backend
       // rattache cette estimation à l'historique du compte (clé partagée
@@ -321,19 +306,22 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
         },
         body: JSON.stringify({
           area_m2: surface, rooms: pieces, property_type: type,
-          commune: selecteur.options[selecteur.selectedIndex]?.textContent || undefined,
+          commune: commune || undefined,
           address: adresse || undefined,
         }),
       })
-      if (rep.ok) r = normaliser(await rep.json())
-    } catch { /* repli silencieux */ }
-    if (!r) r = demonstration(secteur, surface, pieces, type)
-
+      const d = await rep.json().catch(() => ({}))
+      if (rep.ok) r = normaliser(d)
+      else erreur = typeof d.detail === 'string' ? d.detail : "L'estimation n'a pas abouti."
+    } catch {
+      erreur = 'Le service d\'estimation est injoignable. Réessayez dans un instant.'
+    }
     bouton.disabled = false; bouton.textContent = 'Estimer'
-    // Statistiques du secteur calculées par le backend sur le dataset ; le
-    // tableau SECTEURS ne sert plus qu'en démonstration (backend injoignable).
-    afficher(r, r.secteur || secteur, adresse, surface, pieces, type)
-    memoriser({ query: adresse || secteur.nom, area_m2: surface, prix: r.valeur })
+    if (!actif) return
+    if (!r) return message(erreur)
+
+    afficher(r, r.secteur, adresse, surface, pieces, type)
+    memoriser({ query: adresse || commune, area_m2: surface, prix: r.valeur })
     if (defiler) $('#rsai-resultat').scrollIntoView({ behavior: 'smooth' })
   }
 
@@ -349,24 +337,24 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
       mape: d.local_mape, mape_n: d.local_mape_n,
       modele: d.model, adresse: d.meta?.adresse_normalisee,
       meta: d.meta, reel: true,
-      secteur: d.secteur ? { ...d.secteur, eco: (d.secteur.eco || []).filter((x) => x != null) } : null,
+      secteur: d.secteur ? avecAnnees(d.secteur) : null,
     }
   }
 
-  function demonstration(s, surface, pieces, type) {
-    const base = s.eco[4], f = []
-    const fs = surface < 30 ? 1.12 : surface < 45 ? 1.05 : surface < 80 ? 1 : surface < 120 ? 0.96 : 0.92
-    f.push(['Surface de ' + surface + ' m²', fs])
-    const ft = type === 'house' ? 0.97 : 1
-    if (ft !== 1) f.push(['Maison individuelle', ft])
-    const dens = surface / pieces, fa = dens < 16 ? 0.97 : dens > 32 ? 1.02 : 1
-    if (fa !== 1) f.push(['Agencement des pièces', fa])
-    const m2 = base * fs * ft * fa, v = m2 * surface
-    return { valeur: v, prix_m2: m2, basse: v * (1 - MAPE_MODELE), haute: v * (1 + MAPE_MODELE), confiance: '85%', fiabilite: null, facteurs: f, base, modele: 'demo', reel: false }
+  // Médianes annuelles du backend : on garde l'année de chaque point, une
+  // année sans vente ne devant pas décaler la courbe.
+  function avecAnnees(s) {
+    const points = (s.eco || []).map((v, i) => [ANNEES[i], v]).filter(([, v]) => v != null)
+    return { ...s, eco: points.map(([, v]) => v), annees: points.map(([a]) => a) }
   }
 
   function afficher(r, s, adresse, surface, pieces, type) {
-    $('#rsai-lib-secteur').textContent = (r.adresse || adresse || s.nom) + ' · ' + surface + ' m² · ' + pieces + (pieces > 1 ? ' pièces' : ' pièce')
+    $('#rsai-attente').hidden = true
+    $('#rsai-bloc-resultat').hidden = false
+    const avecSecteur = !!(s && s.eco?.length >= 2)
+    $$('[data-secteur]').forEach((el) => { el.hidden = !avecSecteur })
+    $('#rsai-pv-resume').hidden = !avecSecteur
+    $('#rsai-lib-secteur').textContent = (r.adresse || adresse || s?.nom || '') + ' · ' + surface + ' m² · ' + pieces + (pieces > 1 ? ' pièces' : ' pièce')
     $('#rsai-valeur').textContent = euro(r.valeur)
     $('#rsai-fourchette').textContent = `Fourchette ${r.confiance || '85 %'} : ${euro(r.basse)} — ${euro(r.haute)}`
     const place = Math.min(96, Math.max(4, (100 * (r.valeur - r.basse)) / (r.haute - r.basse)))
@@ -375,13 +363,14 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
     $('#rsai-ci-haut').textContent = euro(r.haute)
 
     $('#rsai-m2').textContent = nb(r.prix_m2)
-    $('#rsai-med').textContent = nb(s.med)
-    const e = Math.round(100 * (r.prix_m2 / s.med - 1))
-    $('#rsai-ecart').textContent = (e > 0 ? '+' : '') + e + ' %'
+    if (avecSecteur) {
+      $('#rsai-med').textContent = nb(s.med)
+      const e = Math.round(100 * (r.prix_m2 / s.med - 1))
+      $('#rsai-ecart').textContent = (e > 0 ? '+' : '') + e + ' %'
+    }
 
-    const fiab = r.fiabilite ?? (r.reel ? null : 1 - MAPE_MODELE)
-    $('#rsai-anneau').innerHTML = anneau(fiab)
-    $('#rsai-src-modele').innerHTML = `<span class="puce ${r.reel ? '' : 'claire'}">${r.reel ? 'Modèle ' + (r.modele || 'ml') : 'Démonstration'}</span>`
+    $('#rsai-anneau').innerHTML = anneau(r.fiabilite)
+    $('#rsai-src-modele').innerHTML = `<span class="puce">${r.modele === 'ml' ? 'Modèle ML' : 'Médiane DVF communale'}</span>`
     const val = modelInfo?.validation
     $('#rsai-fiab-txt').innerHTML =
       (r.mape != null
@@ -389,62 +378,68 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
         : val
           ? `Erreur moyenne du modèle, mesurée sur ${nb(val.n_test)} ventes jamais vues (${periode(val.periode_test)}) : <b>${String(val.mape).replace('.', ',')} %</b>. ${String(val.dans_10pct).replace('.', ',')} % des estimations tombent à moins de 10 % du prix réel, ${String(val.dans_20pct).replace('.', ',')} % à moins de 20 %.`
           : '') +
-      (r.meta?.n_transactions ? `<br>Secteur documenté par <b>${nb(r.meta.n_transactions)}</b> transactions.` : '') +
-      (r.reel ? '' : `<br><span style="color:var(--ambre)">Backend non connecté : estimation calculée à partir des médianes du pipeline.</span>`)
+      (r.meta?.n_transactions ? `<br>Secteur documenté par <b>${nb(r.meta.n_transactions)}</b> transactions.` : '')
 
+    if (avecSecteur) afficherSecteur(r, s)
+
+    $('#rsai-detail').innerHTML = `<tr><td>Prix au m² estimé</td><td class="n">${nb(r.prix_m2)} €</td></tr>
+       ${avecSecteur ? `<tr><td>Médiane du secteur, ${s.annee}</td><td class="n">${nb(s.med)} €/m²</td></tr>` : ''}
+       <tr><td>Surface retenue</td><td class="n">${surface} m²</td></tr>
+       <tr><td>Modèle</td><td class="n">${r.modele === 'ml' ? `LightGBM${modelInfo?.nFeatures ? ` · ${modelInfo.nFeatures} variables` : ''}` : 'Médiane des ventes comparables'}</td></tr>
+       <tr><td><em style="font-size:17px">Valeur estimée</em></td><td class="n"><b>${euro(r.valeur)}</b></td></tr>`
+    afficherTechnique(r)
+    dernierBien = { commune: s?.nom || selecteur.value || null, code_commune: s?.code || null,
+                    departement: s?.code ? s.code.slice(0, 2) : null, secteur: s?.code || null,
+                    prix: Math.round(r.valeur), r, s, adresse, surface, pieces, type }
+  }
+
+  function afficherSecteur(r, s) {
     $('#rsai-volume').innerHTML = `<span class="puce claire">${nb(s.n)} ventes</span>`
     const pos = Math.min(100, Math.max(0, (100 * (r.prix_m2 - s.p10)) / (s.p90 - s.p10)))
     $('#rsai-curseur').style.left = pos + '%'
     $('#rsai-bas').textContent = '1ᵉʳ décile · ' + nb(s.p10) + ' €/m²'
     $('#rsai-haut-d').textContent = '9ᵉ décile · ' + nb(s.p90) + ' €/m²'
 
-    const v = 100 * (s.eco[4] / s.eco[0] - 1)
+    const dernier = s.eco.length - 1
+    const v = 100 * (s.eco[dernier] / s.eco[0] - 1)
     $('#rsai-tendance').innerHTML = `<span class="puce">${v > 0 ? '+' : ''}${v.toFixed(1).replace('.', ',')} %</span>`
-    $('#rsai-courbe').innerHTML = courbe(s.eco)
+    $('#rsai-courbe').innerHTML = courbe(s.eco, s.annees)
 
-    $('#rsai-detail').innerHTML = r.reel
-      ? `<tr><td>Prix au m² estimé</td><td class="n">${nb(r.prix_m2)} €</td></tr>
-         <tr><td>Médiane du secteur, ${s.annee || 2025}</td><td class="n">${nb(s.med)} €/m²</td></tr>
-         <tr><td>Surface retenue</td><td class="n">${surface} m²</td></tr>
-         <tr><td>Modèle</td><td class="n">LightGBM${modelInfo?.nFeatures ? ` · ${modelInfo.nFeatures} variables` : ''}</td></tr>
-         <tr><td><em style="font-size:17px">Valeur estimée</em></td><td class="n"><b>${euro(r.valeur)}</b></td></tr>`
-      : `<tr><td>Médiane du secteur, 2025</td><td class="n">${nb(r.base)} €/m²</td></tr>` +
-        (r.facteurs || []).map(([l, f]) => `<tr><td>${l}</td><td class="n">${f >= 1 ? '+' : ''}${Math.round((f - 1) * 100)} %</td></tr>`).join('') +
-        `<tr><td><em style="font-size:17px">Prix au m² retenu</em></td><td class="n"><b>${nb(r.prix_m2)} €</b></td></tr>`
+    // Projection de plus-value à 10 ans, scénario central (tendance observée
+    // du secteur), pour amorcer le lien vers le simulateur dédié.
+    const tendance = Math.pow(s.eco[dernier] / s.eco[0], 1 / (s.annees[dernier] - s.annees[0])) - 1
+    const revente10 = r.valeur * Math.pow(1 + tendance, 10)
+    const pv10 = revente10 - r.valeur
+    $('#rsai-pv-resume').innerHTML =
+      `Au rythme observé sur ce secteur depuis ${s.annees[0]} (<b>${tendance >= 0 ? '+' : ''}${(100 * tendance).toFixed(1).replace('.', ',')} %/an</b>), ` +
+      `ce bien pourrait valoir <b>${euro(revente10)}</b> dans 10 ans, soit ${pv10 >= 0 ? 'une plus-value brute de' : 'une moins-value de'} <b>${euro(Math.abs(pv10))}</b> avant fiscalité.`
 
+  }
+
+  function afficherTechnique(r) {
     // Détails techniques — repris de l'ancien frontend (ResultPanel.jsx).
     // Uniquement des valeurs servies par le backend : une ligne sans donnée
     // est omise plutôt que remplie par un chiffre écrit en dur.
     const mi = modelInfo || {}
 
     const tech = []
-    tech.push(['Méthode', r.reel ? `${r.modele === 'ml' ? 'LightGBM géolocalisé · API BAN' : 'Médiane DVF communale'}` : 'Démonstration (médianes du pipeline)'])
+    tech.push(['Méthode', r.modele === 'ml' ? 'LightGBM géolocalisé · API BAN' : 'Médiane DVF communale'])
     if (r.adresse) tech.push(['Adresse normalisée (BAN)', r.adresse])
     if (r.mape != null) tech.push([`Erreur moyenne locale${r.mape_n ? ` (${nb(r.mape_n)} ventes)` : ''}`, `${String(r.mape).replace('.', ',')} %`])
     if (mi.validation) tech.push([`Erreur moyenne validée (${periode(mi.validation.periode_test)})`, `${String(mi.validation.mape).replace('.', ',')} %`])
-    tech.push(['Fourchette', !r.reel ? `Estimation ± ${Math.round(100 * MAPE_MODELE)} % (démonstration)`
-      : r.modele === 'ml' ? `Intervalle à ${r.confiance || '85 %'}, calibré sur des ventes de contrôle`
+    tech.push(['Fourchette', r.modele === 'ml' ? `Intervalle à ${r.confiance || '85 %'}, calibré sur des ventes de contrôle`
       : 'Dispersion des ventes comparables de la commune'])
     if (mi.nFeatures) tech.push(['Variables', String(mi.nFeatures)])
     if (mi.trainedAt) tech.push(['Entraîné le', new Date(mi.trainedAt).toLocaleDateString('fr-FR')])
     if (mi.nTrain) tech.push(["Données d'entraînement", `${nb(mi.nTrain)} transactions DVF 2021–2025`])
     if (mi.validation) tech.push(['Données de test', `${nb(mi.validation.n_test)} ventes jamais vues, ${periode(mi.validation.periode_test)}`])
-    if (!r.reel && r.meta?.n_transactions) tech.push(['Transactions comparables', `${nb(r.meta.n_transactions)} ventes`])
+    if (r.modele !== 'ml' && r.meta?.n_transactions) tech.push(['Transactions comparables', `${nb(r.meta.n_transactions)} ventes`])
     $('#rsai-detail-tech').innerHTML = tech.map(([l, v]) => `<tr><td>${l}</td><td class="n">${v}</td></tr>`).join('')
 
-    // Projection de plus-value à 10 ans, scénario central (tendance 2021-2025
-    // du secteur), pour amorcer le lien vers le simulateur dédié.
-    const tendance = Math.pow(s.eco[4] / s.eco[0], 1 / 4) - 1
-    const revente10 = r.valeur * Math.pow(1 + tendance, 10)
-    const pv10 = revente10 - r.valeur
-    $('#rsai-pv-resume').innerHTML =
-      `Au rythme observé sur ce secteur depuis 2021 (<b>${v >= 0 ? '+' : ''}${(100 * tendance).toFixed(1).replace('.', ',')} %/an</b>), ` +
-      `ce bien pourrait valoir <b>${euro(revente10)}</b> dans 10 ans, soit ${pv10 >= 0 ? 'une plus-value brute de' : 'une moins-value de'} <b>${euro(Math.abs(pv10))}</b> avant fiscalité.`
-    dernierBien = { secteur: secteurCourant, prix: Math.round(r.valeur), r, s, adresse, surface, pieces, type }
   }
 
   function anneau(f) {
-    if (f == null) f = 1 - MAPE_MODELE
+    if (f == null) return ''
     const R = 44, C = 2 * Math.PI * R, part = C * Math.min(1, Math.max(0, f))
     const couleur = f >= 0.8 ? 'var(--vert)' : f >= 0.6 ? 'var(--ambre)' : 'var(--rouge)'
     return `<svg viewBox="0 0 110 110" style="width:110px;display:block" role="img" aria-label="Fiabilité de l'estimation">
@@ -455,7 +450,7 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
       <text x="55" y="73" text-anchor="middle" font-size="9" font-family="Inter,sans-serif" fill="var(--gris)">FIABILITÉ</text></svg>`
   }
 
-  function courbe(val) {
+  function courbe(val, annees) {
     const L = 560, H = 160, mx = 16, my = 30
     const min = Math.min(...val) * 0.985, max = Math.max(...val) * 1.02
     const x = (i) => mx + (i * (L - 2 * mx)) / (val.length - 1)
@@ -468,7 +463,7 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
       <path d="${ligne}" fill="none" stroke="var(--encre)" stroke-width="2" stroke-linejoin="round"/>
       ${val.map((v, i) => `<circle cx="${x(i)}" cy="${y(v)}" r="4.5" fill="var(--blanc)" stroke="var(--encre)" stroke-width="2"/>
         <text x="${x(i)}" y="${y(v) - 13}" text-anchor="middle" font-size="17" font-style="italic" font-family="Instrument Serif,serif" fill="var(--encre)">${(v / 1000).toFixed(1).replace('.', ',')}k</text>
-        <text x="${x(i)}" y="${H - 2}" text-anchor="middle" font-size="10.5" font-family="Inter,sans-serif" fill="var(--gris)">${ANNEES[i]}</text>`).join('')}</svg>`
+        <text x="${x(i)}" y="${H - 2}" text-anchor="middle" font-size="10.5" font-family="Inter,sans-serif" fill="var(--gris)">${annees[i]}</text>`).join('')}</svg>`
   }
 
   // Historique local (clé lue par l'onglet "Historique" de l'application,
@@ -482,39 +477,40 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
     } catch { /* navigation privée */ }
   }
 
-  let ordre = Object.entries(SECTEURS).sort((a, b) => b[1].med - a[1].med)
+  let ordre = []
   const vignettes = [heroTour, heroVilla, heroBois, heroInterieur]
   let affiches = 0
   async function chargerSecteursApi() {
     try {
       const r = await fetch(API.BASE + API.SECTEURS, { signal: AbortSignal.timeout(8000) })
-      if (!r.ok) return
-      const liste = await r.json()
-      if (!Array.isArray(liste) || !liste.length) return
-      ordre = liste.map((s) => [s.code, { ...s, eco: (s.eco || []).filter((x) => x != null) }])
-      $('#rsai-grille-marche').innerHTML = ''; affiches = 0
-      $('#rsai-charger').style.display = ''
+      const liste = r.ok ? await r.json() : []
+      if (!actif) return
+      if (!Array.isArray(liste) || !liste.length) throw new Error('vide')
+      ordre = liste.map((s) => [s.code, avecAnnees(s)]).filter(([, s]) => s.eco.length >= 2)
+      $('#rsai-marche-etat').hidden = true
+      $('#rsai-charger').hidden = false
       chargerSecteurs()
-    } catch { /* on garde les secteurs de démonstration */ }
+    } catch {
+      $('#rsai-marche-etat').textContent = 'Statistiques de marché indisponibles pour le moment.'
+    }
   }
   function chargerSecteurs() {
     const grille = $('#rsai-grille-marche')
     ordre.slice(affiches, affiches + 8).forEach(([code, s], i) => {
-      const v = 100 * (s.eco[4] / s.eco[0] - 1)
+      const v = 100 * (s.eco[s.eco.length - 1] / s.eco[0] - 1)
       const b = document.createElement('button'); b.className = 'bien'; b.type = 'button'
       b.innerHTML = `<div class="carte-img"><div class="illus">${vignettes[(affiches + i) % 4]()}</div></div>
         <div class="prix">${nb(s.med)} €/m² · médiane</div><h4>${s.nom}</h4>
         <div class="puces"><span class="puce">${nb(s.n)} ventes</span>
-          <span class="puce">${v > 0 ? '+' : ''}${v.toFixed(1).replace('.', ',')} % depuis 2021</span></div>`
+          <span class="puce">${v > 0 ? '+' : ''}${v.toFixed(1).replace('.', ',')} % depuis ${s.annees[0]}</span></div>`
       b.addEventListener('click', () => {
-        if ([...selecteur.options].some((o) => o.value === code)) selecteur.value = code
-        else if ([...selecteur.options].some((o) => o.value === s.nom)) selecteur.value = s.nom
-        secteurCourant = code; $('#rsai-adresse').value = ''; estimer(true)
+        if ([...selecteur.options].some((o) => o.value === s.nom)) selecteur.value = s.nom
+        $('#rsai-adresse').value = ''; estimer(true)
       })
       grille.appendChild(b)
     })
     affiches += 8
-    if (affiches >= ordre.length) $('#rsai-charger').style.display = 'none'
+    if (affiches >= ordre.length) $('#rsai-charger').hidden = true
   }
 
   $('#rsai-charger').addEventListener('click', chargerSecteurs)
@@ -535,8 +531,8 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
     })
   })
   $('#formulaire').addEventListener('submit', (e) => { e.preventDefault(); estimer(true) })
-  ;['rsai-type', 'rsai-secteur'].forEach((i) => $('#' + i).addEventListener('change', () => estimer(false)))
-  ;['rsai-surface', 'rsai-pieces'].forEach((i) => $('#' + i).addEventListener('input', () => estimer(false)))
+  // Estimation uniquement sur demande (bouton « Estimer » ou carte de secteur) :
+  // modifier un champ ne relance rien, et rien n'est estimé à l'ouverture.
 
   // Préremplissage depuis un lien partagé.
   const params = new URLSearchParams(window.location.search)
@@ -544,10 +540,10 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
   if (params.get('rooms')) $('#rsai-pieces').value = params.get('rooms')
   if (params.get('type')) $('#rsai-type').value = params.get('type')
   if (params.get('address')) $('#rsai-adresse').value = params.get('address')
-  if (params.get('secteur') && SECTEURS[params.get('secteur')]) selecteur.value = params.get('secteur')
+  if (params.get('commune')) communeDemandee = params.get('commune')
   if ([...params.keys()].length) window.history.replaceState({}, '', window.location.pathname)
 
-  chargerSecteurs(); estimer(false); verifierApi(); chargerSecteursApi()
+  verifierApi(); chargerSecteursApi()
 
-  return () => { /* rien à nettoyer : le démontage du conteneur suffit */ }
+  return () => { actif = false }
 }

@@ -1,7 +1,7 @@
 // Page "Plus-value" — reprise quasi verbatim de l'artefact Claude Design
 // (https://claude.ai/artifact/7Bg8Rm7mx5EzW76FTn4AtD). Calculateur
-// entièrement local (projections de marché + fiscalité CGI), comme dans
-// l'artefact d'origine — aucun appel backend n'est nécessaire ici.
+// local (projections de marché + fiscalité CGI) ; les séries de prix des
+// secteurs viennent du backend (GET /api/market/secteurs), jamais du code.
 import { heroPlusValue } from '../illustrations.js'
 
 export const html = `
@@ -24,7 +24,7 @@ export const html = `
     <div class="reglage"><div class="haut"><label for="pv-prix">Prix d'achat</label><output id="pv-o-prix"></output></div>
       <input type="range" id="pv-prix" min="80000" max="2000000" step="5000" value="420000"></div>
     <div class="choix"><label for="pv-annee">Année d'achat</label>
-      <select id="pv-annee"><option>2021</option><option>2022</option><option selected>2023</option><option>2024</option><option>2025</option></select></div>
+      <select id="pv-annee"><option>2021</option><option>2022</option><option selected>2023</option><option>2024</option><option>2025</option><option>2026</option></select></div>
     <div class="reglage"><div class="haut"><label for="pv-horizon">Revente dans</label><output id="pv-o-horizon"></output></div>
       <input type="range" id="pv-horizon" min="1" max="30" step="1" value="10"></div>
     <div class="choix"><label>Usage du bien</label>
@@ -32,6 +32,8 @@ export const html = `
         <button type="button" class="bascule" data-u="rp" aria-pressed="true">Résidence principale</button>
         <button type="button" class="bascule" data-u="inv" aria-pressed="false">Investissement</button>
       </div></div>
+    <button type="button" class="bouton-accent" id="pv-simuler">Simuler la plus-value</button>
+    <p class="aide" id="pv-etat"></p>
   </div>
 
   <div class="sombre">
@@ -144,35 +146,6 @@ function indice(serie, annee, taux) {
   return serie[4] * Math.pow(1 + taux, annee - 2025)
 }
 
-const SECTEURS = {
-  '75106': { nom: 'Paris 6ᵉ', eco: [15101, 15000, 15000, 14501, 14146] },
-  '75107': { nom: 'Paris 7ᵉ', eco: [14722, 15000, 14529, 13803, 14045] },
-  '75104': { nom: 'Paris 4ᵉ', eco: [13086, 13143, 13152, 12603, 12842] },
-  '75101': { nom: 'Paris 1ᵉʳ', eco: [13346, 13043, 12967, 12500, 12111] },
-  '75108': { nom: 'Paris 8ᵉ', eco: [12886, 12923, 12756, 12222, 12060] },
-  '75105': { nom: 'Paris 5ᵉ', eco: [12832, 12857, 12419, 11782, 11800] },
-  '75103': { nom: 'Paris 3ᵉ', eco: [12653, 12533, 12269, 11719, 12000] },
-  '75102': { nom: 'Paris 2ᵉ', eco: [12034, 12000, 11660, 11250, 11179] },
-  '75116': { nom: 'Paris 16ᵉ', eco: [11728, 11881, 11453, 10845, 11000] },
-  '75109': { nom: 'Paris 9ᵉ', eco: [11827, 11782, 11364, 10585, 10882] },
-  '75117': { nom: 'Paris 17ᵉ', eco: [11350, 11333, 10762, 10056, 10147] },
-  '75111': { nom: 'Paris 11ᵉ', eco: [11063, 10889, 10308, 9817, 10000] },
-  '75115': { nom: 'Paris 15ᵉ', eco: [10752, 10556, 10000, 9461, 9506] },
-  '75110': { nom: 'Paris 10ᵉ', eco: [10677, 10525, 10000, 9240, 9352] },
-  '75114': { nom: 'Paris 14ᵉ', eco: [10706, 10483, 10000, 9305, 9488] },
-  '75112': { nom: 'Paris 12ᵉ', eco: [10320, 10119, 9513, 8881, 9058] },
-  '75118': { nom: 'Paris 18ᵉ', eco: [10244, 10000, 9322, 8661, 8881] },
-  '75113': { nom: 'Paris 13ᵉ', eco: [9827, 9725, 9091, 8667, 8686] },
-  '75120': { nom: 'Paris 20ᵉ', eco: [9646, 9375, 8829, 8241, 8379] },
-  '75119': { nom: 'Paris 19ᵉ', eco: [9370, 9138, 8696, 7857, 8115] },
-  '92000': { nom: 'Hauts-de-Seine', eco: [7150, 7290, 7020, 6640, 6720] },
-  '94000': { nom: 'Val-de-Marne', eco: [5240, 5310, 5090, 4830, 4900] },
-  '93000': { nom: 'Seine-Saint-Denis', eco: [4430, 4490, 4290, 4070, 4130] },
-  '78000': { nom: 'Yvelines', eco: [4260, 4330, 4180, 3990, 4050] },
-  '77000': { nom: 'Seine-et-Marne', eco: [3640, 3720, 3600, 3450, 3500] },
-  '95000': { nom: "Val-d'Oise", eco: [3540, 3610, 3480, 3330, 3380] },
-  '91000': { nom: 'Essonne', eco: [3220, 3280, 3170, 3030, 3080] },
-}
 function fraisReels(prix) {
   const droits = prix * (0.05 + 0.012 + 0.05 * 0.0237)
   let emo = 0, pl = 0
@@ -199,18 +172,36 @@ const k = (n) => (n / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 0 }
 const pct = (x, d = 1) => (x > 0 ? '+' : '') + (100 * x).toFixed(d).replace('.', ',') + ' %'
 const COULEURS = ['var(--rouge)', 'var(--taupe)', 'var(--vert)']
 
-export function mount(root, { prefill } = {}) {
+export function mount(root, { apiBase = '', prefill } = {}) {
   const $ = (sel) => root.querySelector(sel)
-  let usage = 'rp', choixScen = 1
+  let usage = 'rp', choixScen = 1, simule = false
+  let SECTEURS = {}
+  let actif = true   // réponses ignorées après démontage (double montage React en développement)
 
   $('#pv-illus-heros').innerHTML = heroPlusValue()
   $('#pv-illus-carte').innerHTML = tourCarte()
 
+  // Secteurs et médianes annuelles 2021-2025 servis par le backend. Seuls
+  // ceux qui ont une médiane chaque année se prêtent à une projection.
   const sel = $('#pv-secteur')
-  for (const [c, s] of Object.entries(SECTEURS)) {
-    const o = document.createElement('option'); o.value = c; o.textContent = s.nom
-    if (c === (prefill?.secteur in SECTEURS ? prefill.secteur : '75111')) o.selected = true
-    sel.appendChild(o)
+  sel.innerHTML = '<option value="">Chargement…</option>'
+  async function chargerSecteurs() {
+    const type = prefill?.type === 'house' ? 'house' : 'apartment'
+    try {
+      const r = await fetch(`${apiBase}/api/market/secteurs?property_type=${type}`, { signal: AbortSignal.timeout(8000) })
+      const liste = r.ok ? await r.json() : []
+      if (!actif) return
+      SECTEURS = Object.fromEntries(liste.filter((s) => (s.eco || []).length === 5 && s.eco.every((v) => v != null))
+        .map((s) => [s.code, s]))
+      const tries = Object.values(SECTEURS).sort((a, b) => a.nom.localeCompare(b.nom, 'fr'))
+      if (!tries.length) throw new Error('vide')
+      sel.innerHTML = '<option value="">— choisir un secteur —</option>' +
+        tries.map((s) => `<option value="${s.code}">${s.nom}</option>`).join('')
+      if (prefill?.secteur && SECTEURS[prefill.secteur]) sel.value = prefill.secteur
+    } catch {
+      sel.innerHTML = '<option value="">Indisponible</option>'
+      $('#pv-etat').textContent = 'Les statistiques de marché sont indisponibles pour le moment.'
+    }
   }
 
   // Préremplissage depuis l'onglet Estimation : « simuler la plus-value de
@@ -223,13 +214,26 @@ export function mount(root, { prefill } = {}) {
     if ([...anneeSel.options].some((o) => o.value === anneeActuelle)) anneeSel.value = anneeActuelle
   }
 
+  function simuler() {
+    if (!SECTEURS[sel.value]) { $('#pv-etat').textContent = 'Choisissez un secteur pour lancer la simulation.'; return }
+    $('#pv-etat').textContent = ''
+    simule = true
+    calculer()
+  }
+
+  function curseurs() {
+    root.querySelectorAll('input[type=range]').forEach((r) => r.style.setProperty('--p', (100 * (r.value - r.min)) / (r.max - r.min) + '%'))
+    const horizon = +$('#pv-horizon').value
+    $('#pv-o-prix').textContent = euro(+$('#pv-prix').value)
+    $('#pv-o-horizon').textContent = horizon + (horizon > 1 ? ' ans' : ' an') + ' · ' + (+$('#pv-annee').value + horizon)
+  }
+
   function calculer() {
+    curseurs()
     const s = SECTEURS[sel.value]
+    if (!simule || !s) return
     const prix = +$('#pv-prix').value, annee = +$('#pv-annee').value
     const horizon = +$('#pv-horizon').value, vente = annee + horizon
-    root.querySelectorAll('input[type=range]').forEach((r) => r.style.setProperty('--p', (100 * (r.value - r.min)) / (r.max - r.min) + '%'))
-    $('#pv-o-prix').textContent = euro(prix)
-    $('#pv-o-horizon').textContent = horizon + (horizon > 1 ? ' ans' : ' an') + ' · ' + vente
 
     const sc = scenarios(s.eco), frais = fraisReels(prix)
     const res = sc.map((x) => {
@@ -332,8 +336,13 @@ export function mount(root, { prefill } = {}) {
   }
 
   function resilience() {
-    const lignes = Object.entries(SECTEURS).map(([c, s]) => ({ c, nom: s.nom, v: s.eco[4] / s.eco[0] - 1 })).sort((a, b) => b.v - a.v)
-    const L = 900, hLigne = 24, mg = 150, H = lignes.length * hLigne + 30
+    // Les 25 secteurs aux plus gros volumes de ventes, plus le secteur choisi.
+    const tous = Object.values(SECTEURS)
+    if (!tous.length) return
+    const retenus = tous.sort((a, b) => b.n - a.n).slice(0, 25)
+    if (SECTEURS[sel.value] && !retenus.includes(SECTEURS[sel.value])) retenus.push(SECTEURS[sel.value])
+    const lignes = retenus.map((s) => ({ c: s.code, nom: s.nom, v: s.eco[4] / s.eco[0] - 1 })).sort((a, b) => b.v - a.v)
+    const L = 900, hLigne = 24, mg = 230, H = lignes.length * hLigne + 30
     const min = Math.min(...lignes.map((l) => l.v)), max = Math.max(0, ...lignes.map((l) => l.v))
     const x = (v) => mg + ((L - mg - 60) * (v - min)) / (max - min || 1), zero = x(0)
     $('#pv-resilience').innerHTML = `<svg viewBox="0 0 ${L} ${H}" style="width:100%;height:auto" role="img" aria-label="Variation du prix au m² entre 2021 et 2025 par secteur">
@@ -347,7 +356,10 @@ export function mount(root, { prefill } = {}) {
     </svg>`
   }
 
-  root.querySelectorAll('input[type=range],select').forEach((e) => e.addEventListener('input', () => { calculer(); resilience() }))
+  // Après une première simulation, les réglages la mettent à jour en direct.
+  root.querySelectorAll('input[type=range],select').forEach((e) => e.addEventListener('input', calculer))
+  sel.addEventListener('input', resilience)
+  $('#pv-simuler').addEventListener('click', simuler)
   $('#pv-scen').addEventListener('click', (e) => {
     const b = e.target.closest('.carte-scen'); if (!b) return
     choixScen = +b.dataset.i; calculer()
@@ -358,7 +370,10 @@ export function mount(root, { prefill } = {}) {
     calculer()
   }))
 
-  calculer(); resilience()
+  // Rien n'est simulé à l'ouverture. Venir de l'onglet Estimation via
+  // « Simuler la plus-value » est une demande explicite : on simule ce bien.
+  curseurs()
+  chargerSecteurs().then(() => { if (!actif) return; resilience(); if (prefill?.prix) simuler() })
 
-  return () => {}
+  return () => { actif = false }
 }
