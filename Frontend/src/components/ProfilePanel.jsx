@@ -94,29 +94,31 @@ export default function ProfilePanel({ user, onLogout }) {
   const joinedDate = user?.created_at
     ? new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long' }).format(new Date(user.created_at))
     : null
+  const initiale = user?.email?.[0]?.toUpperCase() ?? '?'
 
   return (
     <div className="max-w-md space-y-6">
       {/* Infos compte */}
-      <div className="bg-white rounded-2xl border border-stone-100 shadow-[var(--shadow-card)] p-6 space-y-3">
-        <p className="text-xs font-semibold uppercase tracking-[0.1em] text-ink-muted">Mon compte</p>
-        <div className="flex justify-between items-baseline gap-2 py-2 border-b border-stone-100">
-          <span className="text-xs text-ink-muted">Email</span>
-          <span className="text-sm font-medium text-ink truncate max-w-[220px]">{user?.email}</span>
-        </div>
-        {joinedDate && (
-          <div className="flex justify-between items-baseline gap-2 py-2">
-            <span className="text-xs text-ink-muted">Membre depuis</span>
-            <span className="text-xs text-ink">{joinedDate}</span>
+      <div className="bg-white rounded-2xl border border-stone-100 shadow-[var(--shadow-card)] p-6 overflow-hidden relative">
+        <div className="h-1 w-full absolute inset-x-0 top-0 bg-[linear-gradient(90deg,var(--color-seine),var(--color-ambre),var(--color-vert))]" />
+        <div className="flex items-center gap-4 pt-1">
+          <div className="h-14 w-14 shrink-0 rounded-full grid place-items-center text-white text-xl font-semibold bg-[linear-gradient(135deg,var(--color-seine),var(--color-ambre))]">
+            {initiale}
           </div>
-        )}
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-ink truncate">{user?.email}</p>
+            {joinedDate && (
+              <p className="text-xs text-ink-muted mt-0.5">Membre depuis {joinedDate}</p>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Changer le mot de passe */}
       <div className="bg-white rounded-2xl border border-stone-100 shadow-[var(--shadow-card)] p-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.1em] text-ink-muted mb-5">
-          Changer le mot de passe
-        </p>
+        <h3 className="font-display text-xl text-ink mb-5">
+          Changer le <em>mot de passe</em>
+        </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <PwInput
             id="pw-current"
@@ -150,7 +152,7 @@ export default function ProfilePanel({ user, onLogout }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-seine text-white rounded-full py-2.5 text-sm font-medium hover:bg-seine/90 disabled:opacity-60 transition-colors"
+            className="w-full text-white rounded-full py-2.5 text-sm font-medium disabled:opacity-60 transition-opacity hover:opacity-90 bg-[linear-gradient(100deg,var(--color-seine),var(--color-ambre))]"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">
@@ -166,10 +168,10 @@ export default function ProfilePanel({ user, onLogout }) {
       </div>
 
       {/* Supprimer le compte */}
-      <div className="bg-white rounded-2xl border border-stone-100 shadow-[var(--shadow-card)] p-6">
-        <p className="text-xs font-semibold uppercase tracking-[0.1em] text-ink-muted mb-4">
-          Zone de danger
-        </p>
+      <div className="bg-white rounded-2xl border border-red-100 shadow-[var(--shadow-card)] p-6">
+        <h3 className="font-display text-xl text-ink mb-4">
+          Zone de <em>danger</em>
+        </h3>
         <p className="text-xs text-ink-muted mb-4">
           La suppression de votre compte est définitive. Toutes vos estimations seront effacées.
         </p>

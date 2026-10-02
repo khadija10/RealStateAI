@@ -98,6 +98,17 @@ export const html = `
   </div>
 </section>
 
+<h2 class="titre-section">Posez <em>vos questions</em></h2>
+<p class="sous">Agent connecté au même moteur déterministe : il appelle les calculs réels, il n'invente jamais de chiffre.</p>
+<section class="clair" style="display:flex;flex-direction:column;gap:14px">
+  <div id="fin-fil" style="display:flex;flex-direction:column;gap:10px;min-height:120px;max-height:360px;overflow-y:auto"></div>
+  <form id="fin-chat-form" style="display:flex;gap:8px">
+    <input type="text" id="fin-chat-input" placeholder="Ex : puis-je emprunter sur 20 ans avec mon profil ?"
+      style="flex:1;padding:12px 16px;border-radius:999px;border:1px solid var(--ligne);background:var(--fond);font:500 13.5px var(--sans);color:var(--encre);outline:none">
+    <button type="submit" class="bouton-accent" style="width:auto;padding:12px 26px;white-space:nowrap">Envoyer</button>
+  </form>
+</section>
+
 <h2 class="titre-section">Vos <em>pièces</em> justificatives</h2>
 <section class="pieces">
   <div class="pieces-tete"><h3 id="fin-titre-pieces">Dossier</h3><span id="fin-compte" style="font-size:12.5px;color:var(--gris)"></span></div>
@@ -428,5 +439,47 @@ export function mount(root, { apiBase = '', prefill } = {}) {
 
   calculer()
 
-  return () => { if (timer) clearTimeout(timer) }
+  // ================= AGENT CONVERSATIONNEL =================
+  // Branché sur le vrai moteur (POST /api/financing/agent/message) : chaque
+  // réponse vient d'un appel d'outil déterministe, jamais d'une invention.
+  const sessionId = 'sess-' + Math.random().toString(36).slice(2) + Date.now().toString(36)
+  function ajouterBulle(role, texte) {
+    const fil = $('#fin-fil')
+    const b = document.createElement('div')
+    b.className = 'bulle ' + (role === 'user' ? 'moi' : 'ia') + ' vue'
+    b.textContent = texte
+    fil.appendChild(b)
+    fil.scrollTop = fil.scrollHeight
+  }
+  ajouterBulle('ia', "Bonjour ! Posez-moi une question sur votre dossier — durée, apport, éligibilité…")
+
+  $('#fin-chat-form').addEventListener('submit', async (e) => {
+    e.preventDefault()
+    const input = $('#fin-chat-input')
+    const message = input.value.trim()
+    if (!message) return
+    ajouterBulle('user', message)
+    input.value = ''
+    input.disabled = true
+    try {
+      const rep = await fetch(apiBase + '/api/financing/agent/message', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_id: sessionId, message }),
+        signal: AbortSignal.timeout(20000),
+      })
+      if (!rep.ok) throw new Error()
+      const d = await rep.json()
+      ajouterBulle('ia', d.reply || "(réponse vide)")
+    } catch {
+      ajouterBulle('ia', "Désolé, l'agent conversationnel est momentanément indisponible.")
+    } finally {
+      input.disabled = false
+      input.focus()
+    }
+  })
+
+  return () => {
+    if (timer) clearTimeout(timer)
+    fetch(apiBase + '/api/financing/agent/' + sessionId, { method: 'DELETE' }).catch(() => {})
+  }
 }

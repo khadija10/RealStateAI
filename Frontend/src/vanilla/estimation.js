@@ -281,8 +281,17 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
 
     let r = null
     try {
+      // Jeton de connexion transmis si présent, pour que le backend
+      // rattache cette estimation à l'historique du compte (clé partagée
+      // avec src/api/client.js) plutôt qu'à une session anonyme.
+      let token = null
+      try { token = localStorage.getItem('reai_token') } catch { /* ignore */ }
       const rep = await fetch(API.BASE + API.ESTIMER, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
         body: JSON.stringify({
           area_m2: surface, rooms: pieces, property_type: type,
           commune: selecteur.options[selecteur.selectedIndex]?.textContent || undefined,
