@@ -261,6 +261,9 @@ class EstimationResponse(BaseModel):
     secteur: dict[str, Any] | None = None
     comparables_immeuble: list[dict[str, Any]] | None = None
     dpe_trouve: bool | None = None
+    dpe_source: str | None = None          # numero | adresse | saisi
+    dpe_date: str | None = None
+    dpe_appariement: str | None = None     # exacte | probable (DPE retrouvé à l'adresse)
     code_postal: str | None = None
 
 
@@ -1066,6 +1069,9 @@ def estimate(
                     normalized.classe_fiabilite = ml_result.get("classe_fiabilite")
                     normalized.comparables_immeuble = ml_result.get("comparables_immeuble") or []
                     normalized.dpe_trouve = ml_result.get("dpe_trouve")
+                    normalized.dpe_source = ml_result.get("dpe_source")
+                    normalized.dpe_date = ml_result.get("dpe_date")
+                    normalized.dpe_appariement = ml_result.get("dpe_appariement")
                     normalized.secteur = getattr(request.app.state, "secteurs", {}).get(
                         (str(ml_result.get("code_commune") or ""), _type_secteur(type_bien)))
                 if lm.get("mape"):

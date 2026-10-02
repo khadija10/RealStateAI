@@ -15,12 +15,9 @@ RealStateAI estime le prix des logements en Île-de-France (Paris et les 7 dépa
 - **Ou commune seule**, cherchable parmi les 1 279 communes du dataset. Sans adresse, l'estimation repose sur la médiane des ventes comparables de la commune.
 - **Type de bien** : appartement, maison, autre.
 - **Surface et nombre de pièces**, obligatoires, sans valeur par défaut.
-- **Panneau « Affiner l'estimation »**, facultatif :
-  - classe DPE de A à G ;
-  - année de construction ;
-  - **numéro de DPE** (13 caractères) : la classe, l'année et l'isolation sont retrouvées automatiquement dans la base de l'ADEME ;
-  - **numéro de lot** de copropriété : il permet de retrouver une vente précédente du même logement.
-- **Contrôles de saisie** avec des messages clairs : adresse ou commune manquante, commune absente de la liste, surface inférieure à 9 m², année ou numéro de DPE invalide. Le backend refuse aussi un ratio surface / pièces irréaliste et toute adresse hors Île-de-France.
+- **DPE retrouvé automatiquement** à partir de l'adresse et de la surface dans la base de l'ADEME : classe, isolation, chauffage, année. On applique la même règle d'appariement que le pipeline à l'entraînement, et rien n'est à saisir.
+- **Panneau « Affiner l'estimation »**, facultatif : classe DPE de A à G et année de construction, seulement pour corriger le DPE retrouvé.
+- **Contrôles de saisie** avec des messages clairs : adresse ou commune manquante, commune absente de la liste, surface inférieure à 9 m², année invalide. Le backend refuse aussi un ratio surface / pièces irréaliste et toute adresse hors Île-de-France.
 - **Rien n'est estimé automatiquement** : l'estimation part uniquement d'un clic sur « Estimer » ou sur une carte de secteur.
 - **Connexion demandée** avant d'estimer ; l'estimation reprend d'elle-même une fois connecté.
 
@@ -29,7 +26,7 @@ RealStateAI estime le prix des logements en Île-de-France (Paris et les 7 dépa
 - **Prix estimé**, prix au m² et **fourchette à 85 %**, calibrée pour contenir le prix réel 85 fois sur 100.
 - **Classe de fiabilité de la commune**, reprise du protocole d'évaluation : *fiable*, *indicative*, *secteur difficile* ou *peu de ventes de contrôle*. S'y ajoutent l'erreur moyenne locale et le nombre de ventes de contrôle.
 - **Ventes dans l'immeuble** : les 6 dernières ventes de la même parcelle, avec leur date, surface, pièces et prix, et le prix au m² ramené au marché du jour. C'est la preuve que l'agent peut montrer à un vendeur.
-- **Performance énergétique** : badge DPE, année de construction, origine du DPE (saisi ou retrouvé à l'ADEME), et part de passoires thermiques F et G dans le code postal.
+- **Performance énergétique** : badge DPE, année de construction, origine du DPE (retrouvé à l'adresse avec sa date, ou saisi), avertissement quand plusieurs logements de surface proche ont un DPE à cette adresse, et part de passoires thermiques F et G dans le code postal.
 - **Alertes** : adresse mal localisée, passoire thermique (décote et interdiction de location), notes du repli DVF, et invitation à saisir l'adresse quand l'estimation ne repose que sur la commune.
 - **Secteur** : médiane du prix au m², écart du bien au marché, position du bien entre le 1ᵉʳ et le 9ᵉ décile, nombre de ventes, courbe d'évolution 2021–2025.
 - **Plus-value projetée à 10 ans**, au rythme observé sur le secteur.

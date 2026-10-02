@@ -49,7 +49,7 @@ export const html = `
 
 <section class="affiner" aria-labelledby="rsai-affiner-titre">
   <div class="affiner-tete"><h3 id="rsai-affiner-titre">Affiner <em>l'estimation</em></h3>
-    <span>Facultatif — plus le bien est décrit, plus l'estimation est précise.</span></div>
+    <span>Facultatif</span></div>
   <div class="affiner-champs">
     <div class="champ"><span class="champ-lib">Classe DPE</span>
       <div class="dpe-choix" id="rsai-dpe" role="group" aria-label="Classe DPE">
@@ -57,14 +57,9 @@ export const html = `
       </div></div>
     <div class="champ"><label for="rsai-annee">Année de construction</label>
       <input id="rsai-annee" type="number" min="1800" max="2026" placeholder="ex. 1975"></div>
-    <div class="champ"><label for="rsai-num-dpe">Numéro de DPE</label>
-      <input id="rsai-num-dpe" type="text" maxlength="13" placeholder="13 caractères, sur le diagnostic" autocomplete="off"></div>
-    <div class="champ"><label for="rsai-lot">Numéro de lot</label>
-      <input id="rsai-lot" type="text" maxlength="20" placeholder="sur le titre de propriété" autocomplete="off"></div>
   </div>
-  <p class="aide">Avec le numéro de DPE, la classe énergétique, l'année de construction et l'isolation du bien
-    sont retrouvées automatiquement dans la base de l'ADEME. Le numéro de lot permet de retrouver
-    une vente précédente du même logement.</p>
+  <p class="aide">Inutile si vous ne les connaissez pas : le diagnostic énergétique du logement est retrouvé
+    automatiquement à son adresse dans la base de l'ADEME. Indiquez la classe seulement si elle diffère.</p>
 </section>
 
 <section class="manifeste">
@@ -394,14 +389,11 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
     const commune = selecteur.value.trim()
     const codePostal = $('#rsai-cp').value
     const annee = +$('#rsai-annee').value || null
-    const numeroDpe = $('#rsai-num-dpe').value.trim().toUpperCase()
-    const lot = $('#rsai-lot').value.trim()
     if (!adresse && !commune) return message("Indiquez l'adresse du bien ou choisissez sa commune.")
     if (!adresse && communes.length && !communes.includes(commune)) return message('Choisissez une commune dans la liste proposée.')
     if (!surface || surface < 9) return message('Indiquez la surface du bien (9 m² minimum).')
     if (!pieces) return message('Indiquez le nombre de pièces.')
     if (annee && (annee < 1800 || annee > 2026)) return message("L'année de construction doit être comprise entre 1800 et 2026.")
-    if (numeroDpe && !/^[0-9A-Z]{13}$/.test(numeroDpe)) return message('Le numéro de DPE compte 13 caractères (chiffres et lettres).')
 
     // Connexion demandée avant d'estimer, comme dans l'ancien frontend :
     // l'estimation reprend d'elle-même une fois connecté.
@@ -431,8 +423,6 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
           postal_code: codePostal || undefined,
           dpe_classe: dpeChoisi || undefined,
           annee_construction: annee || undefined,
-          numero_dpe: numeroDpe || undefined,
-          numero_lot: lot || undefined,
         }),
       })
       const d = await rep.json().catch(() => ({}))
@@ -468,7 +458,8 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
       classe: d.classe_fiabilite || null,
       comparables: d.comparables_immeuble || [],
       dpeClasse: d.dpe_classe || null, annee: d.annee_construction || null,
-      dpeTrouve: d.dpe_trouve, dpeZone: d.dpe_zone_fg_pct ?? null,
+      dpeTrouve: d.dpe_trouve, dpeSource: d.dpe_source || null, dpeDate: d.dpe_date || null,
+      dpeAppariement: d.dpe_appariement || null, dpeZone: d.dpe_zone_fg_pct ?? null,
       alerteGeo: d.geocoding_warning || null, codePostal: d.code_postal || null,
       notes: d.meta?.notes || [],
     }
@@ -556,9 +547,13 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
     const bloc = $('#rsai-bloc-dpe')
     if (!r.dpeClasse && r.dpeZone == null) { bloc.hidden = true; return }
     bloc.hidden = false
-    $('#rsai-dpe-source').textContent = r.dpeTrouve ? 'retrouvé par son numéro · ADEME' : r.dpeClasse ? 'saisi' : ''
+    const date = r.dpeDate ? new Date(r.dpeDate).toLocaleDateString('fr-FR') : null
+    $('#rsai-dpe-source').textContent = r.dpeSource === 'adresse' ? `retrouvé à l'adresse · ADEME${date ? ` · diagnostic du ${date}` : ''}`
+      : r.dpeSource === 'numero' ? 'retrouvé par son numéro · ADEME' : r.dpeClasse ? 'saisi' : ''
     $('#rsai-dpe-contenu').innerHTML =
       (r.dpeClasse ? `<p class="dpe-ligne"><span class="badge-dpe dpe-${r.dpeClasse}">DPE ${r.dpeClasse}</span>${r.annee ? ` construit en ${r.annee}` : ''}</p>` : '') +
+      (r.dpeSource === 'adresse' && r.dpeAppariement === 'probable'
+        ? `<p class="fiab-txt">Plusieurs logements de surface proche ont un DPE à cette adresse : si ce n'est pas la classe du bien, indiquez-la dans « Affiner l'estimation ».</p>` : '') +
       (r.dpeZone != null ? `<p class="fiab-txt"><b>${String(r.dpeZone).replace('.', ',')} %</b> de passoires thermiques (F et G) parmi les diagnostics du code postal.</p>` : '')
   }
 

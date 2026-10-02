@@ -106,9 +106,22 @@ def estimer_prix(
     # Contexte du bien : parcelle, immeuble, quartier, bâtiment, DPE
     id_parcelle = ctx.parcelle_de(geo["latitude"], geo["longitude"],
                                   code_commune=geo["code_commune"], numero=geo.get("numero"))
-    dpe = ctx.features_dpe(numero_dpe, surface_m2)
-    dpe_classe = dpe["dpe_classe"] or dpe_classe
-    annee_construction = dpe["annee_construction"] or annee_construction
+    # DPE : par son numéro s'il est fourni, sinon retrouvé à l'adresse (même
+    # règle d'appariement qu'à l'entraînement). Une classe saisie par
+    # l'utilisateur prime ; si elle contredit le DPE retrouvé, ce DPE est
+    # celui d'un autre logement et ses données techniques sont écartées.
+    if numero_dpe:
+        dpe, dpe_source = ctx.features_dpe(numero_dpe, surface_m2), "numero"
+    else:
+        dpe, dpe_source = ctx.chercher_dpe(geo.get("adresse_normalisee"), geo.get("code_postal"),
+                                           surface_m2, code_type_local), "adresse"
+    if not dpe["dpe_classe"]:
+        dpe_source = "saisi" if dpe_classe else None
+    elif dpe_classe and dpe_classe != dpe["dpe_classe"]:
+        dpe = {**dpe, "dpe_deperdition_enveloppe_m2": None, "dpe_type_chauffage": None}
+        dpe_source = "saisi"
+    dpe_classe = dpe_classe or dpe["dpe_classe"]
+    annee_construction = annee_construction or dpe["annee_construction"]
     immeuble = ctx.features_immeuble(
         id_parcelle, code_type_local, marche["mois_index"],
         marche["prix_m2_reference_12m"], surface_m2, lot=numero_lot)
@@ -157,7 +170,10 @@ def estimer_prix(
         "code_postal": geo.get("code_postal"),
         "zone_part_dpe_fg": zone_part_dpe_fg,
         "comparables_immeuble": immeuble["comparables_immeuble"],
-        "dpe_trouve": dpe["dpe_classe"] is not None,
+        "dpe_trouve": dpe_source in ("numero", "adresse"),
+        "dpe_source": dpe_source,
+        "dpe_date": dpe.get("dpe_date") if dpe_source in ("numero", "adresse") else None,
+        "dpe_appariement": dpe.get("dpe_appariement") if dpe_source == "adresse" else None,
         "dpe_classe": dpe_classe,
         "annee_construction": annee_construction,
     }

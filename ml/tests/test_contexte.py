@@ -136,6 +136,48 @@ class TestDpe:
         appel.assert_not_called()
 
 
+class TestDpeParAdresse:
+    ADRESSE = "54 Rue de Malte 75011 Paris"
+
+    def _dpe(self, surface, classe, date, adresse=None, type_batiment="appartement"):
+        return {"adresse_ban": adresse or self.ADRESSE, "surface_habitable_logement": surface,
+                "etiquette_dpe": classe, "type_batiment": type_batiment, "date_etablissement_dpe": date,
+                "deperditions_enveloppe": 400.0, "type_generateur_chauffage_principal": "Chaudière gaz",
+                "annee_construction": 1930}
+
+    def _chercher(self, resultats, surface=66.0, type_local="2"):
+        with patch.object(ctx, "_get_json", return_value={"results": resultats}):
+            return ctx.chercher_dpe(self.ADRESSE, "75011", surface, type_local)
+
+    def test_surface_la_plus_proche_d_abord(self):
+        # Écart relatif arrondi à 2 décimales, comme le pipeline : 66 vs 70 m² (6 %) l'emporte sur 66 vs 60 (9 %)
+        r = self._chercher([self._dpe(60.0, "C", "2024-01-01"), self._dpe(70.0, "D", "2021-11-27")])
+        assert r["dpe_classe"] == "D"
+        assert r["dpe_appariement"] == "probable"
+        assert r["dpe_deperdition_enveloppe_m2"] == round(400 / 66, 3)   # arrondi comme dans le pipeline
+
+    def test_a_ecart_egal_le_plus_recent(self):
+        # 66,8 et 66,4 m² : même écart arrondi (1 %) pour 66 m² → le diagnostic de 2022
+        r = self._chercher([self._dpe(66.4, "D", "2021-11-27"), self._dpe(66.8, "C", "2022-06-24")])
+        assert r["dpe_classe"] == "C"
+
+    def test_un_seul_diagnostic_compatible_exacte(self):
+        assert self._chercher([self._dpe(65.0, "B", "2023-01-01"), self._dpe(30.0, "G", "2023-01-01")])[
+            "dpe_appariement"] == "exacte"
+
+    def test_surface_hors_tolerance_ignoree(self):
+        assert self._chercher([self._dpe(80.0, "C", "2023-01-01")])["dpe_classe"] is None
+
+    def test_autre_adresse_ou_autre_type_ignores(self):
+        assert self._chercher([self._dpe(66.0, "C", "2023-01-01", adresse="56 Rue de Malte 75011 Paris"),
+                               self._dpe(66.0, "C", "2023-01-01", type_batiment="maison")])["dpe_classe"] is None
+
+    def test_sans_code_postal_pas_d_appel(self):
+        with patch.object(ctx, "_get_json") as appel:
+            assert ctx.chercher_dpe(self.ADRESSE, None, 66.0, "2")["dpe_classe"] is None
+        appel.assert_not_called()
+
+
 class TestParcelle:
     def test_parcelle_dvf_au_meme_numero_avant_l_api(self, gold):
         with patch.object(ctx, "_get_json") as api:
