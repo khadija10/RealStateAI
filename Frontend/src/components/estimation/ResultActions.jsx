@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { METHODES } from '../../api/normalize'
 import { useAuth } from '../../context/AuthContext'
@@ -12,15 +12,14 @@ import {
   Button,
   Card,
   IconArrowRight,
-  IconCheck,
-  IconChevronDown,
   IconHistory,
   IconMap,
+  IconMinus,
+  IconPlus,
   IconTrend,
   IconWallet,
   useToast,
 } from '../ui'
-import { DetailRow } from './visuals'
 
 function StepCard({ icon: Icon, title, description, onClick, to, cta }) {
   const Comp = to ? Link : 'button'
@@ -135,79 +134,146 @@ export function NextSteps({ r, values, lieu, description, at, stats, dep }) {
   )
 }
 
-/** Détail du calcul : réponse du serveur et métriques du modèle (/api/health). */
-export function TechnicalDetails({ r, values }) {
+/** Ligne « libellé — valeur » d'un panneau de méthodologie. */
+function Ligne({ label, children }) {
+  const [titre, precision] = Array.isArray(label) ? label : [label]
+  return (
+    <div className="flex items-baseline justify-between gap-3 py-1.5">
+      <dt className="min-w-0 text-[12px] leading-snug text-ink-muted">
+        {titre}
+        {precision && <span className="block text-[11px] text-ink-muted/80">{precision}</span>}
+      </dt>
+      <dd className="ds-num shrink-0 whitespace-nowrap text-right text-[12.5px] font-semibold leading-snug text-ink">{children}</dd>
+    </div>
+  )
+}
+
+/** Panneau teinté : surtitre, lignes de détail, note. */
+function Panneau({ titre, lignes, note }) {
+  if (!lignes.length && !note) return null
+  return (
+    <section className="flex flex-col rounded-[16px] bg-accent-soft/45 p-3.5 ring-1 ring-inset ring-accent/15 xl:p-4">
+      <h3 className="mb-1 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-soft">{titre}</h3>
+      {lignes.length > 0 && (
+        <dl className="divide-y divide-accent/15">
+          {lignes.map(([k, v]) => <Ligne key={String(k)} label={k}>{v}</Ligne>)}
+        </dl>
+      )}
+      {note && <p className="mt-2 border-t border-accent/15 pt-2 text-[11px] leading-relaxed text-ink-muted">{note}</p>}
+    </section>
+  )
+}
+
+/**
+ * « Détails du calcul » : bandeau fermé par défaut, ouvert au clic, puis
+ * quatre panneaux. Valeurs tirées de la
+ * réponse d'estimation, de /api/market/map (commune) et de /api/health (modèle).
+ */
+export function TechnicalDetails({ r, values, stats }) {
   const [open, setOpen] = useState(false)
+  const carteRef = useRef(null)
+
+  function basculer() {
+    const ouvrir = !open
+    setOpen(ouvrir)
+    if (ouvrir) requestAnimationFrame(() => carteRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }))
+  }
   const { health } = useHealth()
-  const m = health?.model
+  const m = health?.model?.loaded ? health.model : null
+  const dvf = r.method === 'dvf'
 
   const calcul = [
-    ['Méthode', `${METHODES[r.method].label} — ${METHODES[r.method].detail}`],
-    r.address && ['Adresse normalisée (BAN)', r.address],
-    r.codeCommune && ['Code commune (INSEE)', r.codeCommune],
-    ['Surface retenue', `${values.surface} m²`],
     r.pricePerM2 != null && ['Prix au m² estimé', euroM2(r.pricePerM2)],
-    r.low != null && ['Fourchette', `${euro(r.low)} – ${euro(r.high)}`],
-    r.meta.nTransactions && ['Ventes comparables', nb(r.meta.nTransactions)],
-    r.meta.dispersion != null && r.method === 'dvf' && ['Dispersion des prix', pct(r.meta.dispersion)],
-    r.dpeClasse && ['Classe DPE transmise', r.dpeClasse],
-    r.anneeConstruction && ['Année de construction transmise', String(r.anneeConstruction)],
-    r.dpeZonePct != null && ['Logements F/G dans le code postal', pctPoints(r.dpeZonePct)],
+    ['Surface retenue', `${values.surface} m²`],
+    values.rooms && ['Pièces', values.rooms],
+    stats?.prix_m2_median != null && [['Médiane de la commune', stats.nom_commune], euroM2(stats.prix_m2_median)],
+    r.price != null && ['Valeur estimée', euro(r.price)],
   ].filter(Boolean)
 
-  const modele = m?.loaded
-    ? [
-        m.mape != null && ['Erreur moyenne (MAPE)', pctPoints(m.mape)],
-        m.r2 != null && ['R² (jeu de test)', m.r2.toLocaleString('fr-FR', { maximumFractionDigits: 3 })],
-        m.nFeatures != null && ['Variables', String(m.nFeatures)],
-        m.nTrain != null && ['Ventes d’entraînement', nb(m.nTrain)],
-        m.nTest != null && ['Ventes de test', nb(m.nTest)],
-        m.trainedAt && ['Entraîné le', dateLongue(m.trainedAt)],
-      ].filter(Boolean)
-    : []
+  const modele = [
+    ['Méthode', r.method === 'ml' ? 'LightGBM' : METHODES[r.method].label],
+    m?.nFeatures != null && ['Variables', nb(m.nFeatures)],
+    m?.trainedAt && ['Entraîné le', dateLongue(m.trainedAt)],
+    m?.nTrain != null && ['Ventes d’entraînement', nb(m.nTrain)],
+    m?.nTransactions != null && ['Ventes analysées', nb(m.nTransactions)],
+  ].filter(Boolean)
+
+  const erreur = [
+    r.localMape != null && [['Dans cette commune', r.localMapeN ? `${nb(r.localMapeN)} ventes de contrôle` : null], pctPoints(r.localMape)],
+    m?.mape != null && ['En Île-de-France', pctPoints(m.mape)],
+    m?.r2 != null && ['R² (jeu de test)', m.r2.toLocaleString('fr-FR', { maximumFractionDigits: 3 })],
+    m?.nTest != null && ['Ventes de contrôle', nb(m.nTest)],
+    r.confidenceLabel && r.rangeBasis !== 'heuristique' && ['Fourchette', `à ${r.confidenceLabel.replace('%', ' %')}`],
+    r.reliability != null && ['Indice de fiabilité', `${Math.round(r.reliability * 100)} / 100`],
+  ].filter(Boolean)
+
+  const donnees = [
+    ['Méthode retenue', METHODES[r.method].label],
+    dvf && r.meta.scope && ['Périmètre', r.meta.scopeValue ? `${r.meta.scope} · ${r.meta.scopeValue}` : r.meta.scope],
+    dvf && r.meta.nTransactions && ['Ventes comparables', nb(r.meta.nTransactions)],
+    dvf && r.meta.dispersion != null && ['Dispersion des prix', pct(r.meta.dispersion)],
+    dvf && r.meta.surfaceTolerance != null && ['Tolérance de surface', `± ${pct(r.meta.surfaceTolerance, { digits: 0 })}`],
+    r.address && [['Adresse normalisée', r.address], 'BAN'],
+    r.codeCommune && ['Code commune', r.codeCommune],
+    (r.dpeClasse || values.dpe) && ['Classe DPE transmise', r.dpeClasse ?? values.dpe],
+    (r.anneeConstruction || values.annee) && ['Année transmise', String(r.anneeConstruction ?? values.annee)],
+    r.dpeZonePct != null && ['Logements F/G (code postal)', pctPoints(r.dpeZonePct)],
+  ].filter(Boolean)
 
   return (
-    <Card padding="none">
-      <button
-        type="button"
-        aria-expanded={open}
-        aria-controls="detail-calcul"
-        onClick={() => setOpen((o) => !o)}
-        className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left"
-      >
-        <span>
-          <span className="block font-medium text-ink">Détail du calcul</span>
-          <span className="block text-sm text-ink-muted">Données renvoyées par le serveur et performances du modèle</span>
-        </span>
-        <IconChevronDown size={18} className={cx('shrink-0 text-ink-muted transition-transform duration-200', open && 'rotate-180')} />
-      </button>
-      <div id="detail-calcul" hidden={!open} className="border-t border-line px-6 pb-6 pt-2">
-        <div className="grid gap-x-10 md:grid-cols-2">
-          <div>
-            <p className="ds-eyebrow mb-1 mt-4">Cette estimation</p>
-            <dl className="divide-y divide-line">
-              {calcul.map(([k, v]) => <DetailRow key={k} label={k}>{v}</DetailRow>)}
-            </dl>
-          </div>
-          {modele.length > 0 && (
-            <div>
-              <p className="ds-eyebrow mb-1 mt-4">Modèle de prédiction</p>
-              <dl className="divide-y divide-line">
-                {modele.map(([k, v]) => <DetailRow key={k} label={k}>{v}</DetailRow>)}
-              </dl>
-            </div>
-          )}
-        </div>
-        {r.meta.notes.length > 0 && (
-          <div className="mt-5">
-            <p className="ds-eyebrow mb-2">Remarques du serveur</p>
-            <ul className="flex flex-col gap-1.5 text-sm text-ink-soft">
-              {r.meta.notes.map((n) => (
-                <li key={n} className="flex gap-2"><IconCheck size={15} className="mt-0.5 shrink-0 text-ink-muted" />{n}</li>
-              ))}
-            </ul>
-          </div>
-        )}
+    <Card ref={carteRef} padding="none" className="scroll-my-4 overflow-hidden rounded-[22px]">
+      <h2>
+        <button
+          type="button"
+          aria-expanded={open}
+          aria-controls="detail-calcul"
+          onClick={basculer}
+          className="group flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition-colors hover:bg-surface-2/70 sm:px-6"
+        >
+          <span className="min-w-0">
+            <span className="block text-[11.5px] font-semibold uppercase tracking-[0.14em] text-ink-soft">Détails du calcul</span>
+            <span className="mt-0.5 block text-[13px] text-ink-muted">
+              {open ? 'Calcul, modèle, mesure de l’erreur et données utilisées' : 'Cliquez pour voir le calcul, le modèle et la mesure de l’erreur'}
+            </span>
+          </span>
+          <span
+            aria-hidden="true"
+            className={cx(
+              'grid h-8 w-8 shrink-0 place-items-center rounded-full ring-1 ring-inset transition-colors',
+              open ? 'text-ink-muted ring-line group-hover:text-ink' : 'bg-brand text-on-brand ring-transparent',
+            )}
+          >
+            {open ? <IconMinus size={14} strokeWidth="2" /> : <IconPlus size={14} strokeWidth="2" />}
+          </span>
+        </button>
+      </h2>
+      <div id="detail-calcul" hidden={!open} className="grid gap-2.5 px-4 pb-4 animate-fade-in sm:grid-cols-2 sm:px-5 sm:pb-5 lg:grid-cols-4">
+        <Panneau
+          titre="Le calcul"
+          lignes={calcul}
+          note={r.low != null && r.high != null ? `Fourchette : ${euro(r.low)} – ${euro(r.high)}.` : null}
+        />
+        <Panneau
+          titre="Le modèle"
+          lignes={modele}
+          note={
+            r.method === 'ml'
+              ? 'Gradient boosting entraîné sur les ventes notariées DVF d’Île-de-France ; l’adresse est géolocalisée par la Base Adresse Nationale.'
+              : r.method === 'dvf'
+                ? 'Médiane des ventes DVF comparables ; le modèle ML n’a pas été utilisé pour ce bien.'
+                : 'Aucune donnée exploitable : heuristique de démonstration, sans valeur d’estimation.'
+          }
+        />
+        <Panneau
+          titre="La mesure de l’erreur"
+          lignes={erreur}
+          note={m ? 'Mesurée sur des ventes que le modèle n’a jamais vues pendant son entraînement.' : null}
+        />
+        <Panneau
+          titre="Données de l’estimation"
+          lignes={donnees}
+          note={r.meta.notes.length ? `Serveur : ${r.meta.notes.join(' · ')}` : null}
+        />
       </div>
     </Card>
   )

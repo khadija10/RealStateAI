@@ -64,6 +64,9 @@ export const IconArrowRight = (p) => (
 export const IconCheck = (p) => (
   <Icon {...p}><path d="M5 12.5l4.5 4.5L19 7.5" /></Icon>
 )
+export const IconMinus = (p) => (
+  <Icon {...p}><path d="M5 12h14" /></Icon>
+)
 export const IconPlus = (p) => (
   <Icon {...p}><path d="M12 5v14M5 12h14" /></Icon>
 )
