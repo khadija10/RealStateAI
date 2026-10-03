@@ -117,14 +117,7 @@ export default function App() {
         onLogout={handleLogout}
         darkMode={darkMode}
         onToggleDark={() => setDarkMode((d) => !d)}
-      />
-      {showAuthModal && (
-        <AuthModal onSuccess={handleAuthSuccess} onClose={() => { setShowAuthModal(false); actionApresConnexion.current = null }} />
-      )}
-
-      {/* Barre de navigation onglets */}
-      <nav className="border-b border-stone-100 bg-white sticky top-0 z-20">
-        <div className="w-full px-4 sm:px-6 lg:px-10 py-3">
+        navigation={
           <div className="flex gap-1 overflow-x-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none] bg-[linear-gradient(100deg,var(--color-stone-50),var(--color-limestone-light))] rounded-full p-1 w-fit max-w-full">
             {TABS.map((tab) => (
               <button
@@ -134,7 +127,7 @@ export default function App() {
                   ouvrirOnglet(tab.id)
                   if (tab.id === 'historique') setHistoryKey((k) => k + 1)
                 }}
-                className={`px-3.5 sm:px-5 py-2 text-sm font-medium rounded-full shrink-0 transition-colors ${
+                className={`px-3.5 sm:px-4 2xl:px-5 py-2 text-sm font-medium rounded-full shrink-0 transition-colors ${
                   activeTab === tab.id
                     ? 'text-white bg-[linear-gradient(100deg,var(--color-seine),var(--color-ambre))] shadow-sm'
                     : 'text-ink-muted hover:text-ink'
@@ -147,8 +140,11 @@ export default function App() {
               </button>
             ))}
           </div>
-        </div>
-      </nav>
+        }
+      />
+      {showAuthModal && (
+        <AuthModal onSuccess={handleAuthSuccess} onClose={() => { setShowAuthModal(false); actionApresConnexion.current = null }} />
+      )}
 
       <main className="flex-1 w-full">
         {/* ONGLET ESTIMATION — reprise de l'artefact Claude Design, rebranchée sur le backend */}
@@ -167,6 +163,11 @@ export default function App() {
                 onEstime: () => setEstimationFaite(true),
                 // Connexion demandée avant d'estimer, comme dans l'ancien frontend
                 demanderConnexion: (reprendre) => { actionApresConnexion.current = reprendre; setShowAuthModal(true) },
+                onCarte: () => { ouvrirOnglet('carte'); window.scrollTo({ top: 0 }) },
+                onHistorique: () => {
+                  if (!getToken()) { actionApresConnexion.current = () => { ouvrirOnglet('historique'); setHistoryKey((k) => k + 1) }; setShowAuthModal(true); return }
+                  ouvrirOnglet('historique'); setHistoryKey((k) => k + 1); window.scrollTo({ top: 0 })
+                },
                 relance,
               }}
             />
@@ -255,7 +256,10 @@ export default function App() {
 
       {/* Les pages Estimation, Financement et Plus-value ont leur propre pied de
           page (sources, références légales) : pas de second pied de page. */}
-      {!['estimation', 'financement', 'plusvalue'].includes(activeTab) && <Footer />}
+      <Footer onNavigate={(id) => {
+        if (TABS.find((tab) => tab.id === id)?.protected && !user) { setShowAuthModal(true); return }
+        ouvrirOnglet(id); window.scrollTo({ top: 0 })
+      }} />
     </div>
   )
 }

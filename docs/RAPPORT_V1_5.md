@@ -263,6 +263,7 @@ Exemple au 54 rue de Malte, 75011, sur 66 m² : avec le DPE retrouvé à l'adres
 - **Carte et référence du marché** : filtres « Appartements | Maisons » et « Tout le marché | Ancien | Neuf (sur plan) » ; échelle de couleur d'une seule teinte (sable → brun), lisible par les daltoniens ; moyenne glissante sur 3 mois.
 - **Système de design** : titres de page uniformes, une seule largeur de colonne, badges à trois sens fixes (information, statut, alerte), cases à cocher pour les options indépendantes et boutons radio pour les choix exclusifs, focus clavier visible, contrastes contrôlés (textes secondaires ≥ 6:1, bouton d'action 4,66:1 pour un seuil de 4,5:1).
 - **Navigation** : Historique et Profil dans l'espace du compte, en haut à droite ; résultat de l'estimation placé avant le bloc de présentation ; suggestions d'adresse limitées à l'Île-de-France.
+- **Mise en page du résultat inspirée de la v1.4** : grille de cartes (valeur estimée ⅔ et fiabilité ⅓, position et évolution côte à côte), petits libellés en capitales au-dessus de chaque bloc, date de calcul, bloc « Et maintenant ? » en quatre cartes (financer, revendre, situer sur la carte, retrouver ses estimations) ; en-tête sur une seule ligne avec les onglets ; pied de page en colonnes (outils, sources) commun à tous les onglets. Le bandeau illustré de la v1.5 est conservé.
 
 ---
 
@@ -367,6 +368,8 @@ Comparaison entre l'effet du type de bien dans le modèle (même adresse, 90 m²
 Corrigé : contrôles Primo-accédant / VEFA (cases indépendantes), montants saisissables, listes avec chevron, suppressions protégées et éloignées, résultat remonté, navigation compte, titres uniformes, badges à sens fixe, graphiques sur une même grammaire (grille, axe gradué), carte monochrome, sélection « Comparer » explicite dans l'historique, focus clavier, contrastes vérifiés.
 
 Déjà réglé avant la relecture : largeurs de conteneur, couleurs de la comparaison, historique regroupé par bien.
+
+Comparée à l'ancienne interface v1.4, la page d'estimation lui empruntait moins bien sa hiérarchie : la v1.5 en reprend la grille de cartes, les libellés de rubrique, le bloc « Et maintenant ? », l'en-tête sur une ligne et le pied de page, en gardant son bandeau illustré, ses graphiques et ses chiffres.
 
 **Non retenu :** les chiffres en italique à empattement, conservés par choix d'identité visuelle ; le champ unique « adresse ou commune », jugé trop risqué avant la soutenance.
 

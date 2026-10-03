@@ -61,7 +61,7 @@ export const html = `
   </div>
   <p class="aide">Inutile si vous ne les connaissez pas : le diagnostic énergétique du logement est retrouvé
     automatiquement à son adresse dans la base de l'ADEME. Indiquez la classe seulement si elle diffère.</p>
-  <button type="button" class="estimer" id="rsai-estimer-affine">Estimer avec ces précisions</button>
+  <button type="button" class="estimer secondaire" id="rsai-estimer-affine">Estimer avec ces précisions</button>
 </details>
 
 
@@ -69,8 +69,9 @@ export const html = `
 <p class="sous" id="rsai-attente">Renseignez l'adresse du bien (ou son secteur), sa surface et son nombre
   de pièces, puis cliquez sur « Estimer ».</p>
 <section id="rsai-bloc-resultat" hidden>
-  <div class="clair clair-grid">
-    <div class="bloc bloc-resume">
+  <div class="res-grille">
+    <article class="res-carte res-prix bloc-resume">
+      <p class="surtitre">Valeur estimée</p>
       <div class="lib" id="rsai-lib-secteur">Estimation</div>
       <div class="valeur" id="rsai-valeur">—</div>
       <div class="fourchette" id="rsai-fourchette"></div>
@@ -82,48 +83,66 @@ export const html = `
         <div class="mesure" data-secteur><b id="rsai-med">—</b><span>Médiane du secteur</span></div>
         <div class="mesure" data-secteur><b id="rsai-ecart">—</b><span id="rsai-ecart-lib">par rapport à la médiane</span></div>
       </div>
+      <p class="horodatage" id="rsai-calcule"></p>
+    </article>
+    <div class="res-colonne">
+      <article class="res-carte">
+        <div class="bloc-tete"><p class="surtitre">Fiabilité</p><span id="rsai-src-modele"></span></div>
+        <div class="fiab">
+          <div id="rsai-anneau"></div>
+          <div class="fiab-txt"><p class="classe-fiab" id="rsai-classe-fiab"></p><div id="rsai-fiab-txt"></div></div>
+        </div>
+      </article>
+      <article class="res-carte" id="rsai-bloc-dpe" hidden>
+        <div class="bloc-tete"><p class="surtitre">Performance énergétique</p><span id="rsai-dpe-source"></span></div>
+        <div id="rsai-dpe-contenu"></div>
+      </article>
     </div>
-    <div class="bloc">
-      <div class="bloc-tete"><h3>Fiabilité <em>de l'estimation</em></h3><span id="rsai-src-modele"></span></div>
-      <div class="fiab">
-        <div id="rsai-anneau"></div>
-        <div class="fiab-txt"><p class="classe-fiab" id="rsai-classe-fiab"></p><div id="rsai-fiab-txt"></div></div>
-      </div>
-    </div>
-    <div class="bloc" id="rsai-bloc-dpe" hidden>
-      <div class="bloc-tete"><h3>Performance <em>énergétique</em></h3><span id="rsai-dpe-source"></span></div>
-      <div id="rsai-dpe-contenu"></div>
-    </div>
-    <div class="bloc" data-secteur>
-      <div class="bloc-tete"><h3>Position <em>dans le secteur</em></h3><span id="rsai-volume"></span></div>
+    <article class="res-carte res-moitie" data-secteur>
+      <div class="bloc-tete"><p class="surtitre">Position dans le secteur</p><span id="rsai-volume"></span></div>
       <div class="reglette"><i id="rsai-curseur" style="left:50%"></i></div>
       <div class="bornes"><span id="rsai-bas"></span><span id="rsai-haut-d"></span></div>
-    </div>
-    <div class="bloc" data-secteur>
-      <div class="bloc-tete"><h3>Évolution <em>depuis 2021</em></h3><span id="rsai-tendance"></span></div>
+      <p class="position-txt" id="rsai-position-txt"></p>
+    </article>
+    <article class="res-carte res-moitie" data-secteur>
+      <div class="bloc-tete"><p class="surtitre">Évolution depuis 2021</p><span id="rsai-tendance"></span></div>
       <div id="rsai-courbe"></div>
-    </div>
-    <div class="bloc bloc-large" id="rsai-bloc-comparables" hidden>
-      <div class="bloc-tete"><h3>Ventes <em>dans l'immeuble</em></h3><span>ventes notariées · prix ramenés au marché actuel</span></div>
+    </article>
+    <article class="res-carte res-large" id="rsai-bloc-comparables" hidden>
+      <div class="bloc-tete"><p class="surtitre">Ventes dans l'immeuble</p><span>ventes notariées · prix ramenés au marché actuel</span></div>
       <table class="comparables"><thead><tr><th>Date</th><th>Surface</th><th>Pièces</th><th>Prix</th><th>€/m² à la vente</th><th id="rsai-th-actuel">€/m² au marché actuel</th></tr></thead>
         <tbody id="rsai-comparables"></tbody></table>
       <p class="fiab-txt" id="rsai-immeuble-ref"></p>
-    </div>
-    <div class="bloc">
+    </article>
+    <article class="res-carte res-large" data-secteur>
+      <div class="bloc-tete"><p class="surtitre">Valeur dans 10 ans</p><span>trois scénarios de marché</span></div>
+      <p class="fiab-txt" id="rsai-pv-resume"></p>
+    </article>
+    <article class="res-carte res-large">
       <details class="methodo">
-        <summary><h3>Méthodologie <em>et détail du calcul</em></h3></summary>
+        <summary><p class="surtitre">Méthodologie et détail du calcul</p></summary>
         <div class="methodo-grille" id="rsai-methodo"></div>
       </details>
-    </div>
-    <div class="bloc">
-      <div class="bloc-tete"><h3>Valeur <em>dans 10 ans</em></h3><span>trois scénarios de marché</span></div>
-      <p class="fiab-txt" id="rsai-pv-resume"></p>
-      <div class="boutons-action">
-        <button type="button" class="bouton-accent" id="rsai-pv-voir">Simuler la plus-value →</button>
-        <button type="button" class="bouton-accent" id="rsai-fin-voir">Simuler le financement →</button>
-        <button type="button" class="bouton-neutre" id="rsai-pdf">Exporter PDF</button>
-        <button type="button" class="bouton-neutre" id="rsai-partager">Partager</button>
+    </article>
+  </div>
+
+  <div class="ensuite">
+    <div class="ensuite-tete">
+      <h3>Et <em>maintenant</em> ?</h3>
+      <div class="ensuite-actions">
+        <button type="button" class="bouton-neutre petit" id="rsai-pdf">Exporter l'avis de valeur</button>
+        <button type="button" class="bouton-neutre petit" id="rsai-partager">Copier le lien</button>
       </div>
+    </div>
+    <div class="ensuite-grille">
+      <button type="button" class="ensuite-carte" id="rsai-fin-voir"><span class="ensuite-icone" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4"/></svg></span>
+        <b>Financer ce bien</b><span>Mensualité, normes des banques, acheter ou louer.</span><em>Simuler le financement →</em></button>
+      <button type="button" class="ensuite-carte" id="rsai-pv-voir"><span class="ensuite-icone" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 17l5-5 4 3 7-8"/><path d="M15 7h5v5"/></svg></span>
+        <b>Anticiper la revente</b><span>Trois scénarios de marché et la fiscalité 2026.</span><em>Simuler la plus-value →</em></button>
+      <button type="button" class="ensuite-carte" id="rsai-carte-voir"><span class="ensuite-icone" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4L3 6v14l6-2 6 2 6-2V4l-6 2-6-2z"/><path d="M9 4v14M15 6v14"/></svg></span>
+        <b>Situer sur la carte</b><span>Comparer avec les prix des communes voisines.</span><em>Voir la carte des prix →</em></button>
+      <button type="button" class="ensuite-carte" id="rsai-histo-voir"><span class="ensuite-icone" aria-hidden="true"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"/><path d="M12 8v4l3 2"/></svg></span>
+        <b>Retrouver vos estimations</b><span>Chaque bien, son évolution et ses simulations.</span><em>Ouvrir l'historique →</em></button>
     </div>
   </div>
 </section>
@@ -320,7 +339,7 @@ function construireLienPartage(bien) {
   return `${window.location.origin}${window.location.pathname}?${p.toString()}`
 }
 
-export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime, demanderConnexion, relance } = {}) {
+export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime, demanderConnexion, relance, onCarte, onHistorique } = {}) {
   const API = {
     BASE: apiBase,
     COMMUNES: '/api/metadata/communes',
@@ -570,9 +589,10 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
     $('#rsai-bloc-resultat').hidden = false
     const avecSecteur = !!(s && s.eco?.length >= 2)
     $$('[data-secteur]').forEach((el) => { el.hidden = !avecSecteur })
-    $('#rsai-pv-resume').hidden = !avecSecteur
     $('#rsai-lib-secteur').textContent = (r.adresse || adresse || s?.nom || '') + ' · ' + surface + ' m² · ' + pieces + (pieces > 1 ? ' pièces' : ' pièce')
     $('#rsai-valeur').textContent = euro(rond(r.valeur))
+    $('#rsai-calcule').textContent = (r.enregistreLe ? 'Estimation enregistrée le ' : 'Calculée le ') +
+      new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long', timeStyle: 'short' }).format(r.enregistreLe ? new Date(r.enregistreLe) : new Date())
     $('#rsai-fourchette').innerHTML = `Entre <b>${euro(rond(r.basse))}</b> et <b>${euro(rond(r.haute))}</b>` +
       `<small>${r.modele === 'ml' ? `Le prix de vente réel tombe dans cette fourchette ${(r.confiance || '85 %').replace(' %', '')} fois sur 100.` : 'Fourchette des ventes comparables de la commune.'}` +
       `${modelInfo?.anneeMax ? ` Marché observé jusqu'à fin ${modelInfo.anneeMax} (dernière publication des ventes notariées).` : ''}</small>`
@@ -697,6 +717,10 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
     $('#rsai-curseur').style.left = pos + '%'
     $('#rsai-bas').textContent = '10 % des ventes sous ' + nb(s.p10) + ' €/m²'
     $('#rsai-haut-d').textContent = '10 % au-dessus de ' + nb(s.p90) + ' €/m²'
+    // Rang approximatif entre le 1er et le 9e décile (interpolation linéaire)
+    const rang = Math.round(Math.min(97, Math.max(3, 10 + (80 * (r.prix_m2 - s.p10)) / (s.p90 - s.p10))))
+    $('#rsai-position-txt').innerHTML = `À <b>${nb(r.prix_m2)} €/m²</b>, ce bien est plus cher qu'environ <b>${rang} %</b> des ventes du secteur en ${s.annee}` +
+      ` (médiane : ${nb(s.med)} €/m², ${nb(s.n)} ventes analysées depuis 2021).`
 
     const dernier = s.eco.length - 1
     const v = 100 * (s.eco[dernier] / s.eco[0] - 1)
@@ -763,7 +787,7 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
   // axe gradué, libellés en sans-serif). L'échelle couvre au moins ±15 % autour
   // de la moyenne : une baisse de 10 % ne doit pas ressembler à un effondrement.
   function courbe(val, annees) {
-    const L = 900, H = 260, mg = 60, md = 24, mh = 30, mb = 34
+    const L = 600, H = 280, mg = 52, md = 18, mh = 30, mb = 34
     const centre = (Math.min(...val) + Math.max(...val)) / 2
     const demi = Math.max(((Math.max(...val) - Math.min(...val)) / 2) * 1.2, centre * 0.15)
     const min = centre - demi, max = centre + demi
@@ -789,6 +813,8 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
     if (dernierBien && onFinancement) onFinancement(dernierBien)
   })
   $('#rsai-pdf').addEventListener('click', () => exporterPDF(dernierBien, modelInfo))
+  $('#rsai-carte-voir').addEventListener('click', () => onCarte?.())
+  $('#rsai-histo-voir').addEventListener('click', () => onHistorique?.())
   $('#rsai-partager').addEventListener('click', () => {
     if (!dernierBien) return
     const bouton = $('#rsai-partager')

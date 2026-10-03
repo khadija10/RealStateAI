@@ -465,3 +465,56 @@
 .rsai-vanilla .ach-tuile span{display:block;margin-top:4px;font-size:13px;color:var(--gris)}
 .rsai-vanilla ul.aides{margin:0 0 10px;padding-left:20px;display:grid;gap:8px;font-size:14px;line-height:1.5}
 .rsai-vanilla .fiab-txt a{color:var(--action);text-decoration:underline}
+
+/* ==========================================================================
+   Résultat de l'estimation : grille de cartes (hiérarchie inspirée de la v1.4)
+   ========================================================================== */
+.rsai-vanilla .res-grille{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:16px;align-items:start}
+.rsai-vanilla .res-carte{background:var(--blanc);border:1px solid var(--ligne);border-radius:20px;padding:22px 24px;min-width:0}
+.rsai-vanilla .res-prix{grid-column:span 4}
+.rsai-vanilla .res-colonne{grid-column:span 2;display:flex;flex-direction:column;gap:16px}
+.rsai-vanilla .res-moitie{grid-column:span 3;align-self:stretch}
+.rsai-vanilla .res-large{grid-column:1/-1}
+@media (max-width:900px){
+  .rsai-vanilla .res-prix,.rsai-vanilla .res-colonne,.rsai-vanilla .res-moitie{grid-column:1/-1}
+}
+/* Petit libellé en capitales au-dessus de chaque bloc : l'œil sait où il est */
+.rsai-vanilla .surtitre{margin:0;font:600 12.5px var(--sans);letter-spacing:.09em;text-transform:uppercase;color:var(--gris)}
+.rsai-vanilla .res-carte .bloc-tete{align-items:center;margin-bottom:16px}
+.rsai-vanilla .res-prix .surtitre{text-align:left;margin-bottom:10px}
+.rsai-vanilla .res-prix .valeur{margin-top:6px}
+.rsai-vanilla .horodatage{margin:16px 0 0;font-size:13px;color:var(--gris)}
+.rsai-vanilla .res-colonne .fiab{gap:16px}
+.rsai-vanilla .res-carte details.methodo summary::after{font-size:20px}
+/* Résumé d'une demi-carte : réglette et bornes sur toute la largeur */
+.rsai-vanilla .res-moitie .bornes{font-size:13px}
+
+/* « Et maintenant ? » : les suites du parcours, expliquées en une phrase */
+.rsai-vanilla .ensuite{margin-top:28px}
+.rsai-vanilla .ensuite-tete{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}
+.rsai-vanilla .ensuite-tete h3{margin:0;font-weight:400;font-size:26px;letter-spacing:-.01em}
+.rsai-vanilla .ensuite-actions{display:flex;gap:8px;flex-wrap:wrap}
+.rsai-vanilla .bouton-neutre.petit{width:auto;padding:9px 16px;font-size:13px}
+.rsai-vanilla .ensuite-grille{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px}
+@media (max-width:1000px){.rsai-vanilla .ensuite-grille{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media (max-width:560px){.rsai-vanilla .ensuite-grille{grid-template-columns:1fr}}
+.rsai-vanilla .ensuite-carte{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;cursor:pointer;
+  background:var(--blanc);border:1px solid var(--ligne);border-radius:18px;padding:18px;font:inherit;color:var(--encre);
+  transition:border-color .15s,transform .15s,box-shadow .15s}
+.rsai-vanilla .ensuite-carte:hover{border-color:var(--action);transform:translateY(-2px);box-shadow:0 8px 22px rgba(20,19,17,.07)}
+.rsai-vanilla .ensuite-icone{display:grid;place-items:center;width:36px;height:36px;border-radius:10px;background:var(--fond);color:var(--encre);margin-bottom:6px}
+.rsai-vanilla .ensuite-carte b{font-size:15px;font-weight:600}
+.rsai-vanilla .ensuite-carte span{font-size:13px;color:var(--gris);line-height:1.45;flex:1}
+.rsai-vanilla .ensuite-carte em{font-style:normal;font-size:13px;font-weight:600;color:var(--action);margin-top:8px}
+
+/* Bouton secondaire : un seul bouton principal par écran */
+.rsai-vanilla .estimer.secondaire{background:transparent;color:var(--action);border:1.5px solid var(--action)}
+.rsai-vanilla .estimer.secondaire:hover{background:var(--action);color:var(--action-texte)}
+/* Mentions propres à chaque page (sources, caractère indicatif) : une note discrète,
+   le pied de page commun de l'application prend le relais */
+.rsai-vanilla .bas{margin-top:36px;padding:16px 8px 0;border-top:none;font-size:13px}
+
+.rsai-vanilla .ensuite-carte em{font-family:var(--sans)}
+.rsai-vanilla .ensuite-icone{flex:none;width:36px;height:36px}
+.rsai-vanilla .position-txt{margin:22px 0 0;font-size:14px;line-height:1.55;color:var(--gris)}
+.rsai-vanilla .position-txt b{color:var(--encre);font-weight:600}
