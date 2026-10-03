@@ -53,10 +53,10 @@
 .rsai-vanilla .illus svg { display:block; width:100%; height:100%; }
 
 /* ---------- héros ---------- */
-.rsai-vanilla .heros{position:relative;border-radius:0;overflow:hidden;min-height:360px;background:#8BA3C0;isolation:isolate;margin-inline:calc(50% - 50vw);
+.rsai-vanilla .heros{position:relative;z-index:6;border-radius:0;overflow:visible;min-height:360px;background:#8BA3C0;isolation:isolate;margin-inline:calc(50% - 50vw);
   /* contenu du bandeau aligné sur la colonne du contenu */
   --decalage:max(var(--gouttiere),calc((100vw - var(--colonne)) / 2 + var(--gouttiere)))}
-.rsai-vanilla .heros .illus{position:absolute;inset:0;z-index:-1}
+.rsai-vanilla .heros .illus{position:absolute;inset:0;z-index:-1;overflow:hidden}
 .rsai-vanilla .heros::after{content:"";position:absolute;inset:0;z-index:-1;
   /* voile sombre à gauche, sous le titre (lisibilité), puis assombrissement haut et bas */
   background:linear-gradient(90deg,rgba(12,16,26,.62) 0%,rgba(12,16,26,.38) 34%,rgba(12,16,26,0) 62%),
@@ -113,7 +113,7 @@
 .rsai-vanilla .sombre .illus{position:absolute;inset:0;z-index:-2;opacity:.9}
 .rsai-vanilla .sombre::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(40,28,20,.25),rgba(40,28,20,.84) 70%)}
 .rsai-vanilla .lib{font-size:13px;color:rgba(255,255,255,.74)}
-.rsai-vanilla .valeur{font-family:var(--sans);font-weight:700;font-variant-numeric:tabular-nums;font-size:clamp(42px,5.6vw,66px);line-height:1;letter-spacing:-.035em;margin:10px 0 0}
+.rsai-vanilla .valeur{font-family:var(--serif);font-style:italic;font-weight:400;font-size:clamp(50px,7vw,82px);line-height:.95;letter-spacing:-.02em;margin:10px 0 0}
 .rsai-vanilla .grand{font-family:var(--sans);font-weight:700;font-variant-numeric:tabular-nums;font-size:clamp(42px,5.8vw,68px);line-height:1;letter-spacing:-.035em;margin-top:12px}
 .rsai-vanilla .grand.pos{color:#B8E6C8}.rsai-vanilla .grand.neg{color:#F4B3A6}
 .rsai-vanilla .fourchette{font-size:13.5px;color:rgba(255,255,255,.82);margin-top:10px}
@@ -317,7 +317,7 @@
    « Affiner l'estimation », alertes, DPE, classe de fiabilité, comparables.
    ========================================================================== */
 .rsai-vanilla .critere label .indice{color:var(--ambre)}
-.rsai-vanilla .suggestions{position:absolute;left:-10px;right:-10px;bottom:calc(100% + 14px);margin:0;padding:6px;list-style:none;
+.rsai-vanilla .suggestions{position:absolute;left:-10px;right:-10px;top:calc(100% + 18px);margin:0;padding:6px;list-style:none;
   background:var(--blanc);border-radius:18px;box-shadow:0 14px 40px rgba(0,0,0,.22);z-index:5;max-height:300px;overflow-y:auto}
 .rsai-vanilla .suggestions li{display:flex;flex-direction:column;gap:2px;padding:9px 12px;border-radius:12px;cursor:pointer}
 .rsai-vanilla .suggestions li b{font-weight:500;font-size:13.5px;color:var(--encre)}
@@ -404,3 +404,24 @@
 .rsai-vanilla details.methodo summary::after{content:"+";margin-left:auto;font-size:22px;color:var(--gris)}
 .rsai-vanilla details.methodo[open] summary::after{content:"−"}
 .rsai-vanilla details.methodo[open] .detail-grille{margin-top:14px}
+
+/* Affiner : volet replié sous la barre de recherche, avec son propre bouton */
+.rsai-vanilla details.affiner summary{cursor:pointer;list-style:none;margin-bottom:0}
+.rsai-vanilla details.affiner summary::-webkit-details-marker{display:none}
+.rsai-vanilla details.affiner summary::after{content:"+";font-size:22px;color:var(--gris);margin-left:6px}
+.rsai-vanilla details.affiner[open] summary{margin-bottom:14px}
+.rsai-vanilla details.affiner[open] summary::after{content:"−"}
+.rsai-vanilla details.affiner summary span{margin-left:auto}
+.rsai-vanilla details.affiner .estimer{margin-top:14px}
+
+/* Méthodologie : trois cartes (le calcul, le modèle, la mesure de l'erreur) */
+.rsai-vanilla .methodo-grille{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-top:16px}
+@media (max-width:860px){.rsai-vanilla .methodo-grille{grid-template-columns:1fr}}
+.rsai-vanilla .methodo-carte{background:var(--fond);border-radius:18px;padding:16px 18px}
+.rsai-vanilla .methodo-carte h4{margin:0 0 8px;font:600 13px var(--sans);letter-spacing:.08em;text-transform:uppercase;color:var(--gris)}
+.rsai-vanilla .methodo-carte dl{margin:0}
+.rsai-vanilla .methodo-carte dl div{display:flex;justify-content:space-between;align-items:baseline;gap:12px;padding:8px 0;border-top:1px solid var(--ligne)}
+.rsai-vanilla .methodo-carte dl div:first-child{border-top:none}
+.rsai-vanilla .methodo-carte dt{font-size:13px;color:var(--gris)}
+.rsai-vanilla .methodo-carte dd{margin:0;font-size:14px;font-weight:600;color:var(--encre);text-align:right;font-variant-numeric:tabular-nums}
+.rsai-vanilla .methodo-carte p{margin:10px 0 0;font-size:13px;color:var(--gris);line-height:1.5}

@@ -48,9 +48,9 @@ export const html = `
   </form>
 </section>
 
-<section class="affiner" aria-labelledby="rsai-affiner-titre">
-  <div class="affiner-tete"><h3 id="rsai-affiner-titre">Affiner <em>l'estimation</em></h3>
-    <span>Facultatif</span></div>
+<details class="affiner" id="rsai-affiner">
+  <summary class="affiner-tete"><h3 id="rsai-affiner-titre">Affiner <em>l'estimation</em></h3>
+    <span>Facultatif · classe DPE, année de construction</span></summary>
   <div class="affiner-champs">
     <div class="champ"><span class="champ-lib">Classe DPE</span>
       <div class="dpe-choix" id="rsai-dpe" role="group" aria-label="Classe DPE">
@@ -61,7 +61,8 @@ export const html = `
   </div>
   <p class="aide">Inutile si vous ne les connaissez pas : le diagnostic énergétique du logement est retrouvé
     automatiquement à son adresse dans la base de l'ADEME. Indiquez la classe seulement si elle diffère.</p>
-</section>
+  <button type="button" class="estimer" id="rsai-estimer-affine">Estimer avec ces précisions</button>
+</details>
 
 <section class="manifeste">
   <div class="etiq">Notre approche</div>
@@ -124,10 +125,7 @@ export const html = `
     <div class="bloc">
       <details class="methodo">
         <summary><h3>Méthodologie <em>et détail du calcul</em></h3></summary>
-        <div class="detail-grille">
-          <table><tbody id="rsai-detail"></tbody></table>
-          <table><tbody id="rsai-detail-tech"></tbody></table>
-        </div>
+        <div class="methodo-grille" id="rsai-methodo"></div>
       </details>
     </div>
     <div class="bloc">
@@ -432,10 +430,13 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
     attente = setTimeout(async () => {
       const numero = ++requete
       try {
-        const r = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(q)}&limit=6&autocomplete=1`)
+        // La BAN cherche dans toute la France : on en demande plus et on ne garde
+        // que l'Île-de-France, seul périmètre estimé par le modèle.
+        const r = await fetch(`https://api-adresse.data.gouv.fr/search/?q=${encodeURIComponent(q)}&limit=20&autocomplete=1`)
         const d = await r.json()
         if (!actif || numero !== requete || champAdresse.value.trim() !== q || document.activeElement !== champAdresse) return
-        suggestions = (d.features || []).map((f) => ({ label: f.properties.label, name: f.properties.name,
+        suggestions = (d.features || []).filter((f) => /^(75|77|78|91|92|93|94|95)/.test(f.properties.postcode || ''))
+          .slice(0, 6).map((f) => ({ label: f.properties.label, name: f.properties.name,
           postcode: f.properties.postcode || '', city: f.properties.city || '' }))
         choix = -1; montrerSuggestions()
       } catch { suggestions = []; fermerSuggestions() }
@@ -569,7 +570,7 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
     $$('[data-secteur]').forEach((el) => { el.hidden = !avecSecteur })
     $('#rsai-pv-resume').hidden = !avecSecteur
     $('#rsai-lib-secteur').textContent = (r.adresse || adresse || s?.nom || '') + ' · ' + surface + ' m² · ' + pieces + (pieces > 1 ? ' pièces' : ' pièce')
-    $('#rsai-valeur').textContent = 'environ ' + euro(rond(r.valeur))
+    $('#rsai-valeur').textContent = euro(rond(r.valeur))
     $('#rsai-fourchette').innerHTML = `Entre <b>${euro(rond(r.basse))}</b> et <b>${euro(rond(r.haute))}</b>` +
       `<small>${r.modele === 'ml' ? `Le prix de vente réel tombe dans cette fourchette ${(r.confiance || '85 %').replace(' %', '')} fois sur 100.` : 'Fourchette des ventes comparables de la commune.'}</small>`
     const place = Math.min(96, Math.max(4, (100 * (r.valeur - r.basse)) / (r.haute - r.basse)))
@@ -585,7 +586,7 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
       $('#rsai-ecart-lib').textContent = e > 0 ? 'au-dessus de la médiane du secteur' : e < 0 ? 'en dessous de la médiane du secteur' : 'au niveau de la médiane du secteur'
     }
 
-    $('#rsai-anneau').innerHTML = points(r.classe)
+    $('#rsai-anneau').innerHTML = anneau(r.fiabilite, CLASSES[r.classe]?.ton)
     afficherAlertes(r)
     afficherClasse(r)
     afficherDpe(r)
@@ -602,12 +603,12 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
 
     if (avecSecteur) afficherSecteur(r, s)
 
-    $('#rsai-detail').innerHTML = `<tr><td>Prix au m² estimé</td><td class="n">${nb(r.prix_m2)} €</td></tr>
-       ${avecSecteur ? `<tr><td>Médiane du secteur, ${s.annee}</td><td class="n">${nb(s.med)} €/m²</td></tr>` : ''}
-       <tr><td>Surface retenue</td><td class="n">${surface} m²</td></tr>
-       <tr><td>Modèle</td><td class="n">${r.modele === 'ml' ? `LightGBM${modelInfo?.nFeatures ? ` · ${modelInfo.nFeatures} variables` : ''}` : 'Médiane des ventes comparables'}</td></tr>
-       <tr><td><em style="font-size:17px">Valeur estimée</em></td><td class="n"><b>${euro(r.valeur)}</b></td></tr>`
-    afficherTechnique(r)
+    afficherTechnique(r, [
+      ['Prix au m² estimé', `${nb(r.prix_m2)} €`],
+      ['Surface', `${surface} m²`],
+      ...(avecSecteur ? [[`Médiane du secteur ${s.annee}`, `${nb(s.med)} €/m²`]] : []),
+      ['Valeur avant arrondi', euro(r.valeur)],
+    ])
     const cp = r.codePostal || $('#rsai-cp').value || null
     dernierBien = { commune: s?.nom || selecteur.value || null, code_commune: s?.code || null,
                     departement: s?.code ? s.code.slice(0, 2) : cp ? cp.slice(0, 2) : null, secteur: s?.code || null,
@@ -709,43 +710,42 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
 
   }
 
-  function afficherTechnique(r) {
-    // Détails techniques — repris de l'ancien frontend (ResultPanel.jsx).
-    // Uniquement des valeurs servies par le backend : une ligne sans donnée
-    // est omise plutôt que remplie par un chiffre écrit en dur.
-    const mi = modelInfo || {}
-
-    const tech = []
-    tech.push(['Méthode', r.modele === 'ml' ? 'LightGBM géolocalisé · API BAN' : 'Médiane DVF communale'])
-    if (r.adresse) tech.push(['Adresse normalisée (BAN)', r.adresse])
-    if (r.mape != null) tech.push([`Erreur moyenne locale${r.mape_n ? ` (${nb(r.mape_n)} ventes)` : ''}`, `${String(r.mape).replace('.', ',')} %`])
-    if (mi.validation) tech.push([`Erreur moyenne validée (${periode(mi.validation.periode_test)})`, `${String(mi.validation.mape).replace('.', ',')} %`])
-    tech.push(['Fourchette', r.modele === 'ml' ? `Intervalle à ${r.confiance || '85 %'}, calibré sur des ventes de contrôle`
-      : 'Dispersion des ventes comparables de la commune'])
-    if (mi.nFeatures) tech.push(['Variables', String(mi.nFeatures)])
-    if (mi.trainedAt) tech.push(['Entraîné le', new Date(mi.trainedAt).toLocaleDateString('fr-FR')])
-    if (mi.nTrain) tech.push(["Données d'entraînement", `${nb(mi.nTrain)} ventes retenues sur les ${nb(modelInfo?.nVentes || 0)} analysées (ventes atypiques et incomplètes écartées)`])
-    if (mi.validation) tech.push(["Contrôle de l'erreur", `${nb(mi.validation.n_test)} ventes de ${periode(mi.validation.periode_test)}, non vues par le modèle évalué`])
-    if (r.modele !== 'ml' && r.meta?.n_transactions) tech.push(['Transactions comparables', `${nb(r.meta.n_transactions)} ventes`])
-    $('#rsai-detail-tech').innerHTML = tech.map(([l, v]) => `<tr><td>${l}</td><td class="n">${v}</td></tr>`).join('')
+  function afficherTechnique(r, calcul) {
+    // Méthodologie en trois cartes : le calcul, le modèle, la mesure de l'erreur.
+    // Uniquement des valeurs servies par le backend : une ligne sans donnée est omise.
+    const mi = modelInfo || {}, val = mi.validation, ml = r.modele === 'ml'
+    const pc = (x) => `${String(x).replace('.', ',')} %`
+    const modele = ml ? [
+      ['Méthode', 'LightGBM'],
+      ...(mi.nFeatures ? [['Variables', String(mi.nFeatures)]] : []),
+      ...(mi.trainedAt ? [['Entraîné le', new Date(mi.trainedAt).toLocaleDateString('fr-FR')]] : []),
+      ...(mi.nTrain ? [["Ventes d'entraînement", nb(mi.nTrain)]] : []),
+      ...(mi.nVentes ? [['Ventes analysées', nb(mi.nVentes)]] : []),
+    ] : [
+      ['Méthode', 'Médiane des ventes'],
+      ...(r.meta?.n_transactions ? [['Ventes comparables', nb(r.meta.n_transactions)]] : []),
+    ]
+    const erreur = [
+      ...(r.mape != null ? [[`Dans ce secteur${r.mape_n ? ` (${nb(r.mape_n)} ventes)` : ''}`, pc(r.mape)]] : []),
+      ...(val ? [['En Île-de-France', pc(val.mape)], ['Ventes de contrôle', `${nb(val.n_test)} · ${periode(val.periode_test)}`]] : []),
+      ['Fourchette', ml ? `à ${r.confiance || '85 %'}, calibrée` : 'ventes de la commune'],
+    ]
+    const carte = (titre, lignes, note) => `<section class="methodo-carte"><h4>${titre}</h4>
+      <dl>${lignes.map(([l, v]) => `<div><dt>${l}</dt><dd>${v}</dd></div>`).join('')}</dl>${note ? `<p>${note}</p>` : ''}</section>`
+    $('#rsai-methodo').innerHTML =
+      carte('Le calcul', calcul, r.adresse ? `Adresse retenue : ${r.adresse}` : '') +
+      carte('Le modèle', modele, ml ? "Ventes atypiques et incomplètes écartées de l'entraînement." : '') +
+      carte("La mesure de l'erreur", erreur, val ? 'Mesurée sur des ventes que le modèle évalué n\'avait jamais vues.' : '')
 
   }
 
-  // Fiabilité en points (4 = fiable … 1 = données insuffisantes), fixée par la
-  // classe mesurée du protocole : plus de chiffre qui contredise la classe.
-  function points(classe) {
-    const n = { fiable: 4, indicative: 3, a_completer: 2, donnees_insuffisantes: 1 }[classe]
-    if (!n) return ''
-    const ton = CLASSES[classe]?.ton || 'gris'
-    return `<div class="points-fiab" role="img" aria-label="Fiabilité : ${n} sur 4">
-      ${[1, 2, 3, 4].map((i) => `<i class="${i <= n ? 'plein puce-' + ton : ''}"></i>`).join('')}
-      <span>FIABILITÉ</span></div>`
-  }
-
-  function anneau(f) {
+  // Anneau de fiabilité : la part remplie suit la fiabilité mesurée du secteur,
+  // la couleur suit la classe (vert, ambre, rouge, gris), comme l'étiquette à côté.
+  function anneau(f, ton) {
     if (f == null) return ''
     const R = 44, C = 2 * Math.PI * R, part = C * Math.min(1, Math.max(0, f))
-    const couleur = f >= 0.8 ? 'var(--vert)' : f >= 0.6 ? 'var(--ambre)' : 'var(--rouge)'
+    const couleur = { vert: 'var(--vert)', ambre: 'var(--ambre)', rouge: 'var(--rouge)', gris: 'var(--gris)' }[ton]
+      || (f >= 0.8 ? 'var(--vert)' : f >= 0.6 ? 'var(--ambre)' : 'var(--rouge)')
     return `<svg viewBox="0 0 110 110" style="width:110px;display:block" role="img" aria-label="Fiabilité de l'estimation">
       <circle cx="55" cy="55" r="${R}" fill="none" stroke="var(--fond)" stroke-width="11"/>
       <circle cx="55" cy="55" r="${R}" fill="none" stroke="${couleur}" stroke-width="11" stroke-linecap="round"
@@ -787,6 +787,7 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
     })
   })
   $('#formulaire').addEventListener('submit', (e) => { e.preventDefault(); estimer(true) })
+  $('#rsai-estimer-affine').addEventListener('click', () => estimer(true))
   // Estimation uniquement sur demande (bouton « Estimer » ou carte de secteur) :
   // modifier un champ ne relance rien, et rien n'est estimé à l'ouverture.
 
@@ -802,6 +803,8 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
     selecteur.value = !$('#rsai-adresse').value ? (v.commune || '') : ''
     if (v.dpe_classe || v.dpe) choisirDpe(v.dpe_classe || v.dpe)
     if (v.annee_construction || v.year) $('#rsai-annee').value = v.annee_construction || v.year
+    // précisions connues : le volet s'ouvre pour qu'on les voie
+    if (v.dpe_classe || v.dpe || v.annee_construction || v.year) $('#rsai-affiner').open = true
   }
   remplir({ area_m2: params.get('area_m2'), rooms: params.get('rooms'), type: params.get('type'),
             address: params.get('address'), postal_code: params.get('postal_code'), commune: params.get('commune'),

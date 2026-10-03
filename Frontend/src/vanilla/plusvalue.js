@@ -98,7 +98,8 @@ export const html = `
        pour prévoir un marché : un modèle entraîné sur cette période extrapolerait
        simplement la baisse.</p>
     <p>On projette donc <b>trois trajectoires tirées du marché observé</b> du secteur.
-       L'écart entre elles est l'information utile : il mesure l'incertitude.</p>
+       L'écart entre elles est l'information utile : il mesure l'incertitude. Chaque rythme est
+       limité à ±4 % par an : une seule année atypique ne doit pas fausser une projection sur 10 ans.</p>
   </div>
   <div>
     <h3>Ce que la simulation <em>ignore</em></h3>

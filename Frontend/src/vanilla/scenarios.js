@@ -8,6 +8,12 @@
 // la dernière année, et une reprise au rythme de la meilleure année observée.
 // Si aucune année n'a été en hausse, le scénario haut est la stabilité des
 // prix : on ne projette pas une hausse que le secteur n'a jamais connue.
+// Rythme annuel projeté limité à ±4 % : une médiane annuelle peut sauter quand
+// peu de ventes la composent (programme neuf, ventes atypiques), et prolonger un
+// tel saut sur 10 ans donnerait des valeurs absurdes (Bobigny : 7 453 €/m² en 2021,
+// 4 141 € en 2022). Le scénario plafonné le dit dans son nom.
+export const RYTHME_MAX = 0.04
+
 export function scenariosMarche(eco, annees) {
   const n = eco.length - 1
   const rythme = (i, j) => Math.pow(eco[j] / eco[i], 1 / (annees[j] - annees[i])) - 1
@@ -26,5 +32,7 @@ export function scenariosMarche(eco, annees) {
   } else {
     liste.push({ nom: 'Stabilité des prix', taux: 0 })
   }
-  return liste.sort((a, b) => a.taux - b.taux)   // [bas, central, haut]
+  return liste.map((s) => Math.abs(s.taux) > RYTHME_MAX
+    ? { nom: `${s.nom} (limité à ${s.taux > 0 ? '+' : '−'}4 %/an)`, taux: Math.sign(s.taux) * RYTHME_MAX, brut: s.taux }
+    : s).sort((a, b) => a.taux - b.taux)   // [bas, central, haut]
 }
