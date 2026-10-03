@@ -1,0 +1,5690 @@
+{
+  "protocole": "docs/protocole_evaluation.md",
+  "commit": "029b7c8",
+  "mesure_le": "2026-10-03T10:15:50",
+  "periodes": {
+    "train": [
+      "2021-02",
+      "2025-03"
+    ],
+    "validation": [
+      "2025-04",
+      "2025-06"
+    ],
+    "test": [
+      "2025-07",
+      "2025-09"
+    ]
+  },
+  "n_train": 602107,
+  "n_validation": 30286,
+  "n_arbres": 1450,
+  "principal": {
+    "n": 36181,
+    "mape": 14.07,
+    "dans_10pct": 51.2,
+    "dans_20pct": 79.5
+  },
+  "complementaire_sans_filtre_ml": {
+    "n": 36537,
+    "mape": 15.17,
+    "dans_10pct": 50.7,
+    "dans_20pct": 78.8
+  },
+  "objectif": {
+    "dans_10pct_min": 50.0,
+    "dans_20pct_min": 80.0,
+    "atteint_10pct": true,
+    "atteint_20pct": false,
+    "atteint": false
+  },
+  "classement_communes": {
+    "fiable": {
+      "communes": 38,
+      "part_ventes": 6.2,
+      "mape_dans_classe": 8.85
+    },
+    "indicative": {
+      "communes": 238,
+      "part_ventes": 76.4,
+      "mape_dans_classe": 14.09
+    },
+    "a_completer": {
+      "communes": 8,
+      "part_ventes": 1.3,
+      "mape_dans_classe": 22.71
+    },
+    "donnees_insuffisantes": {
+      "communes": 841,
+      "part_ventes": 16.1,
+      "mape_dans_classe": 15.27
+    }
+  },
+  "communes": {
+    "75101": {
+      "mape": 24.36,
+      "n": 53,
+      "classe": "a_completer"
+    },
+    "75102": {
+      "mape": 14.2,
+      "n": 96,
+      "classe": "indicative"
+    },
+    "75103": {
+      "mape": 17.33,
+      "n": 193,
+      "classe": "indicative"
+    },
+    "75104": {
+      "mape": 16.0,
+      "n": 126,
+      "classe": "indicative"
+    },
+    "75105": {
+      "mape": 18.06,
+      "n": 244,
+      "classe": "indicative"
+    },
+    "75106": {
+      "mape": 17.98,
+      "n": 196,
+      "classe": "indicative"
+    },
+    "75107": {
+      "mape": 17.04,
+      "n": 215,
+      "classe": "indicative"
+    },
+    "75108": {
+      "mape": 22.23,
+      "n": 166,
+      "classe": "a_completer"
+    },
+    "75109": {
+      "mape": 16.55,
+      "n": 301,
+      "classe": "indicative"
+    },
+    "75110": {
+      "mape": 16.48,
+      "n": 389,
+      "classe": "indicative"
+    },
+    "75111": {
+      "mape": 15.05,
+      "n": 654,
+      "classe": "indicative"
+    },
+    "75112": {
+      "mape": 14.1,
+      "n": 434,
+      "classe": "indicative"
+    },
+    "75113": {
+      "mape": 14.83,
+      "n": 371,
+      "classe": "indicative"
+    },
+    "75114": {
+      "mape": 15.45,
+      "n": 423,
+      "classe": "indicative"
+    },
+    "75115": {
+      "mape": 14.38,
+      "n": 836,
+      "classe": "indicative"
+    },
+    "75116": {
+      "mape": 15.71,
+      "n": 668,
+      "classe": "indicative"
+    },
+    "75117": {
+      "mape": 15.64,
+      "n": 684,
+      "classe": "indicative"
+    },
+    "75118": {
+      "mape": 16.31,
+      "n": 794,
+      "classe": "indicative"
+    },
+    "75119": {
+      "mape": 15.99,
+      "n": 420,
+      "classe": "indicative"
+    },
+    "75120": {
+      "mape": 14.65,
+      "n": 515,
+      "classe": "indicative"
+    },
+    "77001": {
+      "mape": 16.38,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "77002": {
+      "mape": 28.0,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77004": {
+      "mape": 31.43,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77005": {
+      "mape": 20.03,
+      "n": 11,
+      "classe": "donnees_insuffisantes"
+    },
+    "77006": {
+      "mape": 9.96,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77007": {
+      "mape": 6.84,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77008": {
+      "mape": 15.01,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77010": {
+      "mape": 18.84,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77011": {
+      "mape": 23.42,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77012": {
+      "mape": 5.97,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77013": {
+      "mape": 9.34,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77014": {
+      "mape": 14.44,
+      "n": 65,
+      "classe": "indicative"
+    },
+    "77016": {
+      "mape": 49.7,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77018": {
+      "mape": 8.16,
+      "n": 23,
+      "classe": "donnees_insuffisantes"
+    },
+    "77019": {
+      "mape": 17.67,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77020": {
+      "mape": 22.22,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77021": {
+      "mape": 11.88,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77022": {
+      "mape": 39.51,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "77025": {
+      "mape": 30.92,
+      "n": 7,
+      "classe": "donnees_insuffisantes"
+    },
+    "77026": {
+      "mape": 2.9,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77027": {
+      "mape": 15.15,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77030": {
+      "mape": 11.41,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77031": {
+      "mape": 14.59,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77032": {
+      "mape": 29.2,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77034": {
+      "mape": 3.28,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77035": {
+      "mape": 32.44,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "77037": {
+      "mape": 12.18,
+      "n": 13,
+      "classe": "donnees_insuffisantes"
+    },
+    "77038": {
+      "mape": 18.06,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77039": {
+      "mape": 35.07,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "77040": {
+      "mape": 16.98,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "77041": {
+      "mape": 20.27,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77042": {
+      "mape": 13.27,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "77043": {
+      "mape": 32.3,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77044": {
+      "mape": 52.88,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77045": {
+      "mape": 17.76,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77046": {
+      "mape": 38.7,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77047": {
+      "mape": 6.1,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "77048": {
+      "mape": 13.62,
+      "n": 10,
+      "classe": "donnees_insuffisantes"
+    },
+    "77049": {
+      "mape": 23.13,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77050": {
+      "mape": 15.2,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77051": {
+      "mape": 9.45,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77052": {
+      "mape": 29.91,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77053": {
+      "mape": 8.0,
+      "n": 70,
+      "classe": "fiable"
+    },
+    "77054": {
+      "mape": 5.3,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77055": {
+      "mape": 11.99,
+      "n": 24,
+      "classe": "donnees_insuffisantes"
+    },
+    "77057": {
+      "mape": 9.63,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77058": {
+      "mape": 8.04,
+      "n": 92,
+      "classe": "fiable"
+    },
+    "77059": {
+      "mape": 18.99,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77060": {
+      "mape": 15.31,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77061": {
+      "mape": 13.2,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "77062": {
+      "mape": 13.18,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77063": {
+      "mape": 29.96,
+      "n": 8,
+      "classe": "donnees_insuffisantes"
+    },
+    "77065": {
+      "mape": 10.27,
+      "n": 8,
+      "classe": "donnees_insuffisantes"
+    },
+    "77067": {
+      "mape": 17.36,
+      "n": 40,
+      "classe": "indicative"
+    },
+    "77068": {
+      "mape": 9.88,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77069": {
+      "mape": 17.96,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "77070": {
+      "mape": 12.73,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77071": {
+      "mape": 50.09,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77075": {
+      "mape": 3.04,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77076": {
+      "mape": 20.43,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "77077": {
+      "mape": 9.75,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77078": {
+      "mape": 32.61,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "77079": {
+      "mape": 12.16,
+      "n": 20,
+      "classe": "donnees_insuffisantes"
+    },
+    "77080": {
+      "mape": 16.31,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77081": {
+      "mape": 14.37,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "77082": {
+      "mape": 20.88,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "77083": {
+      "mape": 13.48,
+      "n": 57,
+      "classe": "indicative"
+    },
+    "77084": {
+      "mape": 8.22,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "77085": {
+      "mape": 12.8,
+      "n": 12,
+      "classe": "donnees_insuffisantes"
+    },
+    "77086": {
+      "mape": 11.4,
+      "n": 7,
+      "classe": "donnees_insuffisantes"
+    },
+    "77087": {
+      "mape": 3.77,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77088": {
+      "mape": 10.43,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77089": {
+      "mape": 20.74,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77091": {
+      "mape": 7.06,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77093": {
+      "mape": 9.74,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77095": {
+      "mape": 16.58,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "77096": {
+      "mape": 22.24,
+      "n": 8,
+      "classe": "donnees_insuffisantes"
+    },
+    "77098": {
+      "mape": 10.39,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77099": {
+      "mape": 19.66,
+      "n": 8,
+      "classe": "donnees_insuffisantes"
+    },
+    "77100": {
+      "mape": 18.22,
+      "n": 23,
+      "classe": "donnees_insuffisantes"
+    },
+    "77101": {
+      "mape": 24.32,
+      "n": 7,
+      "classe": "donnees_insuffisantes"
+    },
+    "77103": {
+      "mape": 33.26,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77104": {
+      "mape": 7.16,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77106": {
+      "mape": 20.18,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77107": {
+      "mape": 20.11,
+      "n": 13,
+      "classe": "donnees_insuffisantes"
+    },
+    "77108": {
+      "mape": 11.41,
+      "n": 175,
+      "classe": "indicative"
+    },
+    "77109": {
+      "mape": 24.36,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77111": {
+      "mape": 8.95,
+      "n": 30,
+      "classe": "fiable"
+    },
+    "77112": {
+      "mape": 22.55,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77114": {
+      "mape": 8.04,
+      "n": 12,
+      "classe": "donnees_insuffisantes"
+    },
+    "77116": {
+      "mape": 6.06,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "77117": {
+      "mape": 12.49,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77118": {
+      "mape": 11.31,
+      "n": 40,
+      "classe": "indicative"
+    },
+    "77120": {
+      "mape": 7.12,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77121": {
+      "mape": 7.32,
+      "n": 16,
+      "classe": "donnees_insuffisantes"
+    },
+    "77122": {
+      "mape": 11.54,
+      "n": 92,
+      "classe": "indicative"
+    },
+    "77123": {
+      "mape": 2.24,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77124": {
+      "mape": 13.37,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "77125": {
+      "mape": 17.97,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "77126": {
+      "mape": 9.0,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "77127": {
+      "mape": 9.07,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "77128": {
+      "mape": 8.8,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "77130": {
+      "mape": 8.77,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77131": {
+      "mape": 18.31,
+      "n": 43,
+      "classe": "indicative"
+    },
+    "77132": {
+      "mape": 16.03,
+      "n": 14,
+      "classe": "donnees_insuffisantes"
+    },
+    "77134": {
+      "mape": 18.07,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77135": {
+      "mape": 12.15,
+      "n": 11,
+      "classe": "donnees_insuffisantes"
+    },
+    "77136": {
+      "mape": 27.13,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77137": {
+      "mape": 47.48,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77138": {
+      "mape": 10.28,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77139": {
+      "mape": 11.98,
+      "n": 17,
+      "classe": "donnees_insuffisantes"
+    },
+    "77141": {
+      "mape": 20.29,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77142": {
+      "mape": 22.1,
+      "n": 17,
+      "classe": "donnees_insuffisantes"
+    },
+    "77143": {
+      "mape": 11.03,
+      "n": 16,
+      "classe": "donnees_insuffisantes"
+    },
+    "77144": {
+      "mape": 11.29,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77145": {
+      "mape": 36.18,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77146": {
+      "mape": 15.71,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "77147": {
+      "mape": 24.15,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77148": {
+      "mape": 12.47,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "77151": {
+      "mape": 2.74,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77152": {
+      "mape": 12.53,
+      "n": 64,
+      "classe": "indicative"
+    },
+    "77153": {
+      "mape": 8.43,
+      "n": 48,
+      "classe": "fiable"
+    },
+    "77154": {
+      "mape": 21.68,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77155": {
+      "mape": 16.69,
+      "n": 12,
+      "classe": "donnees_insuffisantes"
+    },
+    "77156": {
+      "mape": 34.65,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "77158": {
+      "mape": 1.21,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77159": {
+      "mape": 9.13,
+      "n": 14,
+      "classe": "donnees_insuffisantes"
+    },
+    "77161": {
+      "mape": 60.46,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77162": {
+      "mape": 6.78,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "77163": {
+      "mape": 28.91,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77164": {
+      "mape": 6.35,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77165": {
+      "mape": 10.09,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77167": {
+      "mape": 4.34,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77168": {
+      "mape": 17.09,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "77169": {
+      "mape": 5.75,
+      "n": 28,
+      "classe": "donnees_insuffisantes"
+    },
+    "77171": {
+      "mape": 13.85,
+      "n": 28,
+      "classe": "donnees_insuffisantes"
+    },
+    "77172": {
+      "mape": 12.56,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77173": {
+      "mape": 14.58,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "77175": {
+      "mape": 20.13,
+      "n": 15,
+      "classe": "donnees_insuffisantes"
+    },
+    "77176": {
+      "mape": 18.16,
+      "n": 16,
+      "classe": "donnees_insuffisantes"
+    },
+    "77177": {
+      "mape": 17.04,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77178": {
+      "mape": 8.74,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77180": {
+      "mape": 39.94,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77181": {
+      "mape": 20.3,
+      "n": 15,
+      "classe": "donnees_insuffisantes"
+    },
+    "77182": {
+      "mape": 15.9,
+      "n": 7,
+      "classe": "donnees_insuffisantes"
+    },
+    "77183": {
+      "mape": 28.17,
+      "n": 30,
+      "classe": "a_completer"
+    },
+    "77184": {
+      "mape": 18.44,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77185": {
+      "mape": 18.08,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77186": {
+      "mape": 19.31,
+      "n": 75,
+      "classe": "indicative"
+    },
+    "77187": {
+      "mape": 54.45,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77188": {
+      "mape": 15.94,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77191": {
+      "mape": 47.92,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77192": {
+      "mape": 10.28,
+      "n": 17,
+      "classe": "donnees_insuffisantes"
+    },
+    "77194": {
+      "mape": 6.14,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77195": {
+      "mape": 13.99,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77196": {
+      "mape": 4.95,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77199": {
+      "mape": 8.21,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77200": {
+      "mape": 29.85,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77201": {
+      "mape": 37.69,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77202": {
+      "mape": 31.36,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77203": {
+      "mape": 22.11,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "77204": {
+      "mape": 0.66,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77205": {
+      "mape": 31.21,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77206": {
+      "mape": 11.68,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77208": {
+      "mape": 17.27,
+      "n": 7,
+      "classe": "donnees_insuffisantes"
+    },
+    "77209": {
+      "mape": 13.29,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77210": {
+      "mape": 10.78,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77211": {
+      "mape": 6.99,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77215": {
+      "mape": 12.49,
+      "n": 21,
+      "classe": "donnees_insuffisantes"
+    },
+    "77216": {
+      "mape": 15.8,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "77217": {
+      "mape": 16.06,
+      "n": 14,
+      "classe": "donnees_insuffisantes"
+    },
+    "77218": {
+      "mape": 22.76,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77219": {
+      "mape": 18.74,
+      "n": 16,
+      "classe": "donnees_insuffisantes"
+    },
+    "77220": {
+      "mape": 30.06,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77221": {
+      "mape": 12.35,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77222": {
+      "mape": 13.01,
+      "n": 14,
+      "classe": "donnees_insuffisantes"
+    },
+    "77224": {
+      "mape": 2.56,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77226": {
+      "mape": 31.01,
+      "n": 11,
+      "classe": "donnees_insuffisantes"
+    },
+    "77227": {
+      "mape": 24.0,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77229": {
+      "mape": 12.92,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "77230": {
+      "mape": 16.62,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77231": {
+      "mape": 15.24,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77232": {
+      "mape": 17.46,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "77233": {
+      "mape": 7.25,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77234": {
+      "mape": 9.14,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77236": {
+      "mape": 28.01,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77237": {
+      "mape": 10.52,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77238": {
+      "mape": 17.52,
+      "n": 10,
+      "classe": "donnees_insuffisantes"
+    },
+    "77239": {
+      "mape": 10.15,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77240": {
+      "mape": 43.84,
+      "n": 8,
+      "classe": "donnees_insuffisantes"
+    },
+    "77241": {
+      "mape": 38.59,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77242": {
+      "mape": 26.85,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77243": {
+      "mape": 14.94,
+      "n": 69,
+      "classe": "indicative"
+    },
+    "77244": {
+      "mape": 19.91,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77245": {
+      "mape": 20.95,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77246": {
+      "mape": 20.08,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77247": {
+      "mape": 24.54,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77248": {
+      "mape": 27.59,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77249": {
+      "mape": 10.36,
+      "n": 32,
+      "classe": "indicative"
+    },
+    "77251": {
+      "mape": 16.48,
+      "n": 38,
+      "classe": "indicative"
+    },
+    "77252": {
+      "mape": 8.65,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77254": {
+      "mape": 10.91,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77255": {
+      "mape": 3.95,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77256": {
+      "mape": 94.81,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77257": {
+      "mape": 6.42,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77258": {
+      "mape": 9.19,
+      "n": 26,
+      "classe": "donnees_insuffisantes"
+    },
+    "77259": {
+      "mape": 11.02,
+      "n": 11,
+      "classe": "donnees_insuffisantes"
+    },
+    "77260": {
+      "mape": 14.5,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "77261": {
+      "mape": 7.99,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77262": {
+      "mape": 17.86,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77264": {
+      "mape": 9.78,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77265": {
+      "mape": 47.66,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77266": {
+      "mape": 17.74,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77267": {
+      "mape": 6.76,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77268": {
+      "mape": 7.73,
+      "n": 24,
+      "classe": "donnees_insuffisantes"
+    },
+    "77269": {
+      "mape": 6.93,
+      "n": 8,
+      "classe": "donnees_insuffisantes"
+    },
+    "77270": {
+      "mape": 6.75,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77271": {
+      "mape": 11.61,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77272": {
+      "mape": 12.08,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77273": {
+      "mape": 6.2,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77274": {
+      "mape": 1.38,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77275": {
+      "mape": 48.77,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77276": {
+      "mape": 11.14,
+      "n": 7,
+      "classe": "donnees_insuffisantes"
+    },
+    "77277": {
+      "mape": 7.46,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77279": {
+      "mape": 20.36,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "77280": {
+      "mape": 3.7,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "77281": {
+      "mape": 9.85,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77282": {
+      "mape": 14.65,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77283": {
+      "mape": 13.4,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77284": {
+      "mape": 14.01,
+      "n": 146,
+      "classe": "indicative"
+    },
+    "77285": {
+      "mape": 11.07,
+      "n": 39,
+      "classe": "indicative"
+    },
+    "77287": {
+      "mape": 22.29,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77288": {
+      "mape": 13.98,
+      "n": 118,
+      "classe": "indicative"
+    },
+    "77289": {
+      "mape": 6.89,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77290": {
+      "mape": 16.25,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77292": {
+      "mape": 16.55,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "77293": {
+      "mape": 20.88,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "77294": {
+      "mape": 12.59,
+      "n": 43,
+      "classe": "indicative"
+    },
+    "77295": {
+      "mape": 20.17,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "77296": {
+      "mape": 6.35,
+      "n": 55,
+      "classe": "fiable"
+    },
+    "77298": {
+      "mape": 9.94,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77300": {
+      "mape": 20.25,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77301": {
+      "mape": 7.72,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77302": {
+      "mape": 36.15,
+      "n": 7,
+      "classe": "donnees_insuffisantes"
+    },
+    "77305": {
+      "mape": 19.8,
+      "n": 39,
+      "classe": "indicative"
+    },
+    "77306": {
+      "mape": 20.05,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77307": {
+      "mape": 9.04,
+      "n": 73,
+      "classe": "fiable"
+    },
+    "77308": {
+      "mape": 20.96,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77309": {
+      "mape": 9.98,
+      "n": 10,
+      "classe": "donnees_insuffisantes"
+    },
+    "77311": {
+      "mape": 28.64,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "77312": {
+      "mape": 17.97,
+      "n": 8,
+      "classe": "donnees_insuffisantes"
+    },
+    "77313": {
+      "mape": 4.95,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77315": {
+      "mape": 11.11,
+      "n": 13,
+      "classe": "donnees_insuffisantes"
+    },
+    "77316": {
+      "mape": 19.34,
+      "n": 44,
+      "classe": "indicative"
+    },
+    "77317": {
+      "mape": 7.91,
+      "n": 12,
+      "classe": "donnees_insuffisantes"
+    },
+    "77318": {
+      "mape": 11.38,
+      "n": 7,
+      "classe": "donnees_insuffisantes"
+    },
+    "77320": {
+      "mape": 14.47,
+      "n": 16,
+      "classe": "donnees_insuffisantes"
+    },
+    "77321": {
+      "mape": 12.54,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77322": {
+      "mape": 7.53,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "77323": {
+      "mape": 15.18,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77326": {
+      "mape": 13.98,
+      "n": 24,
+      "classe": "donnees_insuffisantes"
+    },
+    "77327": {
+      "mape": 12.45,
+      "n": 17,
+      "classe": "donnees_insuffisantes"
+    },
+    "77328": {
+      "mape": 20.98,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77329": {
+      "mape": 6.63,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77330": {
+      "mape": 11.7,
+      "n": 26,
+      "classe": "donnees_insuffisantes"
+    },
+    "77331": {
+      "mape": 11.26,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77333": {
+      "mape": 19.41,
+      "n": 29,
+      "classe": "donnees_insuffisantes"
+    },
+    "77335": {
+      "mape": 21.87,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77336": {
+      "mape": 9.09,
+      "n": 7,
+      "classe": "donnees_insuffisantes"
+    },
+    "77337": {
+      "mape": 11.69,
+      "n": 32,
+      "classe": "indicative"
+    },
+    "77338": {
+      "mape": 29.01,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77339": {
+      "mape": 30.06,
+      "n": 8,
+      "classe": "donnees_insuffisantes"
+    },
+    "77343": {
+      "mape": 5.69,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77344": {
+      "mape": 11.92,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "77345": {
+      "mape": 14.64,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77347": {
+      "mape": 4.02,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77348": {
+      "mape": 15.47,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77349": {
+      "mape": 14.02,
+      "n": 37,
+      "classe": "indicative"
+    },
+    "77350": {
+      "mape": 11.73,
+      "n": 88,
+      "classe": "indicative"
+    },
+    "77352": {
+      "mape": 9.98,
+      "n": 11,
+      "classe": "donnees_insuffisantes"
+    },
+    "77353": {
+      "mape": 25.96,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77354": {
+      "mape": 48.76,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77357": {
+      "mape": 57.74,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77358": {
+      "mape": 4.86,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77359": {
+      "mape": 10.1,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77361": {
+      "mape": 17.21,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77363": {
+      "mape": 8.62,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "77365": {
+      "mape": 24.01,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77367": {
+      "mape": 5.98,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77368": {
+      "mape": 16.72,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77369": {
+      "mape": 8.7,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77370": {
+      "mape": 23.31,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77371": {
+      "mape": 12.44,
+      "n": 7,
+      "classe": "donnees_insuffisantes"
+    },
+    "77372": {
+      "mape": 14.77,
+      "n": 12,
+      "classe": "donnees_insuffisantes"
+    },
+    "77373": {
+      "mape": 9.1,
+      "n": 105,
+      "classe": "fiable"
+    },
+    "77374": {
+      "mape": 5.71,
+      "n": 7,
+      "classe": "donnees_insuffisantes"
+    },
+    "77376": {
+      "mape": 6.0,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77377": {
+      "mape": 21.22,
+      "n": 12,
+      "classe": "donnees_insuffisantes"
+    },
+    "77378": {
+      "mape": 9.16,
+      "n": 14,
+      "classe": "donnees_insuffisantes"
+    },
+    "77379": {
+      "mape": 21.25,
+      "n": 32,
+      "classe": "a_completer"
+    },
+    "77381": {
+      "mape": 9.73,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77382": {
+      "mape": 12.47,
+      "n": 23,
+      "classe": "donnees_insuffisantes"
+    },
+    "77383": {
+      "mape": 21.08,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77384": {
+      "mape": 6.64,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77385": {
+      "mape": 9.43,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "77387": {
+      "mape": 20.64,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77388": {
+      "mape": 7.83,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77389": {
+      "mape": 13.7,
+      "n": 8,
+      "classe": "donnees_insuffisantes"
+    },
+    "77390": {
+      "mape": 13.64,
+      "n": 49,
+      "classe": "indicative"
+    },
+    "77392": {
+      "mape": 5.15,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "77393": {
+      "mape": 11.62,
+      "n": 7,
+      "classe": "donnees_insuffisantes"
+    },
+    "77394": {
+      "mape": 13.72,
+      "n": 10,
+      "classe": "donnees_insuffisantes"
+    },
+    "77397": {
+      "mape": 6.77,
+      "n": 7,
+      "classe": "donnees_insuffisantes"
+    },
+    "77398": {
+      "mape": 14.93,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77400": {
+      "mape": 36.08,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77401": {
+      "mape": 43.97,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "77402": {
+      "mape": 28.71,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77404": {
+      "mape": 9.5,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "77405": {
+      "mape": 11.23,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77406": {
+      "mape": 12.66,
+      "n": 7,
+      "classe": "donnees_insuffisantes"
+    },
+    "77407": {
+      "mape": 13.1,
+      "n": 59,
+      "classe": "indicative"
+    },
+    "77408": {
+      "mape": 29.46,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77409": {
+      "mape": 18.78,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "77410": {
+      "mape": 4.09,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77412": {
+      "mape": 12.44,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77413": {
+      "mape": 7.65,
+      "n": 15,
+      "classe": "donnees_insuffisantes"
+    },
+    "77414": {
+      "mape": 12.6,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77415": {
+      "mape": 14.96,
+      "n": 8,
+      "classe": "donnees_insuffisantes"
+    },
+    "77416": {
+      "mape": 7.62,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77418": {
+      "mape": 15.05,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77419": {
+      "mape": 11.95,
+      "n": 15,
+      "classe": "donnees_insuffisantes"
+    },
+    "77420": {
+      "mape": 7.09,
+      "n": 13,
+      "classe": "donnees_insuffisantes"
+    },
+    "77423": {
+      "mape": 8.54,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77424": {
+      "mape": 34.28,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77425": {
+      "mape": 18.96,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77426": {
+      "mape": 6.74,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77427": {
+      "mape": 20.92,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "77429": {
+      "mape": 7.93,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77430": {
+      "mape": 7.92,
+      "n": 14,
+      "classe": "donnees_insuffisantes"
+    },
+    "77431": {
+      "mape": 17.52,
+      "n": 14,
+      "classe": "donnees_insuffisantes"
+    },
+    "77432": {
+      "mape": 15.78,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77433": {
+      "mape": 16.32,
+      "n": 11,
+      "classe": "donnees_insuffisantes"
+    },
+    "77434": {
+      "mape": 16.12,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77435": {
+      "mape": 14.8,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77436": {
+      "mape": 7.38,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77437": {
+      "mape": 10.29,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "77438": {
+      "mape": 11.43,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "77439": {
+      "mape": 17.96,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "77440": {
+      "mape": 20.15,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "77441": {
+      "mape": 27.3,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "77442": {
+      "mape": 18.32,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "77443": {
+      "mape": 16.17,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77445": {
+      "mape": 8.3,
+      "n": 74,
+      "classe": "fiable"
+    },
+    "77446": {
+      "mape": 35.79,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77447": {
+      "mape": 17.81,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77448": {
+      "mape": 12.58,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77449": {
+      "mape": 10.89,
+      "n": 35,
+      "classe": "indicative"
+    },
+    "77450": {
+      "mape": 16.4,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "77451": {
+      "mape": 23.36,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77453": {
+      "mape": 18.09,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77454": {
+      "mape": 15.58,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "77455": {
+      "mape": 28.46,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "77456": {
+      "mape": 29.36,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "77457": {
+      "mape": 13.37,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "77458": {
+      "mape": 16.6,
+      "n": 11,
+      "classe": "donnees_insuffisantes"
+    },
+    "77459": {
+      "mape": 25.77,
+      "n": 8,
+      "classe": "donnees_insuffisantes"
+    },
+    "77460": {
+      "mape": 6.91,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77461": {
+      "mape": 1.94,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77462": {
+      "mape": 4.33,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77463": {
+      "mape": 39.52,
+      "n": 12,
+      "classe": "donnees_insuffisantes"
+    },
+    "77464": {
+      "mape": 19.34,
+      "n": 39,
+      "classe": "indicative"
+    },
+    "77466": {
+      "mape": 40.86,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77468": {
+      "mape": 8.07,
+      "n": 53,
+      "classe": "fiable"
+    },
+    "77469": {
+      "mape": 19.94,
+      "n": 11,
+      "classe": "donnees_insuffisantes"
+    },
+    "77470": {
+      "mape": 16.85,
+      "n": 22,
+      "classe": "donnees_insuffisantes"
+    },
+    "77471": {
+      "mape": 17.36,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77472": {
+      "mape": 20.93,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77473": {
+      "mape": 29.53,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77474": {
+      "mape": 27.11,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77475": {
+      "mape": 8.05,
+      "n": 15,
+      "classe": "donnees_insuffisantes"
+    },
+    "77477": {
+      "mape": 28.19,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "77478": {
+      "mape": 33.04,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "77479": {
+      "mape": 8.6,
+      "n": 45,
+      "classe": "fiable"
+    },
+    "77480": {
+      "mape": 10.56,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "77481": {
+      "mape": 8.81,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77482": {
+      "mape": 22.95,
+      "n": 8,
+      "classe": "donnees_insuffisantes"
+    },
+    "77483": {
+      "mape": 12.2,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "77484": {
+      "mape": 16.41,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77485": {
+      "mape": 32.5,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "77486": {
+      "mape": 14.25,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77487": {
+      "mape": 14.09,
+      "n": 38,
+      "classe": "indicative"
+    },
+    "77489": {
+      "mape": 47.57,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77490": {
+      "mape": 12.37,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77493": {
+      "mape": 16.59,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "77494": {
+      "mape": 5.89,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77495": {
+      "mape": 7.36,
+      "n": 22,
+      "classe": "donnees_insuffisantes"
+    },
+    "77496": {
+      "mape": 4.77,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77500": {
+      "mape": 9.78,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "77501": {
+      "mape": 14.22,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77504": {
+      "mape": 21.68,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77507": {
+      "mape": 15.5,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77508": {
+      "mape": 8.73,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "77509": {
+      "mape": 7.37,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77510": {
+      "mape": 22.67,
+      "n": 7,
+      "classe": "donnees_insuffisantes"
+    },
+    "77511": {
+      "mape": 8.94,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "77512": {
+      "mape": 15.7,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77513": {
+      "mape": 7.77,
+      "n": 13,
+      "classe": "donnees_insuffisantes"
+    },
+    "77514": {
+      "mape": 12.23,
+      "n": 84,
+      "classe": "indicative"
+    },
+    "77515": {
+      "mape": 21.63,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77516": {
+      "mape": 29.13,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77517": {
+      "mape": 12.83,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "77518": {
+      "mape": 95.65,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77519": {
+      "mape": 12.25,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "77521": {
+      "mape": 15.33,
+      "n": 10,
+      "classe": "donnees_insuffisantes"
+    },
+    "77522": {
+      "mape": 45.74,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77523": {
+      "mape": 20.22,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "77524": {
+      "mape": 15.27,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77525": {
+      "mape": 10.19,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77527": {
+      "mape": 11.55,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "77528": {
+      "mape": 11.4,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "77529": {
+      "mape": 14.42,
+      "n": 7,
+      "classe": "donnees_insuffisantes"
+    },
+    "77531": {
+      "mape": 14.51,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "77533": {
+      "mape": 21.42,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "77534": {
+      "mape": 23.03,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "78003": {
+      "mape": 3.2,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "78005": {
+      "mape": 9.69,
+      "n": 46,
+      "classe": "fiable"
+    },
+    "78006": {
+      "mape": 11.38,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78007": {
+      "mape": 10.53,
+      "n": 7,
+      "classe": "donnees_insuffisantes"
+    },
+    "78009": {
+      "mape": 23.06,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "78010": {
+      "mape": 17.98,
+      "n": 12,
+      "classe": "donnees_insuffisantes"
+    },
+    "78013": {
+      "mape": 7.55,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "78015": {
+      "mape": 16.51,
+      "n": 46,
+      "classe": "indicative"
+    },
+    "78029": {
+      "mape": 11.42,
+      "n": 48,
+      "classe": "indicative"
+    },
+    "78030": {
+      "mape": 14.61,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "78031": {
+      "mape": 14.63,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78033": {
+      "mape": 9.45,
+      "n": 7,
+      "classe": "donnees_insuffisantes"
+    },
+    "78034": {
+      "mape": 5.41,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78036": {
+      "mape": 7.17,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "78043": {
+      "mape": 14.17,
+      "n": 18,
+      "classe": "donnees_insuffisantes"
+    },
+    "78048": {
+      "mape": 13.28,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "78049": {
+      "mape": 26.62,
+      "n": 8,
+      "classe": "donnees_insuffisantes"
+    },
+    "78053": {
+      "mape": 27.18,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78057": {
+      "mape": 9.86,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78062": {
+      "mape": 11.46,
+      "n": 34,
+      "classe": "indicative"
+    },
+    "78070": {
+      "mape": 37.62,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "78071": {
+      "mape": 20.95,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "78072": {
+      "mape": 15.18,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "78073": {
+      "mape": 8.44,
+      "n": 54,
+      "classe": "fiable"
+    },
+    "78076": {
+      "mape": 18.8,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78077": {
+      "mape": 21.48,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "78082": {
+      "mape": 14.79,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "78084": {
+      "mape": 10.55,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78087": {
+      "mape": 7.4,
+      "n": 11,
+      "classe": "donnees_insuffisantes"
+    },
+    "78089": {
+      "mape": 13.7,
+      "n": 8,
+      "classe": "donnees_insuffisantes"
+    },
+    "78090": {
+      "mape": 28.1,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "78092": {
+      "mape": 16.5,
+      "n": 23,
+      "classe": "donnees_insuffisantes"
+    },
+    "78096": {
+      "mape": 13.88,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78104": {
+      "mape": 21.38,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "78107": {
+      "mape": 23.74,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "78108": {
+      "mape": 12.29,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78113": {
+      "mape": 5.38,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "78117": {
+      "mape": 12.56,
+      "n": 28,
+      "classe": "donnees_insuffisantes"
+    },
+    "78118": {
+      "mape": 15.85,
+      "n": 10,
+      "classe": "donnees_insuffisantes"
+    },
+    "78120": {
+      "mape": 8.03,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "78123": {
+      "mape": 9.21,
+      "n": 67,
+      "classe": "fiable"
+    },
+    "78124": {
+      "mape": 11.93,
+      "n": 35,
+      "classe": "indicative"
+    },
+    "78125": {
+      "mape": 13.15,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78126": {
+      "mape": 12.46,
+      "n": 59,
+      "classe": "indicative"
+    },
+    "78128": {
+      "mape": 5.68,
+      "n": 8,
+      "classe": "donnees_insuffisantes"
+    },
+    "78133": {
+      "mape": 13.3,
+      "n": 16,
+      "classe": "donnees_insuffisantes"
+    },
+    "78138": {
+      "mape": 8.85,
+      "n": 15,
+      "classe": "donnees_insuffisantes"
+    },
+    "78140": {
+      "mape": 14.22,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "78143": {
+      "mape": 15.67,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "78146": {
+      "mape": 12.69,
+      "n": 111,
+      "classe": "indicative"
+    },
+    "78152": {
+      "mape": 21.95,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "78158": {
+      "mape": 15.65,
+      "n": 41,
+      "classe": "indicative"
+    },
+    "78160": {
+      "mape": 25.35,
+      "n": 18,
+      "classe": "donnees_insuffisantes"
+    },
+    "78162": {
+      "mape": 15.66,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "78163": {
+      "mape": 22.65,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78164": {
+      "mape": 25.72,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "78165": {
+      "mape": 11.43,
+      "n": 58,
+      "classe": "indicative"
+    },
+    "78168": {
+      "mape": 12.92,
+      "n": 7,
+      "classe": "donnees_insuffisantes"
+    },
+    "78171": {
+      "mape": 11.25,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "78172": {
+      "mape": 12.43,
+      "n": 131,
+      "classe": "indicative"
+    },
+    "78185": {
+      "mape": 14.28,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "78188": {
+      "mape": 30.28,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "78189": {
+      "mape": 12.92,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "78190": {
+      "mape": 12.96,
+      "n": 42,
+      "classe": "indicative"
+    },
+    "78192": {
+      "mape": 19.85,
+      "n": 8,
+      "classe": "donnees_insuffisantes"
+    },
+    "78193": {
+      "mape": 25.15,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "78196": {
+      "mape": 21.86,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "78206": {
+      "mape": 21.08,
+      "n": 16,
+      "classe": "donnees_insuffisantes"
+    },
+    "78208": {
+      "mape": 8.92,
+      "n": 101,
+      "classe": "fiable"
+    },
+    "78209": {
+      "mape": 13.05,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "78217": {
+      "mape": 11.86,
+      "n": 24,
+      "classe": "donnees_insuffisantes"
+    },
+    "78220": {
+      "mape": 11.41,
+      "n": 20,
+      "classe": "donnees_insuffisantes"
+    },
+    "78224": {
+      "mape": 15.03,
+      "n": 15,
+      "classe": "donnees_insuffisantes"
+    },
+    "78227": {
+      "mape": 12.7,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "78230": {
+      "mape": 14.08,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78233": {
+      "mape": 13.26,
+      "n": 10,
+      "classe": "donnees_insuffisantes"
+    },
+    "78234": {
+      "mape": 8.2,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78236": {
+      "mape": 16.16,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "78238": {
+      "mape": 6.83,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "78239": {
+      "mape": 12.95,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "78242": {
+      "mape": 9.14,
+      "n": 31,
+      "classe": "fiable"
+    },
+    "78245": {
+      "mape": 6.03,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "78246": {
+      "mape": 27.43,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78255": {
+      "mape": 12.32,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "78261": {
+      "mape": 55.34,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78262": {
+      "mape": 32.86,
+      "n": 7,
+      "classe": "donnees_insuffisantes"
+    },
+    "78263": {
+      "mape": 15.68,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "78265": {
+      "mape": 14.36,
+      "n": 13,
+      "classe": "donnees_insuffisantes"
+    },
+    "78267": {
+      "mape": 21.03,
+      "n": 29,
+      "classe": "donnees_insuffisantes"
+    },
+    "78269": {
+      "mape": 23.66,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "78276": {
+      "mape": 21.14,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "78278": {
+      "mape": 7.82,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78281": {
+      "mape": 59.21,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78283": {
+      "mape": 0.15,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "78285": {
+      "mape": 8.23,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "78289": {
+      "mape": 26.14,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "78290": {
+      "mape": 14.69,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "78291": {
+      "mape": 13.48,
+      "n": 10,
+      "classe": "donnees_insuffisantes"
+    },
+    "78296": {
+      "mape": 38.74,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "78297": {
+      "mape": 8.2,
+      "n": 61,
+      "classe": "fiable"
+    },
+    "78299": {
+      "mape": 6.37,
+      "n": 13,
+      "classe": "donnees_insuffisantes"
+    },
+    "78302": {
+      "mape": 64.03,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "78307": {
+      "mape": 10.43,
+      "n": 10,
+      "classe": "donnees_insuffisantes"
+    },
+    "78310": {
+      "mape": 11.45,
+      "n": 14,
+      "classe": "donnees_insuffisantes"
+    },
+    "78311": {
+      "mape": 14.12,
+      "n": 110,
+      "classe": "indicative"
+    },
+    "78314": {
+      "mape": 8.41,
+      "n": 13,
+      "classe": "donnees_insuffisantes"
+    },
+    "78317": {
+      "mape": 13.03,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "78321": {
+      "mape": 18.66,
+      "n": 17,
+      "classe": "donnees_insuffisantes"
+    },
+    "78322": {
+      "mape": 9.17,
+      "n": 16,
+      "classe": "donnees_insuffisantes"
+    },
+    "78324": {
+      "mape": 10.77,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "78325": {
+      "mape": 17.48,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "78327": {
+      "mape": 8.31,
+      "n": 10,
+      "classe": "donnees_insuffisantes"
+    },
+    "78329": {
+      "mape": 7.45,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78334": {
+      "mape": 7.28,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "78335": {
+      "mape": 10.83,
+      "n": 37,
+      "classe": "indicative"
+    },
+    "78337": {
+      "mape": 7.01,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "78343": {
+      "mape": 11.23,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78344": {
+      "mape": 7.0,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78346": {
+      "mape": 13.62,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "78349": {
+      "mape": 23.79,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "78350": {
+      "mape": 10.43,
+      "n": 14,
+      "classe": "donnees_insuffisantes"
+    },
+    "78354": {
+      "mape": 13.5,
+      "n": 16,
+      "classe": "donnees_insuffisantes"
+    },
+    "78356": {
+      "mape": 13.37,
+      "n": 24,
+      "classe": "donnees_insuffisantes"
+    },
+    "78358": {
+      "mape": 12.91,
+      "n": 97,
+      "classe": "indicative"
+    },
+    "78361": {
+      "mape": 15.36,
+      "n": 73,
+      "classe": "indicative"
+    },
+    "78362": {
+      "mape": 14.46,
+      "n": 46,
+      "classe": "indicative"
+    },
+    "78364": {
+      "mape": 17.94,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78366": {
+      "mape": 4.83,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78367": {
+      "mape": 27.17,
+      "n": 8,
+      "classe": "donnees_insuffisantes"
+    },
+    "78368": {
+      "mape": 35.45,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "78372": {
+      "mape": 15.73,
+      "n": 60,
+      "classe": "indicative"
+    },
+    "78380": {
+      "mape": 12.69,
+      "n": 18,
+      "classe": "donnees_insuffisantes"
+    },
+    "78381": {
+      "mape": 67.58,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78382": {
+      "mape": 12.37,
+      "n": 18,
+      "classe": "donnees_insuffisantes"
+    },
+    "78383": {
+      "mape": 9.12,
+      "n": 66,
+      "classe": "fiable"
+    },
+    "78384": {
+      "mape": 58.14,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "78389": {
+      "mape": 12.63,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "78391": {
+      "mape": 53.56,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78396": {
+      "mape": 15.36,
+      "n": 19,
+      "classe": "donnees_insuffisantes"
+    },
+    "78397": {
+      "mape": 12.49,
+      "n": 26,
+      "classe": "donnees_insuffisantes"
+    },
+    "78398": {
+      "mape": 25.24,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "78401": {
+      "mape": 18.09,
+      "n": 25,
+      "classe": "donnees_insuffisantes"
+    },
+    "78402": {
+      "mape": 10.09,
+      "n": 15,
+      "classe": "donnees_insuffisantes"
+    },
+    "78403": {
+      "mape": 7.7,
+      "n": 7,
+      "classe": "donnees_insuffisantes"
+    },
+    "78407": {
+      "mape": 17.2,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "78410": {
+      "mape": 107.05,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78413": {
+      "mape": 11.96,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "78415": {
+      "mape": 10.33,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "78416": {
+      "mape": 8.29,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "78418": {
+      "mape": 10.53,
+      "n": 59,
+      "classe": "indicative"
+    },
+    "78420": {
+      "mape": 34.09,
+      "n": 7,
+      "classe": "donnees_insuffisantes"
+    },
+    "78423": {
+      "mape": 10.62,
+      "n": 102,
+      "classe": "indicative"
+    },
+    "78431": {
+      "mape": 11.43,
+      "n": 7,
+      "classe": "donnees_insuffisantes"
+    },
+    "78437": {
+      "mape": 22.86,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "78440": {
+      "mape": 17.65,
+      "n": 46,
+      "classe": "indicative"
+    },
+    "78442": {
+      "mape": 14.89,
+      "n": 13,
+      "classe": "donnees_insuffisantes"
+    },
+    "78443": {
+      "mape": 28.1,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78444": {
+      "mape": 22.13,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "78451": {
+      "mape": 11.37,
+      "n": 12,
+      "classe": "donnees_insuffisantes"
+    },
+    "78455": {
+      "mape": 8.83,
+      "n": 17,
+      "classe": "donnees_insuffisantes"
+    },
+    "78460": {
+      "mape": 27.92,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "78464": {
+      "mape": 8.32,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "78465": {
+      "mape": 15.82,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "78466": {
+      "mape": 16.17,
+      "n": 26,
+      "classe": "donnees_insuffisantes"
+    },
+    "78470": {
+      "mape": 15.96,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78472": {
+      "mape": 4.7,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78474": {
+      "mape": 13.78,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "78475": {
+      "mape": 4.63,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "78481": {
+      "mape": 16.44,
+      "n": 49,
+      "classe": "indicative"
+    },
+    "78484": {
+      "mape": 12.87,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78486": {
+      "mape": 9.4,
+      "n": 22,
+      "classe": "donnees_insuffisantes"
+    },
+    "78490": {
+      "mape": 10.33,
+      "n": 104,
+      "classe": "indicative"
+    },
+    "78497": {
+      "mape": 16.61,
+      "n": 7,
+      "classe": "donnees_insuffisantes"
+    },
+    "78498": {
+      "mape": 11.47,
+      "n": 125,
+      "classe": "indicative"
+    },
+    "78499": {
+      "mape": 17.31,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "78501": {
+      "mape": 13.65,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "78502": {
+      "mape": 13.96,
+      "n": 23,
+      "classe": "donnees_insuffisantes"
+    },
+    "78506": {
+      "mape": 36.44,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "78513": {
+      "mape": 18.34,
+      "n": 12,
+      "classe": "donnees_insuffisantes"
+    },
+    "78516": {
+      "mape": 16.0,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "78517": {
+      "mape": 12.23,
+      "n": 107,
+      "classe": "indicative"
+    },
+    "78518": {
+      "mape": 45.15,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "78520": {
+      "mape": 15.46,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "78522": {
+      "mape": 15.61,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78531": {
+      "mape": 15.34,
+      "n": 17,
+      "classe": "donnees_insuffisantes"
+    },
+    "78536": {
+      "mape": 18.01,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78537": {
+      "mape": 12.34,
+      "n": 21,
+      "classe": "donnees_insuffisantes"
+    },
+    "78545": {
+      "mape": 10.16,
+      "n": 73,
+      "classe": "indicative"
+    },
+    "78548": {
+      "mape": 49.56,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78550": {
+      "mape": 15.29,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "78551": {
+      "mape": 14.51,
+      "n": 141,
+      "classe": "indicative"
+    },
+    "78557": {
+      "mape": 30.91,
+      "n": 8,
+      "classe": "donnees_insuffisantes"
+    },
+    "78558": {
+      "mape": 44.41,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "78559": {
+      "mape": 2.09,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78562": {
+      "mape": 35.8,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "78564": {
+      "mape": 21.62,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78567": {
+      "mape": 37.84,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "78569": {
+      "mape": 16.13,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "78571": {
+      "mape": 10.79,
+      "n": 14,
+      "classe": "donnees_insuffisantes"
+    },
+    "78575": {
+      "mape": 16.01,
+      "n": 25,
+      "classe": "donnees_insuffisantes"
+    },
+    "78576": {
+      "mape": 18.8,
+      "n": 7,
+      "classe": "donnees_insuffisantes"
+    },
+    "78586": {
+      "mape": 14.18,
+      "n": 139,
+      "classe": "indicative"
+    },
+    "78588": {
+      "mape": 20.46,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "78590": {
+      "mape": 16.89,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "78591": {
+      "mape": 15.48,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "78601": {
+      "mape": 29.42,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "78605": {
+      "mape": 13.55,
+      "n": 7,
+      "classe": "donnees_insuffisantes"
+    },
+    "78608": {
+      "mape": 6.22,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "78615": {
+      "mape": 12.89,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "78616": {
+      "mape": 37.26,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "78618": {
+      "mape": 18.26,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "78620": {
+      "mape": 20.72,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78621": {
+      "mape": 12.58,
+      "n": 56,
+      "classe": "indicative"
+    },
+    "78623": {
+      "mape": 12.39,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78624": {
+      "mape": 14.34,
+      "n": 44,
+      "classe": "indicative"
+    },
+    "78638": {
+      "mape": 17.71,
+      "n": 24,
+      "classe": "donnees_insuffisantes"
+    },
+    "78640": {
+      "mape": 10.96,
+      "n": 44,
+      "classe": "indicative"
+    },
+    "78642": {
+      "mape": 10.52,
+      "n": 57,
+      "classe": "indicative"
+    },
+    "78643": {
+      "mape": 11.26,
+      "n": 23,
+      "classe": "donnees_insuffisantes"
+    },
+    "78644": {
+      "mape": 6.68,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "78646": {
+      "mape": 13.23,
+      "n": 278,
+      "classe": "indicative"
+    },
+    "78647": {
+      "mape": 4.12,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78650": {
+      "mape": 15.2,
+      "n": 68,
+      "classe": "indicative"
+    },
+    "78653": {
+      "mape": 41.4,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "78655": {
+      "mape": 19.88,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "78668": {
+      "mape": 3.9,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "78672": {
+      "mape": 15.27,
+      "n": 26,
+      "classe": "donnees_insuffisantes"
+    },
+    "78674": {
+      "mape": 11.64,
+      "n": 38,
+      "classe": "indicative"
+    },
+    "78681": {
+      "mape": 15.81,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "78683": {
+      "mape": 6.13,
+      "n": 8,
+      "classe": "donnees_insuffisantes"
+    },
+    "78686": {
+      "mape": 14.04,
+      "n": 66,
+      "classe": "indicative"
+    },
+    "78688": {
+      "mape": 9.8,
+      "n": 39,
+      "classe": "fiable"
+    },
+    "91016": {
+      "mape": 20.77,
+      "n": 10,
+      "classe": "donnees_insuffisantes"
+    },
+    "91017": {
+      "mape": 18.12,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "91021": {
+      "mape": 11.45,
+      "n": 44,
+      "classe": "indicative"
+    },
+    "91027": {
+      "mape": 10.66,
+      "n": 81,
+      "classe": "indicative"
+    },
+    "91035": {
+      "mape": 14.59,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "91037": {
+      "mape": 20.84,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "91038": {
+      "mape": 5.22,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "91041": {
+      "mape": 12.59,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "91044": {
+      "mape": 19.96,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "91045": {
+      "mape": 11.98,
+      "n": 36,
+      "classe": "indicative"
+    },
+    "91047": {
+      "mape": 12.9,
+      "n": 10,
+      "classe": "donnees_insuffisantes"
+    },
+    "91064": {
+      "mape": 14.49,
+      "n": 17,
+      "classe": "donnees_insuffisantes"
+    },
+    "91067": {
+      "mape": 11.6,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "91069": {
+      "mape": 1.31,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "91079": {
+      "mape": 8.05,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "91080": {
+      "mape": 12.51,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "91081": {
+      "mape": 12.44,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "91085": {
+      "mape": 24.15,
+      "n": 12,
+      "classe": "donnees_insuffisantes"
+    },
+    "91086": {
+      "mape": 6.56,
+      "n": 43,
+      "classe": "fiable"
+    },
+    "91095": {
+      "mape": 13.54,
+      "n": 8,
+      "classe": "donnees_insuffisantes"
+    },
+    "91097": {
+      "mape": 7.41,
+      "n": 16,
+      "classe": "donnees_insuffisantes"
+    },
+    "91099": {
+      "mape": 23.81,
+      "n": 13,
+      "classe": "donnees_insuffisantes"
+    },
+    "91100": {
+      "mape": 48.39,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "91103": {
+      "mape": 11.05,
+      "n": 78,
+      "classe": "indicative"
+    },
+    "91105": {
+      "mape": 15.99,
+      "n": 16,
+      "classe": "donnees_insuffisantes"
+    },
+    "91106": {
+      "mape": 16.97,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "91109": {
+      "mape": 0.2,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "91111": {
+      "mape": 13.64,
+      "n": 17,
+      "classe": "donnees_insuffisantes"
+    },
+    "91114": {
+      "mape": 16.29,
+      "n": 92,
+      "classe": "indicative"
+    },
+    "91115": {
+      "mape": 8.0,
+      "n": 11,
+      "classe": "donnees_insuffisantes"
+    },
+    "91121": {
+      "mape": 2.26,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "91122": {
+      "mape": 13.48,
+      "n": 21,
+      "classe": "donnees_insuffisantes"
+    },
+    "91129": {
+      "mape": 15.93,
+      "n": 15,
+      "classe": "donnees_insuffisantes"
+    },
+    "91130": {
+      "mape": 19.0,
+      "n": 7,
+      "classe": "donnees_insuffisantes"
+    },
+    "91131": {
+      "mape": 27.33,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "91132": {
+      "mape": 33.06,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "91135": {
+      "mape": 8.86,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "91136": {
+      "mape": 14.67,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "91156": {
+      "mape": 12.28,
+      "n": 7,
+      "classe": "donnees_insuffisantes"
+    },
+    "91159": {
+      "mape": 5.12,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "91161": {
+      "mape": 10.6,
+      "n": 62,
+      "classe": "indicative"
+    },
+    "91174": {
+      "mape": 11.54,
+      "n": 159,
+      "classe": "indicative"
+    },
+    "91175": {
+      "mape": 13.42,
+      "n": 7,
+      "classe": "donnees_insuffisantes"
+    },
+    "91179": {
+      "mape": 11.64,
+      "n": 14,
+      "classe": "donnees_insuffisantes"
+    },
+    "91180": {
+      "mape": 15.48,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "91184": {
+      "mape": 7.28,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "91186": {
+      "mape": 8.77,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "91191": {
+      "mape": 9.85,
+      "n": 35,
+      "classe": "fiable"
+    },
+    "91195": {
+      "mape": 21.33,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "91198": {
+      "mape": 22.74,
+      "n": 10,
+      "classe": "donnees_insuffisantes"
+    },
+    "91200": {
+      "mape": 10.66,
+      "n": 30,
+      "classe": "indicative"
+    },
+    "91201": {
+      "mape": 13.95,
+      "n": 67,
+      "classe": "indicative"
+    },
+    "91204": {
+      "mape": 8.87,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "91207": {
+      "mape": 9.61,
+      "n": 12,
+      "classe": "donnees_insuffisantes"
+    },
+    "91215": {
+      "mape": 8.69,
+      "n": 27,
+      "classe": "donnees_insuffisantes"
+    },
+    "91216": {
+      "mape": 7.72,
+      "n": 31,
+      "classe": "fiable"
+    },
+    "91223": {
+      "mape": 14.2,
+      "n": 79,
+      "classe": "indicative"
+    },
+    "91225": {
+      "mape": 17.92,
+      "n": 14,
+      "classe": "donnees_insuffisantes"
+    },
+    "91226": {
+      "mape": 12.32,
+      "n": 20,
+      "classe": "donnees_insuffisantes"
+    },
+    "91228": {
+      "mape": 9.26,
+      "n": 141,
+      "classe": "fiable"
+    },
+    "91232": {
+      "mape": 14.78,
+      "n": 11,
+      "classe": "donnees_insuffisantes"
+    },
+    "91235": {
+      "mape": 6.5,
+      "n": 15,
+      "classe": "donnees_insuffisantes"
+    },
+    "91240": {
+      "mape": 30.13,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "91243": {
+      "mape": 9.11,
+      "n": 8,
+      "classe": "donnees_insuffisantes"
+    },
+    "91244": {
+      "mape": 10.99,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "91247": {
+      "mape": 16.25,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "91249": {
+      "mape": 23.24,
+      "n": 14,
+      "classe": "donnees_insuffisantes"
+    },
+    "91272": {
+      "mape": 10.98,
+      "n": 68,
+      "classe": "indicative"
+    },
+    "91273": {
+      "mape": 46.09,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "91274": {
+      "mape": 3.99,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "91275": {
+      "mape": 10.57,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "91284": {
+      "mape": 9.75,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "91286": {
+      "mape": 9.56,
+      "n": 22,
+      "classe": "donnees_insuffisantes"
+    },
+    "91292": {
+      "mape": 9.95,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "91293": {
+      "mape": 17.42,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "91294": {
+      "mape": 19.54,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "91312": {
+      "mape": 14.2,
+      "n": 30,
+      "classe": "indicative"
+    },
+    "91315": {
+      "mape": 19.78,
+      "n": 21,
+      "classe": "donnees_insuffisantes"
+    },
+    "91318": {
+      "mape": 10.33,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "91319": {
+      "mape": 0.07,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "91326": {
+      "mape": 11.8,
+      "n": 57,
+      "classe": "indicative"
+    },
+    "91330": {
+      "mape": 15.54,
+      "n": 25,
+      "classe": "donnees_insuffisantes"
+    },
+    "91332": {
+      "mape": 8.71,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "91333": {
+      "mape": 22.03,
+      "n": 7,
+      "classe": "donnees_insuffisantes"
+    },
+    "91338": {
+      "mape": 13.69,
+      "n": 21,
+      "classe": "donnees_insuffisantes"
+    },
+    "91339": {
+      "mape": 10.48,
+      "n": 32,
+      "classe": "indicative"
+    },
+    "91340": {
+      "mape": 12.44,
+      "n": 31,
+      "classe": "indicative"
+    },
+    "91345": {
+      "mape": 9.73,
+      "n": 56,
+      "classe": "fiable"
+    },
+    "91347": {
+      "mape": 14.85,
+      "n": 22,
+      "classe": "donnees_insuffisantes"
+    },
+    "91359": {
+      "mape": 25.41,
+      "n": 11,
+      "classe": "donnees_insuffisantes"
+    },
+    "91363": {
+      "mape": 10.25,
+      "n": 21,
+      "classe": "donnees_insuffisantes"
+    },
+    "91374": {
+      "mape": 3.21,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "91376": {
+      "mape": 15.02,
+      "n": 27,
+      "classe": "donnees_insuffisantes"
+    },
+    "91377": {
+      "mape": 9.07,
+      "n": 138,
+      "classe": "fiable"
+    },
+    "91378": {
+      "mape": 69.0,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "91386": {
+      "mape": 13.25,
+      "n": 42,
+      "classe": "indicative"
+    },
+    "91390": {
+      "mape": 19.59,
+      "n": 10,
+      "classe": "donnees_insuffisantes"
+    },
+    "91393": {
+      "mape": 8.59,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "91405": {
+      "mape": 30.5,
+      "n": 22,
+      "classe": "donnees_insuffisantes"
+    },
+    "91408": {
+      "mape": 22.92,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "91411": {
+      "mape": 11.95,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "91412": {
+      "mape": 7.84,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "91414": {
+      "mape": 10.63,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "91421": {
+      "mape": 14.43,
+      "n": 76,
+      "classe": "indicative"
+    },
+    "91425": {
+      "mape": 19.76,
+      "n": 35,
+      "classe": "indicative"
+    },
+    "91432": {
+      "mape": 8.99,
+      "n": 47,
+      "classe": "fiable"
+    },
+    "91433": {
+      "mape": 10.16,
+      "n": 15,
+      "classe": "donnees_insuffisantes"
+    },
+    "91434": {
+      "mape": 12.5,
+      "n": 82,
+      "classe": "indicative"
+    },
+    "91435": {
+      "mape": 20.42,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "91457": {
+      "mape": 14.43,
+      "n": 16,
+      "classe": "donnees_insuffisantes"
+    },
+    "91458": {
+      "mape": 8.49,
+      "n": 13,
+      "classe": "donnees_insuffisantes"
+    },
+    "91461": {
+      "mape": 8.09,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "91463": {
+      "mape": 42.6,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "91468": {
+      "mape": 10.84,
+      "n": 15,
+      "classe": "donnees_insuffisantes"
+    },
+    "91469": {
+      "mape": 14.61,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "91471": {
+      "mape": 11.59,
+      "n": 55,
+      "classe": "indicative"
+    },
+    "91477": {
+      "mape": 11.05,
+      "n": 101,
+      "classe": "indicative"
+    },
+    "91479": {
+      "mape": 8.79,
+      "n": 11,
+      "classe": "donnees_insuffisantes"
+    },
+    "91482": {
+      "mape": 11.83,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "91494": {
+      "mape": 6.64,
+      "n": 17,
+      "classe": "donnees_insuffisantes"
+    },
+    "91495": {
+      "mape": 71.19,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "91508": {
+      "mape": 22.91,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "91511": {
+      "mape": 12.65,
+      "n": 11,
+      "classe": "donnees_insuffisantes"
+    },
+    "91514": {
+      "mape": 10.49,
+      "n": 23,
+      "classe": "donnees_insuffisantes"
+    },
+    "91519": {
+      "mape": 13.11,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "91521": {
+      "mape": 9.72,
+      "n": 63,
+      "classe": "fiable"
+    },
+    "91525": {
+      "mape": 16.88,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "91533": {
+      "mape": 14.5,
+      "n": 11,
+      "classe": "donnees_insuffisantes"
+    },
+    "91534": {
+      "mape": 16.15,
+      "n": 15,
+      "classe": "donnees_insuffisantes"
+    },
+    "91538": {
+      "mape": 11.09,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "91540": {
+      "mape": 9.55,
+      "n": 17,
+      "classe": "donnees_insuffisantes"
+    },
+    "91546": {
+      "mape": 2.17,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "91547": {
+      "mape": 4.61,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "91549": {
+      "mape": 10.51,
+      "n": 82,
+      "classe": "indicative"
+    },
+    "91552": {
+      "mape": 9.43,
+      "n": 31,
+      "classe": "fiable"
+    },
+    "91553": {
+      "mape": 11.11,
+      "n": 41,
+      "classe": "indicative"
+    },
+    "91556": {
+      "mape": 36.1,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "91560": {
+      "mape": 9.96,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "91568": {
+      "mape": 10.22,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "91570": {
+      "mape": 11.15,
+      "n": 58,
+      "classe": "indicative"
+    },
+    "91573": {
+      "mape": 9.65,
+      "n": 41,
+      "classe": "fiable"
+    },
+    "91577": {
+      "mape": 9.68,
+      "n": 22,
+      "classe": "donnees_insuffisantes"
+    },
+    "91578": {
+      "mape": 19.98,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "91579": {
+      "mape": 12.48,
+      "n": 13,
+      "classe": "donnees_insuffisantes"
+    },
+    "91581": {
+      "mape": 12.65,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "91587": {
+      "mape": 14.64,
+      "n": 16,
+      "classe": "donnees_insuffisantes"
+    },
+    "91589": {
+      "mape": 12.17,
+      "n": 117,
+      "classe": "indicative"
+    },
+    "91593": {
+      "mape": 31.63,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "91599": {
+      "mape": 17.17,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "91600": {
+      "mape": 28.41,
+      "n": 19,
+      "classe": "donnees_insuffisantes"
+    },
+    "91602": {
+      "mape": 26.68,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "91617": {
+      "mape": 8.65,
+      "n": 10,
+      "classe": "donnees_insuffisantes"
+    },
+    "91619": {
+      "mape": 1.87,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "91629": {
+      "mape": 38.59,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "91630": {
+      "mape": 9.35,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "91631": {
+      "mape": 10.17,
+      "n": 8,
+      "classe": "donnees_insuffisantes"
+    },
+    "91634": {
+      "mape": 15.14,
+      "n": 7,
+      "classe": "donnees_insuffisantes"
+    },
+    "91635": {
+      "mape": 7.26,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "91639": {
+      "mape": 8.08,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "91645": {
+      "mape": 15.26,
+      "n": 42,
+      "classe": "indicative"
+    },
+    "91648": {
+      "mape": 13.56,
+      "n": 11,
+      "classe": "donnees_insuffisantes"
+    },
+    "91649": {
+      "mape": 15.45,
+      "n": 8,
+      "classe": "donnees_insuffisantes"
+    },
+    "91654": {
+      "mape": 6.13,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "91657": {
+      "mape": 9.44,
+      "n": 71,
+      "classe": "fiable"
+    },
+    "91659": {
+      "mape": 7.29,
+      "n": 12,
+      "classe": "donnees_insuffisantes"
+    },
+    "91661": {
+      "mape": 12.85,
+      "n": 35,
+      "classe": "indicative"
+    },
+    "91662": {
+      "mape": 5.94,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "91665": {
+      "mape": 12.27,
+      "n": 25,
+      "classe": "donnees_insuffisantes"
+    },
+    "91666": {
+      "mape": 11.89,
+      "n": 14,
+      "classe": "donnees_insuffisantes"
+    },
+    "91667": {
+      "mape": 14.36,
+      "n": 27,
+      "classe": "donnees_insuffisantes"
+    },
+    "91679": {
+      "mape": 12.16,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "91685": {
+      "mape": 9.95,
+      "n": 8,
+      "classe": "donnees_insuffisantes"
+    },
+    "91687": {
+      "mape": 8.77,
+      "n": 77,
+      "classe": "fiable"
+    },
+    "91689": {
+      "mape": 11.85,
+      "n": 19,
+      "classe": "donnees_insuffisantes"
+    },
+    "91691": {
+      "mape": 10.43,
+      "n": 87,
+      "classe": "indicative"
+    },
+    "91692": {
+      "mape": 8.97,
+      "n": 43,
+      "classe": "fiable"
+    },
+    "92002": {
+      "mape": 10.38,
+      "n": 202,
+      "classe": "indicative"
+    },
+    "92004": {
+      "mape": 13.89,
+      "n": 364,
+      "classe": "indicative"
+    },
+    "92007": {
+      "mape": 13.5,
+      "n": 74,
+      "classe": "indicative"
+    },
+    "92009": {
+      "mape": 13.79,
+      "n": 119,
+      "classe": "indicative"
+    },
+    "92012": {
+      "mape": 14.76,
+      "n": 421,
+      "classe": "indicative"
+    },
+    "92014": {
+      "mape": 11.72,
+      "n": 61,
+      "classe": "indicative"
+    },
+    "92019": {
+      "mape": 15.15,
+      "n": 122,
+      "classe": "indicative"
+    },
+    "92020": {
+      "mape": 13.44,
+      "n": 130,
+      "classe": "indicative"
+    },
+    "92022": {
+      "mape": 14.47,
+      "n": 67,
+      "classe": "indicative"
+    },
+    "92023": {
+      "mape": 15.16,
+      "n": 226,
+      "classe": "indicative"
+    },
+    "92024": {
+      "mape": 15.24,
+      "n": 195,
+      "classe": "indicative"
+    },
+    "92025": {
+      "mape": 17.33,
+      "n": 291,
+      "classe": "indicative"
+    },
+    "92026": {
+      "mape": 12.08,
+      "n": 272,
+      "classe": "indicative"
+    },
+    "92032": {
+      "mape": 14.46,
+      "n": 74,
+      "classe": "indicative"
+    },
+    "92033": {
+      "mape": 13.82,
+      "n": 58,
+      "classe": "indicative"
+    },
+    "92035": {
+      "mape": 12.11,
+      "n": 133,
+      "classe": "indicative"
+    },
+    "92036": {
+      "mape": 9.66,
+      "n": 39,
+      "classe": "fiable"
+    },
+    "92040": {
+      "mape": 13.59,
+      "n": 191,
+      "classe": "indicative"
+    },
+    "92044": {
+      "mape": 11.69,
+      "n": 244,
+      "classe": "indicative"
+    },
+    "92046": {
+      "mape": 16.3,
+      "n": 74,
+      "classe": "indicative"
+    },
+    "92047": {
+      "mape": 11.34,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "92048": {
+      "mape": 14.98,
+      "n": 129,
+      "classe": "indicative"
+    },
+    "92049": {
+      "mape": 13.45,
+      "n": 190,
+      "classe": "indicative"
+    },
+    "92050": {
+      "mape": 13.69,
+      "n": 151,
+      "classe": "indicative"
+    },
+    "92051": {
+      "mape": 13.81,
+      "n": 249,
+      "classe": "indicative"
+    },
+    "92060": {
+      "mape": 12.27,
+      "n": 103,
+      "classe": "indicative"
+    },
+    "92062": {
+      "mape": 13.78,
+      "n": 145,
+      "classe": "indicative"
+    },
+    "92063": {
+      "mape": 13.85,
+      "n": 287,
+      "classe": "indicative"
+    },
+    "92064": {
+      "mape": 12.67,
+      "n": 105,
+      "classe": "indicative"
+    },
+    "92071": {
+      "mape": 15.06,
+      "n": 76,
+      "classe": "indicative"
+    },
+    "92072": {
+      "mape": 15.98,
+      "n": 70,
+      "classe": "indicative"
+    },
+    "92073": {
+      "mape": 13.07,
+      "n": 157,
+      "classe": "indicative"
+    },
+    "92075": {
+      "mape": 15.97,
+      "n": 102,
+      "classe": "indicative"
+    },
+    "92076": {
+      "mape": 21.59,
+      "n": 33,
+      "classe": "a_completer"
+    },
+    "92077": {
+      "mape": 15.12,
+      "n": 39,
+      "classe": "indicative"
+    },
+    "92078": {
+      "mape": 10.32,
+      "n": 30,
+      "classe": "indicative"
+    },
+    "93001": {
+      "mape": 15.37,
+      "n": 134,
+      "classe": "indicative"
+    },
+    "93005": {
+      "mape": 13.04,
+      "n": 135,
+      "classe": "indicative"
+    },
+    "93006": {
+      "mape": 22.66,
+      "n": 77,
+      "classe": "a_completer"
+    },
+    "93007": {
+      "mape": 14.19,
+      "n": 95,
+      "classe": "indicative"
+    },
+    "93008": {
+      "mape": 22.7,
+      "n": 43,
+      "classe": "a_completer"
+    },
+    "93010": {
+      "mape": 14.04,
+      "n": 90,
+      "classe": "indicative"
+    },
+    "93013": {
+      "mape": 17.24,
+      "n": 39,
+      "classe": "indicative"
+    },
+    "93014": {
+      "mape": 17.72,
+      "n": 30,
+      "classe": "indicative"
+    },
+    "93015": {
+      "mape": 10.33,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "93027": {
+      "mape": 12.92,
+      "n": 40,
+      "classe": "indicative"
+    },
+    "93029": {
+      "mape": 15.24,
+      "n": 118,
+      "classe": "indicative"
+    },
+    "93030": {
+      "mape": 3.82,
+      "n": 14,
+      "classe": "donnees_insuffisantes"
+    },
+    "93031": {
+      "mape": 16.38,
+      "n": 86,
+      "classe": "indicative"
+    },
+    "93032": {
+      "mape": 12.37,
+      "n": 111,
+      "classe": "indicative"
+    },
+    "93033": {
+      "mape": 13.36,
+      "n": 31,
+      "classe": "indicative"
+    },
+    "93039": {
+      "mape": 13.63,
+      "n": 27,
+      "classe": "donnees_insuffisantes"
+    },
+    "93045": {
+      "mape": 17.06,
+      "n": 66,
+      "classe": "indicative"
+    },
+    "93046": {
+      "mape": 10.97,
+      "n": 125,
+      "classe": "indicative"
+    },
+    "93047": {
+      "mape": 12.99,
+      "n": 63,
+      "classe": "indicative"
+    },
+    "93048": {
+      "mape": 15.08,
+      "n": 301,
+      "classe": "indicative"
+    },
+    "93049": {
+      "mape": 16.87,
+      "n": 85,
+      "classe": "indicative"
+    },
+    "93050": {
+      "mape": 12.47,
+      "n": 67,
+      "classe": "indicative"
+    },
+    "93051": {
+      "mape": 10.18,
+      "n": 198,
+      "classe": "indicative"
+    },
+    "93053": {
+      "mape": 17.18,
+      "n": 90,
+      "classe": "indicative"
+    },
+    "93055": {
+      "mape": 18.37,
+      "n": 136,
+      "classe": "indicative"
+    },
+    "93057": {
+      "mape": 17.13,
+      "n": 62,
+      "classe": "indicative"
+    },
+    "93061": {
+      "mape": 18.47,
+      "n": 49,
+      "classe": "indicative"
+    },
+    "93062": {
+      "mape": 17.4,
+      "n": 47,
+      "classe": "indicative"
+    },
+    "93063": {
+      "mape": 15.61,
+      "n": 95,
+      "classe": "indicative"
+    },
+    "93064": {
+      "mape": 12.11,
+      "n": 124,
+      "classe": "indicative"
+    },
+    "93066": {
+      "mape": 15.6,
+      "n": 226,
+      "classe": "indicative"
+    },
+    "93070": {
+      "mape": 12.81,
+      "n": 190,
+      "classe": "indicative"
+    },
+    "93071": {
+      "mape": 14.58,
+      "n": 73,
+      "classe": "indicative"
+    },
+    "93072": {
+      "mape": 17.8,
+      "n": 35,
+      "classe": "indicative"
+    },
+    "93073": {
+      "mape": 12.44,
+      "n": 85,
+      "classe": "indicative"
+    },
+    "93074": {
+      "mape": 16.23,
+      "n": 16,
+      "classe": "donnees_insuffisantes"
+    },
+    "93077": {
+      "mape": 18.81,
+      "n": 94,
+      "classe": "indicative"
+    },
+    "93078": {
+      "mape": 15.67,
+      "n": 68,
+      "classe": "indicative"
+    },
+    "93079": {
+      "mape": 11.52,
+      "n": 8,
+      "classe": "donnees_insuffisantes"
+    },
+    "94001": {
+      "mape": 20.18,
+      "n": 14,
+      "classe": "donnees_insuffisantes"
+    },
+    "94002": {
+      "mape": 13.38,
+      "n": 117,
+      "classe": "indicative"
+    },
+    "94003": {
+      "mape": 12.83,
+      "n": 45,
+      "classe": "indicative"
+    },
+    "94004": {
+      "mape": 12.09,
+      "n": 32,
+      "classe": "indicative"
+    },
+    "94011": {
+      "mape": 15.89,
+      "n": 18,
+      "classe": "donnees_insuffisantes"
+    },
+    "94015": {
+      "mape": 12.8,
+      "n": 68,
+      "classe": "indicative"
+    },
+    "94016": {
+      "mape": 12.6,
+      "n": 81,
+      "classe": "indicative"
+    },
+    "94017": {
+      "mape": 13.85,
+      "n": 150,
+      "classe": "indicative"
+    },
+    "94018": {
+      "mape": 14.27,
+      "n": 103,
+      "classe": "indicative"
+    },
+    "94019": {
+      "mape": 11.52,
+      "n": 94,
+      "classe": "indicative"
+    },
+    "94021": {
+      "mape": 13.17,
+      "n": 34,
+      "classe": "indicative"
+    },
+    "94022": {
+      "mape": 14.49,
+      "n": 120,
+      "classe": "indicative"
+    },
+    "94028": {
+      "mape": 13.41,
+      "n": 150,
+      "classe": "indicative"
+    },
+    "94033": {
+      "mape": 18.19,
+      "n": 162,
+      "classe": "indicative"
+    },
+    "94034": {
+      "mape": 12.59,
+      "n": 85,
+      "classe": "indicative"
+    },
+    "94037": {
+      "mape": 13.1,
+      "n": 39,
+      "classe": "indicative"
+    },
+    "94038": {
+      "mape": 10.24,
+      "n": 74,
+      "classe": "indicative"
+    },
+    "94041": {
+      "mape": 12.84,
+      "n": 142,
+      "classe": "indicative"
+    },
+    "94042": {
+      "mape": 14.08,
+      "n": 61,
+      "classe": "indicative"
+    },
+    "94043": {
+      "mape": 14.41,
+      "n": 66,
+      "classe": "indicative"
+    },
+    "94044": {
+      "mape": 9.66,
+      "n": 76,
+      "classe": "fiable"
+    },
+    "94046": {
+      "mape": 11.54,
+      "n": 164,
+      "classe": "indicative"
+    },
+    "94047": {
+      "mape": 10.71,
+      "n": 11,
+      "classe": "donnees_insuffisantes"
+    },
+    "94048": {
+      "mape": 12.97,
+      "n": 11,
+      "classe": "donnees_insuffisantes"
+    },
+    "94052": {
+      "mape": 12.86,
+      "n": 120,
+      "classe": "indicative"
+    },
+    "94053": {
+      "mape": 6.7,
+      "n": 7,
+      "classe": "donnees_insuffisantes"
+    },
+    "94054": {
+      "mape": 10.89,
+      "n": 28,
+      "classe": "donnees_insuffisantes"
+    },
+    "94055": {
+      "mape": 15.12,
+      "n": 34,
+      "classe": "indicative"
+    },
+    "94056": {
+      "mape": 9.48,
+      "n": 10,
+      "classe": "donnees_insuffisantes"
+    },
+    "94058": {
+      "mape": 11.8,
+      "n": 157,
+      "classe": "indicative"
+    },
+    "94059": {
+      "mape": 12.67,
+      "n": 83,
+      "classe": "indicative"
+    },
+    "94060": {
+      "mape": 9.93,
+      "n": 39,
+      "classe": "fiable"
+    },
+    "94065": {
+      "mape": 8.68,
+      "n": 38,
+      "classe": "fiable"
+    },
+    "94067": {
+      "mape": 13.06,
+      "n": 87,
+      "classe": "indicative"
+    },
+    "94068": {
+      "mape": 14.34,
+      "n": 336,
+      "classe": "indicative"
+    },
+    "94069": {
+      "mape": 15.99,
+      "n": 53,
+      "classe": "indicative"
+    },
+    "94070": {
+      "mape": 14.66,
+      "n": 15,
+      "classe": "donnees_insuffisantes"
+    },
+    "94071": {
+      "mape": 15.95,
+      "n": 76,
+      "classe": "indicative"
+    },
+    "94073": {
+      "mape": 10.87,
+      "n": 88,
+      "classe": "indicative"
+    },
+    "94074": {
+      "mape": 12.93,
+      "n": 11,
+      "classe": "donnees_insuffisantes"
+    },
+    "94075": {
+      "mape": 13.35,
+      "n": 34,
+      "classe": "indicative"
+    },
+    "94076": {
+      "mape": 10.63,
+      "n": 102,
+      "classe": "indicative"
+    },
+    "94077": {
+      "mape": 10.93,
+      "n": 58,
+      "classe": "indicative"
+    },
+    "94078": {
+      "mape": 15.37,
+      "n": 51,
+      "classe": "indicative"
+    },
+    "94079": {
+      "mape": 12.89,
+      "n": 97,
+      "classe": "indicative"
+    },
+    "94080": {
+      "mape": 14.46,
+      "n": 207,
+      "classe": "indicative"
+    },
+    "94081": {
+      "mape": 11.49,
+      "n": 140,
+      "classe": "indicative"
+    },
+    "95002": {
+      "mape": 12.65,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "95008": {
+      "mape": 20.45,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "95011": {
+      "mape": 33.22,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "95014": {
+      "mape": 15.52,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "95018": {
+      "mape": 13.72,
+      "n": 233,
+      "classe": "indicative"
+    },
+    "95019": {
+      "mape": 13.91,
+      "n": 20,
+      "classe": "donnees_insuffisantes"
+    },
+    "95023": {
+      "mape": 16.35,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "95024": {
+      "mape": 14.11,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "95026": {
+      "mape": 12.37,
+      "n": 7,
+      "classe": "donnees_insuffisantes"
+    },
+    "95028": {
+      "mape": 14.49,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "95039": {
+      "mape": 20.03,
+      "n": 31,
+      "classe": "a_completer"
+    },
+    "95040": {
+      "mape": 21.46,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "95042": {
+      "mape": 14.01,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "95046": {
+      "mape": 24.37,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "95051": {
+      "mape": 14.75,
+      "n": 38,
+      "classe": "indicative"
+    },
+    "95052": {
+      "mape": 12.41,
+      "n": 34,
+      "classe": "indicative"
+    },
+    "95055": {
+      "mape": 7.72,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "95056": {
+      "mape": 11.47,
+      "n": 10,
+      "classe": "donnees_insuffisantes"
+    },
+    "95058": {
+      "mape": 15.49,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "95059": {
+      "mape": 44.06,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "95060": {
+      "mape": 16.4,
+      "n": 35,
+      "classe": "indicative"
+    },
+    "95061": {
+      "mape": 68.21,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "95063": {
+      "mape": 12.2,
+      "n": 75,
+      "classe": "indicative"
+    },
+    "95074": {
+      "mape": 17.93,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "95078": {
+      "mape": 19.98,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "95091": {
+      "mape": 7.75,
+      "n": 20,
+      "classe": "donnees_insuffisantes"
+    },
+    "95094": {
+      "mape": 13.69,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "95101": {
+      "mape": 28.36,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "95102": {
+      "mape": 5.65,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "95116": {
+      "mape": 11.19,
+      "n": 11,
+      "classe": "donnees_insuffisantes"
+    },
+    "95119": {
+      "mape": 30.12,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "95120": {
+      "mape": 16.2,
+      "n": 8,
+      "classe": "donnees_insuffisantes"
+    },
+    "95127": {
+      "mape": 10.0,
+      "n": 131,
+      "classe": "indicative"
+    },
+    "95134": {
+      "mape": 14.03,
+      "n": 10,
+      "classe": "donnees_insuffisantes"
+    },
+    "95139": {
+      "mape": 9.68,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "95142": {
+      "mape": 10.36,
+      "n": 7,
+      "classe": "donnees_insuffisantes"
+    },
+    "95149": {
+      "mape": 10.72,
+      "n": 12,
+      "classe": "donnees_insuffisantes"
+    },
+    "95150": {
+      "mape": 54.36,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "95151": {
+      "mape": 35.06,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "95166": {
+      "mape": 4.7,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "95170": {
+      "mape": 42.25,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "95176": {
+      "mape": 11.89,
+      "n": 87,
+      "classe": "indicative"
+    },
+    "95177": {
+      "mape": 18.29,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "95183": {
+      "mape": 13.05,
+      "n": 27,
+      "classe": "donnees_insuffisantes"
+    },
+    "95197": {
+      "mape": 11.9,
+      "n": 82,
+      "classe": "indicative"
+    },
+    "95199": {
+      "mape": 14.64,
+      "n": 45,
+      "classe": "indicative"
+    },
+    "95203": {
+      "mape": 11.15,
+      "n": 73,
+      "classe": "indicative"
+    },
+    "95205": {
+      "mape": 14.47,
+      "n": 30,
+      "classe": "indicative"
+    },
+    "95210": {
+      "mape": 15.31,
+      "n": 31,
+      "classe": "indicative"
+    },
+    "95211": {
+      "mape": 6.63,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "95213": {
+      "mape": 7.42,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "95218": {
+      "mape": 10.25,
+      "n": 57,
+      "classe": "indicative"
+    },
+    "95219": {
+      "mape": 12.1,
+      "n": 77,
+      "classe": "indicative"
+    },
+    "95229": {
+      "mape": 11.67,
+      "n": 33,
+      "classe": "indicative"
+    },
+    "95241": {
+      "mape": 15.86,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "95250": {
+      "mape": 10.04,
+      "n": 27,
+      "classe": "donnees_insuffisantes"
+    },
+    "95252": {
+      "mape": 11.44,
+      "n": 141,
+      "classe": "indicative"
+    },
+    "95253": {
+      "mape": 15.03,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "95256": {
+      "mape": 12.47,
+      "n": 15,
+      "classe": "donnees_insuffisantes"
+    },
+    "95257": {
+      "mape": 23.84,
+      "n": 24,
+      "classe": "donnees_insuffisantes"
+    },
+    "95258": {
+      "mape": 8.82,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "95268": {
+      "mape": 12.24,
+      "n": 27,
+      "classe": "donnees_insuffisantes"
+    },
+    "95270": {
+      "mape": 11.35,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "95271": {
+      "mape": 5.59,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "95277": {
+      "mape": 12.9,
+      "n": 49,
+      "classe": "indicative"
+    },
+    "95280": {
+      "mape": 14.46,
+      "n": 43,
+      "classe": "indicative"
+    },
+    "95287": {
+      "mape": 8.7,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "95288": {
+      "mape": 8.0,
+      "n": 26,
+      "classe": "donnees_insuffisantes"
+    },
+    "95298": {
+      "mape": 61.86,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "95301": {
+      "mape": 19.93,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "95304": {
+      "mape": 15.92,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "95306": {
+      "mape": 13.21,
+      "n": 104,
+      "classe": "indicative"
+    },
+    "95308": {
+      "mape": 10.78,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "95313": {
+      "mape": 12.58,
+      "n": 46,
+      "classe": "indicative"
+    },
+    "95316": {
+      "mape": 1.55,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "95323": {
+      "mape": 7.47,
+      "n": 41,
+      "classe": "fiable"
+    },
+    "95331": {
+      "mape": 11.28,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "95351": {
+      "mape": 9.58,
+      "n": 27,
+      "classe": "donnees_insuffisantes"
+    },
+    "95352": {
+      "mape": 18.07,
+      "n": 22,
+      "classe": "donnees_insuffisantes"
+    },
+    "95353": {
+      "mape": 10.85,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "95355": {
+      "mape": 13.23,
+      "n": 14,
+      "classe": "donnees_insuffisantes"
+    },
+    "95365": {
+      "mape": 6.73,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "95369": {
+      "mape": 15.03,
+      "n": 7,
+      "classe": "donnees_insuffisantes"
+    },
+    "95370": {
+      "mape": 21.17,
+      "n": 13,
+      "classe": "donnees_insuffisantes"
+    },
+    "95371": {
+      "mape": 13.95,
+      "n": 25,
+      "classe": "donnees_insuffisantes"
+    },
+    "95388": {
+      "mape": 9.13,
+      "n": 14,
+      "classe": "donnees_insuffisantes"
+    },
+    "95392": {
+      "mape": 12.36,
+      "n": 26,
+      "classe": "donnees_insuffisantes"
+    },
+    "95394": {
+      "mape": 8.97,
+      "n": 34,
+      "classe": "fiable"
+    },
+    "95395": {
+      "mape": 49.35,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "95409": {
+      "mape": 12.96,
+      "n": 10,
+      "classe": "donnees_insuffisantes"
+    },
+    "95422": {
+      "mape": 42.09,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "95424": {
+      "mape": 14.83,
+      "n": 52,
+      "classe": "indicative"
+    },
+    "95426": {
+      "mape": 21.54,
+      "n": 12,
+      "classe": "donnees_insuffisantes"
+    },
+    "95427": {
+      "mape": 12.05,
+      "n": 28,
+      "classe": "donnees_insuffisantes"
+    },
+    "95428": {
+      "mape": 15.66,
+      "n": 82,
+      "classe": "indicative"
+    },
+    "95430": {
+      "mape": 24.2,
+      "n": 16,
+      "classe": "donnees_insuffisantes"
+    },
+    "95436": {
+      "mape": 10.2,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "95445": {
+      "mape": 15.23,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "95446": {
+      "mape": 17.23,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "95450": {
+      "mape": 11.32,
+      "n": 8,
+      "classe": "donnees_insuffisantes"
+    },
+    "95452": {
+      "mape": 5.75,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "95456": {
+      "mape": 18.03,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "95459": {
+      "mape": 14.64,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "95462": {
+      "mape": 5.43,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "95476": {
+      "mape": 12.15,
+      "n": 41,
+      "classe": "indicative"
+    },
+    "95480": {
+      "mape": 14.75,
+      "n": 15,
+      "classe": "donnees_insuffisantes"
+    },
+    "95483": {
+      "mape": 13.43,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "95487": {
+      "mape": 19.08,
+      "n": 29,
+      "classe": "donnees_insuffisantes"
+    },
+    "95488": {
+      "mape": 16.62,
+      "n": 29,
+      "classe": "donnees_insuffisantes"
+    },
+    "95489": {
+      "mape": 23.01,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "95491": {
+      "mape": 17.16,
+      "n": 27,
+      "classe": "donnees_insuffisantes"
+    },
+    "95500": {
+      "mape": 13.14,
+      "n": 77,
+      "classe": "indicative"
+    },
+    "95504": {
+      "mape": 11.78,
+      "n": 17,
+      "classe": "donnees_insuffisantes"
+    },
+    "95509": {
+      "mape": 9.94,
+      "n": 12,
+      "classe": "donnees_insuffisantes"
+    },
+    "95510": {
+      "mape": 4.35,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "95523": {
+      "mape": 21.2,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "95527": {
+      "mape": 10.76,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "95529": {
+      "mape": 15.88,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "95535": {
+      "mape": 21.3,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "95539": {
+      "mape": 14.36,
+      "n": 29,
+      "classe": "donnees_insuffisantes"
+    },
+    "95541": {
+      "mape": 13.69,
+      "n": 8,
+      "classe": "donnees_insuffisantes"
+    },
+    "95554": {
+      "mape": 17.59,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "95555": {
+      "mape": 15.12,
+      "n": 64,
+      "classe": "indicative"
+    },
+    "95563": {
+      "mape": 12.54,
+      "n": 62,
+      "classe": "indicative"
+    },
+    "95566": {
+      "mape": 14.0,
+      "n": 12,
+      "classe": "donnees_insuffisantes"
+    },
+    "95572": {
+      "mape": 8.71,
+      "n": 54,
+      "classe": "fiable"
+    },
+    "95574": {
+      "mape": 18.29,
+      "n": 22,
+      "classe": "donnees_insuffisantes"
+    },
+    "95580": {
+      "mape": 12.53,
+      "n": 10,
+      "classe": "donnees_insuffisantes"
+    },
+    "95582": {
+      "mape": 12.47,
+      "n": 69,
+      "classe": "indicative"
+    },
+    "95584": {
+      "mape": 26.25,
+      "n": 8,
+      "classe": "donnees_insuffisantes"
+    },
+    "95585": {
+      "mape": 11.23,
+      "n": 69,
+      "classe": "indicative"
+    },
+    "95592": {
+      "mape": 10.72,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "95594": {
+      "mape": 17.37,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "95598": {
+      "mape": 11.7,
+      "n": 41,
+      "classe": "indicative"
+    },
+    "95604": {
+      "mape": 16.32,
+      "n": 11,
+      "classe": "donnees_insuffisantes"
+    },
+    "95607": {
+      "mape": 11.5,
+      "n": 80,
+      "classe": "indicative"
+    },
+    "95610": {
+      "mape": 6.12,
+      "n": 3,
+      "classe": "donnees_insuffisantes"
+    },
+    "95612": {
+      "mape": 22.75,
+      "n": 13,
+      "classe": "donnees_insuffisantes"
+    },
+    "95625": {
+      "mape": 7.66,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "95627": {
+      "mape": 15.27,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "95628": {
+      "mape": 14.85,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "95637": {
+      "mape": 6.83,
+      "n": 29,
+      "classe": "donnees_insuffisantes"
+    },
+    "95641": {
+      "mape": 8.68,
+      "n": 15,
+      "classe": "donnees_insuffisantes"
+    },
+    "95651": {
+      "mape": 30.25,
+      "n": 9,
+      "classe": "donnees_insuffisantes"
+    },
+    "95652": {
+      "mape": 11.05,
+      "n": 11,
+      "classe": "donnees_insuffisantes"
+    },
+    "95658": {
+      "mape": 9.82,
+      "n": 4,
+      "classe": "donnees_insuffisantes"
+    },
+    "95660": {
+      "mape": 8.04,
+      "n": 2,
+      "classe": "donnees_insuffisantes"
+    },
+    "95675": {
+      "mape": 32.26,
+      "n": 6,
+      "classe": "donnees_insuffisantes"
+    },
+    "95676": {
+      "mape": 24.25,
+      "n": 1,
+      "classe": "donnees_insuffisantes"
+    },
+    "95678": {
+      "mape": 17.0,
+      "n": 5,
+      "classe": "donnees_insuffisantes"
+    },
+    "95680": {
+      "mape": 11.15,
+      "n": 46,
+      "classe": "indicative"
+    }
+  }
+}

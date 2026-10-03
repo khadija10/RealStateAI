@@ -53,8 +53,18 @@ def _periode(debut: str, fin: str) -> tuple[pd.Period, pd.Period]:
 def _charger_gold_brut(config: dict) -> pd.DataFrame:
     """Gold sans le filtre ML, pour pouvoir publier la mesure complémentaire."""
     gold_path = Path(config["data"]["gold_path"])
+    source = f"read_parquet('{gold_path}/**/*.parquet', hive_partitioning=true)"
+    # Seules les colonnes utiles sont lues (features du modèle, entrées des features
+    # calculées, cible et période) : le gold complet (66 colonnes) dépasse la mémoire
+    # disponible d'une petite machine. Mêmes lignes, mêmes valeurs.
+    feats = config["features"]
+    utiles = set(feats["numeric"]) | set(feats["categorical"]) | set(feats["boolean"]) | {
+        "prix_m2", "prix_m2_reference_12m", "date_mutation", "annee", "code_commune", "code_departement",
+        "code_type_local", "surface_bati", "nb_pieces", "dpe_classe", "nb_ventes_commune_12m",
+        "nb_ventes_dept_12m", "prix_m2_median_dept_12m", "prix_m2_median_local_12m", "valeur_fonciere"}
+    presentes = [c for c in duckdb.sql(f"DESCRIBE SELECT * FROM {source}").df()["column_name"] if c in utiles]
     df = duckdb.sql(f"""
-        SELECT * FROM read_parquet('{gold_path}/**/*.parquet', hive_partitioning=true)
+        SELECT {", ".join(presentes)} FROM {source}
         WHERE prix_m2_reference_12m IS NOT NULL
     """).df()
     df["periode"] = pd.to_datetime(df["date_mutation"]).dt.to_period("M")
