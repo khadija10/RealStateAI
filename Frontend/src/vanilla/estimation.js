@@ -198,7 +198,8 @@ function exporterPDF(bien, modelInfo) {
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">
 <title>Avis de valeur ${ref}</title>
 <style>
-  @page{size:A4;margin:14mm 14mm 16mm}
+  @page{size:A4;margin:0}
+  html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
   *{box-sizing:border-box}
   body{font:13px/1.45 "Helvetica Neue",Arial,sans-serif;color:#1b1916;margin:0 auto;max-width:760px;padding:28px 24px}
   .tete{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #1b1916;padding-bottom:10px}
@@ -231,7 +232,7 @@ function exporterPDF(bien, modelInfo) {
   .vide{color:#6b655d;font-style:italic}
   .pied{margin-top:22px;padding-top:10px;border-top:1px solid #e3ded6;font-size:10.5px;color:#6b655d}
   .imprimer{position:fixed;top:14px;right:14px;padding:8px 16px;border:0;border-radius:999px;background:#9C6A26;color:#fff;font:600 13px Arial;cursor:pointer}
-  @media print{.imprimer{display:none}body{padding:0}}
+  @media print{.imprimer{display:none}body{max-width:none;padding:14mm 15mm 12mm}}
 </style></head><body>
 <button class="imprimer" onclick="window.print()">Enregistrer en PDF</button>
 <div class="tete">
