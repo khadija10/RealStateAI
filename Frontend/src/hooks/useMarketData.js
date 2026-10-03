@@ -53,3 +53,18 @@ export function useCommuneSuggestions() {
     return [...new Set(stats.rows.map((r) => r.nom_commune))].sort((a, b) => a.localeCompare(b, 'fr'))
   }, [meta.data, stats.rows])
 }
+
+/**
+ * Tendances mensuelles de tous les départements (GET /api/market/trends),
+ * regroupées par code département et triées chronologiquement.
+ */
+export function useAllTrends() {
+  const res = useApi(() => cached('trends:all', () => getMarketTrends()), [])
+  const parDep = useMemo(() => {
+    const m = {}
+    for (const r of Array.isArray(res.data) ? res.data : []) (m[r.code_departement] ??= []).push(r)
+    for (const k of Object.keys(m)) m[k].sort((a, b) => a.mois_index - b.mois_index)
+    return m
+  }, [res.data])
+  return { ...res, parDep }
+}

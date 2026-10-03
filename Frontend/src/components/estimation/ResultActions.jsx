@@ -53,9 +53,10 @@ export function NextSteps({ r, values, lieu, description, at, stats, dep }) {
   const toast = useToast()
   const { health } = useHealth()
   const tendance = useDepartmentTrend(dep)
-  // Ce que les simulateurs actuels savent reprendre : le prix et, pour la
-  // plus-value, le code de la commune (arrondissements parisiens).
-  const bien = { prix: r.price, secteur: r.codeCommune, departement: r.codeDepartement, lieu }
+  // Bien repris par les simulateurs : prix, département (renvoyé par le
+  // serveur ou déduit du code postal), libellés. Une estimation de
+  // démonstration n'est jamais reprise comme prix.
+  const bien = { prix: r.price, departement: r.codeDepartement ?? dep ?? null, lieu, description, at, demo: r.isDemo }
 
   async function copierLien() {
     try {

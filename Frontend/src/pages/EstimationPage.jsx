@@ -18,16 +18,7 @@ import { heroEstimation, vignetteBois } from '../illustrations'
 import { euro, nb, pctPoints } from '../lib/format'
 import { extraireCodePostal, findCommuneStats, localisationDepuisCodePostal } from '../lib/geo'
 import { memoriserLocalement, valeursDepuisUrl } from '../lib/estimationExport'
-
-// Dernière estimation de la session : conservée quand l'utilisateur part vers
-// Financement / Plus-value puis revient (réponse du serveur, telle quelle).
-const SESSION_KEY = 'rsai_derniere_estimation'
-function lireSession() {
-  try { return JSON.parse(sessionStorage.getItem(SESSION_KEY) || 'null') } catch { return null }
-}
-function ecrireSession(v) {
-  try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(v)) } catch { /* navigation privée */ }
-}
+import { ecrireSession, lireSession } from '../lib/estimationSession'
 
 /** Pastille d'état du serveur, posée sur l'illustration du héros. */
 function HeroStatus() {
