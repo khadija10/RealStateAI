@@ -299,7 +299,7 @@ function PlusValue() {
 
           <section className="mt-12 sm:mt-16" aria-labelledby="titre-seuil">
             <div className="mb-5 px-1">
-              <h2 id="titre-seuil" className="ds-h2">Ce que dit <em>l’historique</em></h2>
+              <h2 id="titre-seuil" className="ds-h2">Est-ce <em>déjà arrivé</em> ?</h2>
               <p className="mt-1 text-sm text-ink-muted">
                 Quelques années de ventes ne suffisent pas pour juger d’une revente lointaine : l’indice Notaires-INSEE remonte aux années 1990.
               </p>

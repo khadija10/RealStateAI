@@ -209,35 +209,53 @@ export function AbattementsCard({ horizon }) {
 
 /** Variation du prix entre la première et la dernière année observées ; clic = simuler ce lieu. */
 export function ResilienceCard({ items, selection, onSelect, titre, aide }) {
+  // Une seule liste, par ordre décroissant : de la plus forte hausse (ou plus faible baisse) à la plus forte baisse.
   const lignes = [...items].sort((a, b) => b.v - a.v)
   const min = Math.min(0, ...lignes.map((l) => l.v))
   const max = Math.max(0, ...lignes.map((l) => l.v))
   const pos = (v) => ((v - min) / (max - min || 1)) * 100
   const zero = pos(0)
+  // Intensité de la couleur selon l'ampleur : plus la baisse est forte, plus c'est rouge ; idem en vert pour la hausse.
+  const ampleur = Math.max(...lignes.map((l) => Math.abs(l.v)), 0) || 1
+  const teinte = (v) => (v < 0 ? 'var(--color-danger)' : 'var(--color-success)')
+  const intensite = (v) => Math.abs(v) / ampleur
   return (
     <Card padding="lg" className="rounded-[22px]">
       <h3 className="ds-h3">{titre}</h3>
       <p className="mb-4 mt-0.5 text-[12.5px] text-ink-muted">{aide}</p>
-      <ul className="grid gap-x-8 gap-y-1 lg:grid-cols-2">
+      <ul className="flex flex-col gap-1">
         {lignes.map((l) => {
           const actif = l.cle === selection
+          const t = intensite(l.v)
           return (
             <li key={l.cle}>
               <button
                 type="button"
                 aria-pressed={actif}
                 onClick={() => onSelect(l.cle)}
-                className={cx('grid w-full grid-cols-[minmax(0,10rem)_minmax(0,1fr)_4.5rem] items-center gap-3 rounded-[10px] px-2 py-1.5 text-left text-[12.5px] transition-colors hover:bg-surface-2', actif && 'bg-accent-soft/60')}
+                className={cx(
+                  'grid w-full grid-cols-[minmax(0,12rem)_minmax(0,1fr)_4.5rem] items-center gap-4 rounded-[10px] px-2.5 py-1.5 text-left text-[13px] transition-colors hover:bg-surface-2',
+                  actif && 'bg-accent-soft/60 ring-1 ring-inset ring-accent/25',
+                )}
               >
                 <span className={cx('truncate', actif ? 'font-semibold text-ink' : 'text-ink-soft')} title={l.label}>{l.label}</span>
                 <span className="relative h-3" aria-hidden="true">
                   <span className="absolute inset-y-0 w-px bg-ink/40" style={{ left: `${zero}%` }} />
                   <span
-                    className={cx('absolute inset-y-0 rounded-[3px]', actif ? 'bg-ink' : l.v < 0 ? 'bg-danger/60' : 'bg-success/60')}
-                    style={{ left: `${Math.min(zero, pos(l.v))}%`, width: `${Math.abs(pos(l.v) - zero)}%` }}
+                    className="absolute inset-y-0 rounded-[3px]"
+                    style={{
+                      left: `${Math.min(zero, pos(l.v))}%`,
+                      width: `${Math.abs(pos(l.v) - zero)}%`,
+                      background: `color-mix(in oklab, ${teinte(l.v)} ${Math.round(25 + 75 * t)}%, transparent)`,
+                    }}
                   />
                 </span>
-                <span className={cx('ds-num text-right font-semibold', l.v < 0 ? 'text-danger' : 'text-success')}>{pct(l.v, { signed: true })}</span>
+                <span
+                  className="ds-num text-right font-semibold"
+                  style={{ color: `color-mix(in oklab, ${teinte(l.v)} ${Math.round(45 + 55 * t)}%, var(--color-ink-muted))` }}
+                >
+                  {pct(l.v, { signed: true })}
+                </span>
               </button>
             </li>
           )

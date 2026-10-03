@@ -48,7 +48,8 @@ export default function SegmentedControl({ label, options, value, onChange, size
               'transition-[background-color,color,box-shadow] duration-150',
               size === 'sm' ? 'h-7 px-2.5 text-xs' : 'h-8 px-3.5 text-[13px]',
               fullWidth && 'flex-1',
-              selected ? 'bg-surface text-ink shadow-xs ring-1 ring-line' : 'text-ink-muted hover:text-ink',
+              // Option choisie en couleur de marque (brun en clair, crème en sombre) : bien visible dans les deux thèmes
+              selected ? 'bg-brand text-on-brand shadow-xs' : 'text-ink-muted hover:text-ink',
             )}
           >
             {o.icon}

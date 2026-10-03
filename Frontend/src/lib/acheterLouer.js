@@ -25,7 +25,7 @@ export const HYPOTHESES_ACHAT_LOCATION = {
   /** Frais à la revente (agence, diagnostics) : part de la valeur. */
   fraisRevente: 0.05,
   /** Horizon de comparaison, en années. */
-  horizonAns: 30,
+  horizonAns: 10,
 }
 
 /** Évolutions de prix comparées : baisse, stabilité, reprise. */

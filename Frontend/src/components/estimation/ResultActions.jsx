@@ -166,7 +166,7 @@ function Panneau({ titre, lignes, note }) {
   if (!lignes.length && !note) return null
   return (
     <section className="flex flex-col rounded-[16px] bg-accent-soft/45 p-3.5 ring-1 ring-inset ring-accent/15 xl:p-4">
-      <h3 className="mb-1 text-[10.5px] font-semibold uppercase tracking-[0.12em] text-ink-soft">{titre}</h3>
+      <h3 className="mb-1 text-[11.5px] font-bold uppercase tracking-[0.12em] text-ink">{titre}</h3>
       {lignes.length > 0 && (
         <dl className="divide-y divide-accent/15">
           {lignes.map(([k, v]) => <Ligne key={String(k)} label={k}>{v}</Ligne>)}
@@ -257,7 +257,7 @@ export function TechnicalDetails({ r, values, stats }) {
           className="group flex w-full items-center justify-between gap-4 px-5 py-4 text-left transition-colors hover:bg-surface-2/70 sm:px-6"
         >
           <span className="min-w-0">
-            <span className="block text-[11.5px] font-semibold uppercase tracking-[0.14em] text-ink-soft">Détails du calcul</span>
+            <span className="block text-[12.5px] font-bold uppercase tracking-[0.12em] text-ink">Détails du calcul</span>
             <span className="mt-0.5 block text-[13px] text-ink-muted">
               {open ? 'Calcul, modèle, mesure de l’erreur et données utilisées' : 'Cliquez pour voir le calcul, le modèle et la mesure de l’erreur'}
             </span>

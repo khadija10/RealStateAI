@@ -17,17 +17,18 @@ export default function SimulationShell({ draw, eyebrow, title, lead, aside, chi
         aria-hidden="true"
         className="absolute inset-0 -z-10 bg-[linear-gradient(180deg,rgba(15,20,30,.42)_0%,rgba(15,20,30,.10)_30%,rgba(18,16,14,.22)_70%,rgba(18,16,14,.55)_100%),linear-gradient(90deg,rgba(15,20,30,.30),rgba(15,20,30,0)_60%)]"
       />
-      <div className="flex flex-col gap-4 p-2 pt-5 sm:p-3 sm:pt-6">
-        <div className="flex flex-col-reverse items-start gap-3 px-4 sm:px-6 md:flex-row md:items-end md:justify-between">
+      {/* Marges, titre et accroche identiques au héros de la page Estimation */}
+      <div className="flex flex-col gap-4 p-2 pt-6 sm:p-3 sm:pt-8">
+        <div className="flex flex-col-reverse items-start gap-4 px-4 sm:px-8 md:flex-row md:justify-between">
           <div className="max-w-2xl text-white">
-            <p className="mb-2 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/80">{eyebrow}</p>
+            <p className="mb-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-white/80">{eyebrow}</p>
             <h1
               id="titre-page"
-              className="text-balance font-[family-name:var(--font-display)] text-[clamp(2rem,1.4rem+2.2vw,3.1rem)] font-normal leading-[1] tracking-[-0.02em] [&_em]:italic"
+              className="text-balance font-[family-name:var(--font-display)] text-[clamp(2.2rem,1.4rem+2.7vw,3.6rem)] font-normal leading-[.98] tracking-[-0.02em] [&_em]:italic"
             >
               {title}
             </h1>
-            {lead && <p className="mt-2 max-w-xl text-pretty text-[14px] font-light leading-relaxed text-white/90">{lead}</p>}
+            {lead && <p className="mt-3 max-w-2xl text-pretty text-[14.5px] font-light leading-relaxed text-white/90">{lead}</p>}
           </div>
           {aside}
         </div>

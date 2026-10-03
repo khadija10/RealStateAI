@@ -3,7 +3,6 @@ import { cx } from '../../lib/cx'
 import { IconMoon, IconSun } from '../ui'
 import Logo from './Logo'
 import { MAIN_NAV } from './navigation'
-import StatusPill from './StatusPill'
 import UserMenu from './UserMenu'
 
 export function ThemeToggle({ theme, onToggle, className }) {
@@ -26,8 +25,8 @@ export function ThemeToggle({ theme, onToggle, className }) {
 
 /**
  * Barre supérieure, fixe au défilement.
- * Desktop : logo · navigation principale · statut, thème, compte.
- * Mobile : logo · statut, thème (la navigation passe dans la barre du bas).
+ * Desktop : logo · navigation principale (capsule) · thème, compte.
+ * Mobile : logo · thème (la navigation passe dans la barre du bas).
  */
 export default function TopNav({ theme, onToggleTheme }) {
   return (
@@ -36,16 +35,17 @@ export default function TopNav({ theme, onToggleTheme }) {
         <Logo />
 
         <nav aria-label="Navigation principale" className="hidden flex-1 md:block">
-          <ul className="flex items-center gap-1">
+          {/* Onglets regroupés dans une capsule ; l'onglet actif est plein */}
+          <ul className="inline-flex items-center gap-1 rounded-full bg-surface-2 p-1 ring-1 ring-inset ring-line">
             {MAIN_NAV.map(({ to, label }) => (
               <li key={to}>
                 <NavLink
                   to={to}
                   className={({ isActive }) =>
                     cx(
-                      'inline-flex h-9 items-center rounded-full px-3.5 text-sm font-medium transition-colors',
+                      'inline-flex h-8 items-center rounded-full px-4 text-sm font-medium transition-colors',
                       isActive
-                        ? 'bg-surface-2 text-ink ring-1 ring-line'
+                        ? 'bg-brand text-on-brand shadow-xs'
                         : 'text-ink-muted hover:text-ink',
                     )
                   }
@@ -58,8 +58,6 @@ export default function TopNav({ theme, onToggleTheme }) {
         </nav>
 
         <div className="ml-auto flex items-center gap-1.5 sm:gap-2">
-          <span className="hidden lg:inline-flex"><StatusPill /></span>
-          <span className="lg:hidden"><StatusPill compact /></span>
           <ThemeToggle theme={theme} onToggle={onToggleTheme} />
           <span className="hidden md:inline-flex"><UserMenu /></span>
         </div>
