@@ -194,7 +194,7 @@ export default function App() {
                 Carte <em>des prix</em>
               </h1>
               <p className="text-sm text-ink-muted mt-3">
-                Prix médian au m² — {datasetInfo?.nCommunes?.toLocaleString('fr-FR') ?? '—'} communes d&apos;Île-de-France{datasetInfo?.minYear && datasetInfo?.maxYear ? ` · transactions ${datasetInfo.minYear}–${datasetInfo.maxYear}` : ''}
+                Prix médian au m² par commune, en {datasetInfo?.maxYear ?? 'dernière année'} (sur 2021–{datasetInfo?.maxYear ?? '2025'} pour les communes avec moins de 10 ventes), séparément pour les appartements et les maisons.
               </p>
             </div>
             <PriceMap />
@@ -209,7 +209,7 @@ export default function App() {
                 Référence <em>du marché</em>
               </h1>
               <p className="text-sm text-ink-muted mt-3">
-                Prix médian au m² par département, en moyenne glissante sur 3 mois{datasetInfo?.minYear && datasetInfo?.maxYear ? `, ${datasetInfo.minYear}–${datasetInfo.maxYear}` : ''}. Toutes ventes confondues (appartements et maisons, neuf et ancien).
+                Prix médian au m² par département, en moyenne glissante sur 3 mois{datasetInfo?.minYear && datasetInfo?.maxYear ? `, ${datasetInfo.minYear}–${datasetInfo.maxYear}` : ''}, séparément pour les appartements et les maisons, l'ancien et le neuf.
               </p>
             </div>
             <MarketTrends />

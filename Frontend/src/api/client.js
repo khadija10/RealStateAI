@@ -68,12 +68,13 @@ export function estimatePrice(payload) {
   })
 }
 
-export function getMarketMap() {
-  return request('/api/market/map')
+export function getMarketMap(typeBien = 'apartment', marche = 'tous') {
+  return request(`/api/market/map?type_bien=${typeBien}&marche=${marche}`)
 }
 
-export function getMarketTrends(dep) {
-  return request(dep ? `/api/market/trends?dep=${dep}` : '/api/market/trends')
+export function getMarketTrends(dep, typeBien = 'apartment', marche = 'tous') {
+  const p = new URLSearchParams({ type_bien: typeBien, marche, ...(dep ? { dep } : {}) })
+  return request(`/api/market/trends?${p}`)
 }
 
 export function getSearchHistory(limit = 20) {

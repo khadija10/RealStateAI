@@ -62,10 +62,14 @@ MARKET_TRENDS_SAMPLE = [
 ]
 
 
-@pytest.fixture(scope="module")
-def client_market(tmp_path_factory):
-    """Client avec fichiers JSON market dans un répertoire temporaire."""
-    samples_dir = tmp_path_factory.mktemp("samples")
+@pytest.fixture
+def client_market(tmp_path):
+    """Client avec fichiers JSON market dans un répertoire temporaire (repli statique).
+
+    Portée « fonction » : l'application est un objet global, et chaque client qui
+    démarre recharge le marché calculé ; le repli doit être posé à chaque test."""
+    samples_dir = tmp_path / "samples"
+    samples_dir.mkdir()
     stats_path  = samples_dir / "commune_stats.json"
     trends_path = samples_dir / "market_trends.json"
     stats_path.write_text(json.dumps(COMMUNE_STATS_SAMPLE, ensure_ascii=False))
@@ -76,7 +80,10 @@ def client_market(tmp_path_factory):
         patch("main._MARKET_TRENDS_PATH", trends_path),
         TestClient(app) as c,
     ):
+        # Repli sur les fichiers statiques : sans marché calculé depuis le dataset
+        calcule, c.app.state.marche = c.app.state.marche, {}
         yield c
+        c.app.state.marche = calcule
 
 
 @pytest.fixture
@@ -88,7 +95,9 @@ def client_sans_fichiers(tmp_path):
         patch("main._MARKET_TRENDS_PATH", vide / "market_trends.json"),
         TestClient(app) as c,
     ):
+        calcule, c.app.state.marche = c.app.state.marche, {}
         yield c
+        c.app.state.marche = calcule
 
 
 # ── /api/market/map ───────────────────────────────────────────────────────────
@@ -227,3 +236,41 @@ class TestSecteurs:
             r = client.get("/api/market/secteurs?property_type=apartment&min_ventes=200")
         assert r.status_code == 200
         assert [s["code"] for s in r.json()] == ["B", "A"]
+
+
+
+# ── Marché calculé depuis le dataset : séparé par type de bien et par marché ──
+
+def test_construire_marche_separe_maisons_et_appartements():
+    import pandas as pd
+    from main import _construire_marche
+    lignes = []
+    for i in range(12):   # 12 ventes de chaque type, réparties sur 2 mois (6 par mois)
+        lignes.append({"commune": "Versailles", "type_bien_norm": "apartment", "dep": "78",
+                       "date_mutation": f"2025-0{1 + i % 2}-15", "prix_au_m2": 6000 + 10 * i,
+                       "latitude": 48.80, "longitude": 2.13, "est_vefa": i < 3})
+        lignes.append({"commune": "Versailles", "type_bien_norm": "house", "dep": "78",
+                       "date_mutation": f"2025-0{1 + i % 2}-15", "prix_au_m2": 9000 + 10 * i,
+                       "latitude": 48.80, "longitude": 2.13, "est_vefa": False})
+    m = _construire_marche(pd.DataFrame(lignes))
+    appart = m["carte"][("apartment", "tous")][0]
+    maison = m["carte"][("house", "tous")][0]
+    assert appart["prix_m2_median"] < 7000 < maison["prix_m2_median"]
+    assert appart["n_transactions"] == 12 and appart["periode"] == "2025"
+    # ancien : sans les 3 ventes sur plan ; neuf : moins de 5 ventes, commune absente
+    assert m["carte"][("apartment", "ancien")][0]["n_transactions"] == 9
+    assert m["carte"][("apartment", "neuf")] == []
+    mois = m["tendances"][("house", "tous")]
+    assert {r["code_departement"] for r in mois} == {"78"} and all(r["mois_index"] > 300 for r in mois)
+
+
+def test_endpoints_filtrent_par_type_et_marche():
+    with TestClient(app) as c:
+        if not c.app.state.marche:
+            pytest.skip("dataset absent : marché non calculé")
+        appart = c.get("/api/market/map", params={"type_bien": "apartment"}).json()
+        maison = c.get("/api/market/map", params={"type_bien": "house"}).json()
+        assert appart and maison and appart != maison
+        assert {"nom_commune", "prix_m2_median", "n_transactions", "periode"} <= set(appart[0])
+        t = c.get("/api/market/trends", params={"dep": "78", "type_bien": "house", "marche": "ancien"}).json()
+        assert t and all(r["code_departement"] == "78" for r in t)

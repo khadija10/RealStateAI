@@ -79,8 +79,10 @@ RealStateAI estime le prix des logements en Île-de-France (Paris et les 7 dépa
 
 ## 4. Marché
 
-- **Carte des prix** : carte interactive (Leaflet) des communes d'Île-de-France, colorées selon le prix médian au m², avec un filtre par département, une légende et des infobulles.
-- **Référence du marché** : évolution mensuelle du prix médian au m² par département, avec un choix des départements à comparer (Paris, Hauts-de-Seine et Seine-Saint-Denis au départ).
+- **Filtres communs** à la carte et à la référence : **appartements ou maisons**, et **tout le marché, ancien seul ou neuf vendu sur plan (VEFA)**. Une médiane qui mélange maisons et appartements dépend de ce qui s'est vendu (Versailles en 2025 : 6 415 €/m² en appartement, 8 939 € en maison).
+- **Carte des prix** : carte interactive (Leaflet) des communes d'Île-de-France, colorées du sable au brun selon le prix médian au m² de la dernière année (sur 2021–2025 pour les communes de moins de 10 ventes), avec un filtre par département, une légende et des infobulles.
+- **Référence du marché** : prix médian au m² par département, en moyenne glissante sur 3 mois, avec le choix des départements à comparer.
+- Les deux écrans sont **calculés au démarrage du backend sur le dataset servi**, comme les secteurs de l'estimation : mêmes chiffres partout.
 
 ---
 
