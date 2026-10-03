@@ -43,13 +43,13 @@ export default function PvSummary({ resultat, scenarioIndex, contexte, frais, ma
 
   const r = resultat
   const pv = r.revente - contexte.prix
-  const net = frais.data != null ? r.revente - contexte.prix - frais.data - r.impot.total : null
+  const net = r.net
 
   return (
     <DarkPanel draw={vignetteVilla} className="justify-between gap-6">
       <div>
         <p className="text-[11px] font-semibold uppercase tracking-[0.14em] text-white/70">
-          Plus-value brute · {NOMS_SCENARIOS[scenarioIndex].toLowerCase()}
+          Plus-value brute · {contexte.observe ? 'observée sur les ventes réelles' : NOMS_SCENARIOS[scenarioIndex].toLowerCase()}
         </p>
         <p
           className={`ds-num mt-1.5 whitespace-nowrap text-[clamp(2.25rem,13cqi,4rem)] font-semibold leading-none tracking-[-0.04em] [text-shadow:0_2px_24px_rgba(0,0,0,.25)] ${pv >= 0 ? 'text-[#BDF0D1]' : 'text-[#F8C2B6]'}`}
@@ -57,7 +57,8 @@ export default function PvSummary({ resultat, scenarioIndex, contexte, frais, ma
           {signe(pv)}
         </p>
         <p className="mt-2.5 text-[13px] text-white/80">
-          {contexte.nomDep} · achat {contexte.achat}, revente {contexte.vente} · {pct(r.taux, { digits: 2, signed: true })} par an au-delà de {contexte.derniereAnnee}
+          {contexte.nomDep} · achat {contexte.achat}, revente {contexte.vente} ·{' '}
+          {contexte.observe ? 'médianes observées, aucune projection' : `${pct(r.taux, { digits: 2, signed: true })} par an au-delà de ${contexte.derniereAnnee}`}
         </p>
       </div>
       <div>
@@ -72,7 +73,7 @@ export default function PvSummary({ resultat, scenarioIndex, contexte, frais, ma
         </div>
         <p className="mt-3 text-[11.5px] text-white/65">
           {frais.data != null
-            ? `Frais d’acquisition de ${euro(frais.data)}, calculés par le moteur de financement.`
+            ? `Frais d’acquisition de ${euro(frais.data)}, calculés par le moteur de financement${contexte.fraisRevente ? ` ; frais de revente de ${euro(r.revente - r.cession)}` : ''}.`
             : frais.error
               ? 'Frais d’acquisition indisponibles : le gain net ne peut pas être calculé.'
               : 'Calcul des frais d’acquisition…'}

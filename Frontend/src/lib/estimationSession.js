@@ -15,6 +15,10 @@ export function ecrireSession(v) {
   try { sessionStorage.setItem(SESSION_KEY, JSON.stringify(v)) } catch { /* navigation privée */ }
 }
 
+export function effacerSession() {
+  try { sessionStorage.removeItem(SESSION_KEY) } catch { /* navigation privée */ }
+}
+
 /**
  * Bien à reprendre dans un simulateur, construit depuis la dernière
  * estimation de la session. `demo: true` signale une estimation de
@@ -33,5 +37,9 @@ export function bienDepuisSession() {
     description: descriptionBien(s.values),
     at: s.at,
     demo: r.isDemo,
+    type: s.values.type,
+    surface: Number(s.values.surface) || null,
+    secteur: r.secteur?.code ?? r.codeCommune ?? null,
+    historiqueId: r.historiqueId,
   }
 }

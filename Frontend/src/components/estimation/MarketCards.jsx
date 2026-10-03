@@ -2,7 +2,8 @@ import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useDepartmentTrend } from '../../hooks/useMarketData'
 import { cx } from '../../lib/cx'
-import { euroM2, nb, pct } from '../../lib/format'
+import { euro, euroM2, nb, pct } from '../../lib/format'
+import { NOMS_SCENARIOS, scenarios } from '../../lib/plusValue'
 import { nomDepartement } from '../../lib/geo'
 import { syntheseAnnuelle, variationDouzeMois } from '../../lib/tendance'
 import LineChart from '../charts/LineChart'
@@ -23,7 +24,42 @@ function Shell({ embedded, className, children }) {
  * `embedded` : bloc sans carte, placé dans la colonne d'analyse du résultat
  * (médiane et écart sont alors affichés dans le bloc principal).
  */
-export function MarketContextCard({ stats, statsState, pricePerM2, isDemo = false, lieu, communeConnue = true, embedded = false }) {
+export function MarketContextCard({ stats, statsState, pricePerM2, isDemo = false, lieu, communeConnue = true, embedded = false, secteur = null }) {
+  // Secteur renvoyé avec l'estimation : même type de bien, ancien seul, déciles de la dernière année.
+  if (secteur && secteur.p10 != null && secteur.p90 != null) {
+    const v = isDemo ? null : pricePerM2
+    const rang = v != null ? Math.round(Math.min(97, Math.max(3, 10 + (80 * (v - secteur.p10)) / (secteur.p90 - secteur.p10)))) : null
+    return (
+      <Shell embedded={embedded} className="flex flex-col gap-2.5">
+        <div className="flex items-baseline justify-between gap-3">
+          <h3 className="ds-h3">Position <em>dans le secteur</em></h3>
+          {secteur.n != null && <Badge tone="neutral">{nb(secteur.n)} ventes</Badge>}
+        </div>
+        <p className="-mt-2 text-sm text-ink-muted">
+          {secteur.nom} · ventes {secteur.annee} de l’ancien
+        </p>
+        <MarketPositionBar
+          q1={secteur.p10}
+          median={secteur.med}
+          q3={secteur.p90}
+          value={v}
+          format={euroM2}
+          labels={['1er décile', 'Médiane', '9e décile']}
+        />
+        {rang != null ? (
+          <p className="text-[13px] text-ink-soft">
+            À <b className="ds-num text-ink">{euroM2(v)}</b>, ce bien est plus cher qu’environ <b className="text-ink">{rang} %</b> des ventes du secteur en {secteur.annee}.
+          </p>
+        ) : isDemo ? (
+          <p className="text-[13px] text-ink-soft">Comparaison masquée : le montant renvoyé en mode démonstration n’est pas une estimation.</p>
+        ) : null}
+        <p className="text-xs leading-relaxed text-ink-muted">
+          La bande colorée va du 1er au 9e décile : 80 % des ventes du secteur s’y trouvent ; le trait marque la médiane.
+        </p>
+      </Shell>
+    )
+  }
+
   if (statsState.loading) {
     return (
       <Shell embedded={embedded} className="flex flex-col gap-4">
@@ -146,8 +182,9 @@ function Tendance({ v, inverse = false }) {
 }
 
 /** Évolution mensuelle du prix médian du département (GET /api/market/trends). */
-export function DepartmentTrendCard({ dep }) {
-  const { rows, loading, error, reload } = useDepartmentTrend(dep)
+export function DepartmentTrendCard({ dep, typeBien, secteur = null, prix = null, isDemo = false }) {
+  const { rows, loading, error, reload } = useDepartmentTrend(dep, typeBien)
+  const serieSecteur = secteur?.serie?.length >= 2 ? secteur.serie : null
 
   const data = useMemo(() => {
     if (!rows.length) return null
@@ -155,7 +192,21 @@ export function DepartmentTrendCard({ dep }) {
     const labels = rows.map((r) => moisCourt.format(new Date(r.annee, r.mois - 1, 1)))
     const xTicks = rows.map((r, i) => (r.mois === 1 ? i : null)).filter((i) => i != null)
     const last = rows[rows.length - 1]
-    const annees = syntheseAnnuelle(rows)
+    const anneesDep = syntheseAnnuelle(rows)
+    // Prix par année : ceux du secteur quand le serveur les fournit (plus précis), sinon ceux du département.
+    const annees = serieSecteur
+      ? serieSecteur.map((p, k2) => ({
+          annee: p.annee,
+          prix: p.prix,
+          variation: k2 > 0 ? p.prix / serieSecteur[k2 - 1].prix - 1 : null,
+          ventes: null,
+          partielle: null,
+        }))
+      : anneesDep
+    // Série annuelle du secteur placée au milieu de chaque année du graphique mensuel.
+    const valeursSecteur = serieSecteur
+      ? rows.map((r) => (r.mois === 7 ? serieSecteur.find((p) => p.annee === r.annee)?.prix ?? null : null))
+      : null
     // Une année sur deux légèrement teintée sur le graphique.
     const bandes = xTicks.filter((_, k2) => k2 % 2 === 1).map((from) => {
       const fin = rows.findIndex((r, j) => j > from && r.mois === 1)
@@ -173,8 +224,17 @@ export function DepartmentTrendCard({ dep }) {
       maxAn: Math.max(...prixAn),
       variation: variationDouzeMois(rows),
       first: rows[0],
+      valeursSecteur,
     }
-  }, [rows])
+  }, [rows, serieSecteur])
+
+  // Valeur dans 10 ans : trois scénarios tirés de la série observée (secteur, sinon département).
+  const projection = useMemo(() => {
+    if (isDemo || prix == null || !data) return null
+    const serie = serieSecteur ?? data.annees.map((a) => ({ annee: a.annee, prix: a.prix }))
+    if (serie.length < 2) return null
+    return scenarios(serie).map((sc) => ({ ...sc, valeur: prix * (1 + sc.taux) ** 10 }))
+  }, [isDemo, prix, data, serieSecteur])
 
   const nom = nomDepartement(dep)
 
@@ -216,7 +276,10 @@ export function DepartmentTrendCard({ dep }) {
             labels={data.labels}
             xTicks={data.xTicks}
             xTickLabel={(i) => String(rows[i].annee)}
-            series={[{ id: dep, label: nom, color: 'var(--color-accent)', values: data.values }]}
+            series={[
+              { id: dep, label: `${nom} (médiane mensuelle)`, color: 'var(--color-accent)', values: data.values },
+              ...(data.valeursSecteur ? [{ id: 'secteur', label: `${secteur.nom} (médiane annuelle)`, color: 'var(--color-chart-1)', values: data.valeursSecteur }] : []),
+            ]}
             formatY={(v, full) => (full ? euroM2(v) : `${(v / 1000).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} k€`)}
             height={220}
             area
@@ -226,7 +289,9 @@ export function DepartmentTrendCard({ dep }) {
             ariaLabel={`Prix médian au m² en ${nom}, de ${data.labels[0]} à ${data.labels[data.labels.length - 1]} : de ${euroM2(data.first.prix_m2_median)} à ${euroM2(data.last.prix_m2_median)}.`}
           />
           <div className="mt-6 border-t border-line pt-5">
-            <h4 className="mb-3 text-[13px] font-medium text-ink-soft">Prix au m² par année</h4>
+            <h4 className="mb-3 text-[13px] font-medium text-ink-soft">
+              Prix au m² par année · {serieSecteur ? `${secteur.nom} (médiane des ventes de l’ancien)` : nom}
+            </h4>
             <dl
               className="grid gap-2.5"
               style={{ gridTemplateColumns: `repeat(auto-fit, minmax(${data.annees.length > 4 ? 130 : 150}px, 1fr))` }}
@@ -269,9 +334,29 @@ export function DepartmentTrendCard({ dep }) {
               })}
             </dl>
             <p className="mt-3 text-xs leading-relaxed text-ink-muted">
-              Moyenne annuelle des prix médians mensuels, pondérée par le nombre de ventes de chaque mois. La jauge situe
-              chaque année entre la plus basse et la plus haute de la période.
+              {serieSecteur
+                ? 'Médiane annuelle des ventes du secteur, calculée par le serveur. '
+                : 'Moyenne annuelle des prix médians mensuels, pondérée par le nombre de ventes de chaque mois. '}
+              La jauge situe chaque année entre la plus basse et la plus haute de la période.
             </p>
+            {projection && (
+              <div className="mt-5 flex flex-col gap-3 rounded-[16px] bg-accent-soft/45 p-4 ring-1 ring-inset ring-accent/15 lg:flex-row lg:items-center lg:justify-between">
+                <div className="min-w-0">
+                  <p className="text-[13px] font-medium text-ink">Valeur dans 10 ans, selon le marché observé</p>
+                  <p className="mt-0.5 text-[12px] text-ink-muted">
+                    Trois scénarios tirés de la série ci-dessus, pas des prévisions : le simulateur de plus-value détaille la fiscalité.
+                  </p>
+                </div>
+                <dl className="grid shrink-0 grid-cols-3 gap-2">
+                  {projection.map((sc, i) => (
+                    <div key={sc.id} className={cx('rounded-[12px] px-3 py-2', i === 1 ? 'bg-brand text-on-brand' : 'bg-surface ring-1 ring-inset ring-line')}>
+                      <dt className={cx('text-[11px]', i === 1 ? 'text-on-brand/75' : 'text-ink-muted')}>{NOMS_SCENARIOS[i].replace('Scénario ', '')} · {pct(sc.taux, { digits: 1, signed: true })}/an</dt>
+                      <dd className="ds-num mt-0.5 whitespace-nowrap text-[15px] font-semibold">{euro(sc.valeur)}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </div>
+            )}
           </div>
         </>
       )}

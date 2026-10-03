@@ -37,3 +37,39 @@ export function prixRevente(serie, prix, achat, vente, taux) {
 }
 
 export const NOMS_SCENARIOS = ['Scénario bas', 'Scénario central', 'Scénario haut']
+
+/**
+ * Hausse annuelle des prix (au-delà des données observées) à partir de
+ * laquelle la revente couvre prix d'achat, frais et impôt. `net(taux)` est
+ * croissant avec le taux : une dichotomie suffit.
+ * Renvoie Infinity si même +50 %/an ne suffit pas, -Infinity si tout taux convient.
+ */
+export function seuilRentabilite(net) {
+  let bas = -0.5
+  let haut = 0.5
+  if (net(haut) < 0) return Infinity
+  if (net(bas) >= 0) return -Infinity
+  for (let i = 0; i < 60; i++) {
+    const m = (bas + haut) / 2
+    if (net(m) < 0) bas = m
+    else haut = m
+  }
+  return haut
+}
+
+/**
+ * Croissance annuelle des prix sur chaque période passée de `ans` années,
+ * trimestre par trimestre, d'après un indice trimestriel du serveur
+ * ({ debut: 'AAAA-Qn', valeurs: [...] }). Fréquence observée, pas une probabilité.
+ */
+export function periodesHistoriques(indiceInsee, ans) {
+  const v = indiceInsee?.valeurs ?? []
+  const [a0, t0] = String(indiceInsee?.debut ?? '').split('-Q').map(Number)
+  if (!v.length || !a0 || !t0) return []
+  const q = 4 * ans
+  const out = []
+  for (let i = 0; i + q < v.length; i++) {
+    out.push({ debut: a0 + (t0 - 1 + i) / 4, taux: (v[i + q] / v[i]) ** (1 / ans) - 1 })
+  }
+  return out
+}

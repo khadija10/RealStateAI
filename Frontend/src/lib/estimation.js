@@ -11,6 +11,8 @@ export const FORM_VIDE = {
   rooms: '',
   dpe: '',
   annee: '',
+  numeroDpe: '',
+  numeroLot: '',
 }
 
 export const ANNEE_MAX = new Date().getFullYear()
@@ -33,6 +35,7 @@ export function validerFormulaire(v) {
     const a = Number(v.annee)
     if (!Number.isInteger(a) || a < 1800 || a > ANNEE_MAX) e.annee = `Entre 1800 et ${ANNEE_MAX}.`
   }
+  if (v.numeroDpe && !/^[0-9A-Za-z]{13}$/.test(v.numeroDpe.trim())) e.numeroDpe = '13 lettres ou chiffres, sans espace.'
   return e
 }
 
@@ -49,6 +52,8 @@ export function construirePayload(v) {
   }
   if (v.dpe) p.dpe_classe = v.dpe
   if (v.annee !== '') p.annee_construction = Number(v.annee)
+  if (v.numeroDpe?.trim()) p.numero_dpe = v.numeroDpe.trim().toUpperCase()
+  if (v.numeroLot?.trim()) p.numero_lot = v.numeroLot.trim()
   return p
 }
 
@@ -95,4 +100,12 @@ export function libelleFourchette(r) {
   if (r.rangeBasis === 'interquartile') return 'Fourchette interquartile des ventes comparables (50 % des prix observés)'
   if (r.rangeBasis === 'heuristique') return 'Fourchette indicative, sans fondement statistique'
   return r.confidenceLabel ? `Intervalle de confiance à ${r.confidenceLabel.replace('%', ' %')}` : 'Fourchette d’estimation'
+}
+
+/** Libellés des classes de fiabilité du protocole d'évaluation (docs/protocole_evaluation.md). */
+export const CLASSES_FIABILITE = {
+  fiable: { titre: 'Fiabilité élevée', texte: 'le prix peut appuyer une négociation.', ton: 'success' },
+  indicative: { titre: 'Fiabilité correcte', texte: 'un bon point de départ, à confirmer par une visite.', ton: 'warning' },
+  a_completer: { titre: 'Fiabilité limitée', texte: 'secteur difficile : l’avis d’un professionnel est indispensable.', ton: 'danger' },
+  donnees_insuffisantes: { titre: 'Peu de références', texte: 'trop peu de ventes récentes pour mesurer l’écart ici.', ton: 'neutral' },
 }

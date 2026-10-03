@@ -52,6 +52,31 @@ export function normalizeEstimate(d) {
     anneeConstruction: num(d.annee_construction),
     dpeZonePct: num(d.dpe_zone_fg_pct),
 
+    // Qualité de l'estimation (v1.5) : classe du protocole d'évaluation,
+    // segments où le modèle se trompe plus que sa moyenne, alertes de saisie.
+    classeFiabilite: str(d.classe_fiabilite),
+    segmentsDifficiles: Array.isArray(d.segments_difficiles)
+      ? d.segments_difficiles.filter((x) => x && typeof x === 'object' && num(x.mape) != null)
+      : [],
+    alerteType: str(d.alerte_type),
+    adresseSansNumero: d.adresse_sans_numero === true,
+    codePostal: str(d.code_postal),
+    historiqueId: num(d.historique_id),
+
+    // DPE retrouvé par le serveur (ADEME), à l'adresse ou par son numéro
+    dpeTrouve: d.dpe_trouve === true,
+    dpeSource: str(d.dpe_source), // 'adresse' | 'numero' | 'saisi'
+    dpeDate: str(d.dpe_date),
+    dpeAppariement: str(d.dpe_appariement), // 'exacte' | 'probable'
+
+    // Marché du secteur (commune ou arrondissement, même type de bien, ancien seul)
+    secteur: normalizeSecteur(d.secteur),
+    // Ventes de l'immeuble et leur médiane ramenée au marché du secteur
+    comparables: Array.isArray(d.comparables_immeuble)
+      ? d.comparables_immeuble.filter((c) => c && num(c.prix) != null)
+      : [],
+    immeubleReference: d.immeuble_reference && num(d.immeuble_reference.prix_m2) != null ? d.immeuble_reference : null,
+
     // Détail de la méthode
     meta: {
       scope: str(meta.scope),
@@ -64,6 +89,31 @@ export function normalizeEstimate(d) {
       roomsTolerance: num(meta.rooms_tolerance),
       notes: Array.isArray(meta.notes) ? meta.notes.filter((n) => typeof n === 'string') : [],
     },
+  }
+}
+
+/**
+ * Secteur renvoyé par le serveur (estimation ou GET /api/market/secteurs) :
+ * médiane et déciles de la dernière année, ventes, médianes annuelles.
+ * `serie` : [{ annee, prix }] — une année sans vente est omise.
+ */
+export function normalizeSecteur(s) {
+  if (!s || typeof s !== 'object' || num(s.med) == null) return null
+  const eco = Array.isArray(s.eco) ? s.eco : []
+  const derniere = num(s.annee)
+  const serie = derniere == null
+    ? []
+    : eco.map((v, i) => ({ annee: derniere - (eco.length - 1 - i), prix: num(v) })).filter((x) => x.prix != null)
+  return {
+    code: str(s.code),
+    nom: str(s.nom),
+    annee: derniere,
+    med: num(s.med),
+    p10: num(s.p10),
+    p90: num(s.p90),
+    n: num(s.n),
+    serie,
+    loyer: s.loyer && num(s.loyer.m2) != null ? s.loyer : null,
   }
 }
 
@@ -88,6 +138,19 @@ export function normalizeHealth(h) {
       nTransactions: num(h.model_n_transactions),
       nTrain: num(h.model_n_train),
       nTest: num(h.model_n_test),
+      // Validation officielle (protocole fixé avant la mesure)
+      validation: h.model_validation && typeof h.model_validation === 'object'
+        ? {
+            mape: num(h.model_validation.mape),
+            dans10: num(h.model_validation.dans_10pct),
+            dans20: num(h.model_validation.dans_20pct),
+            nTest: num(h.model_validation.n_test),
+            periode: Array.isArray(h.model_validation.periode_test) ? h.model_validation.periode_test : null,
+            mesureLe: str(h.model_validation.mesure_le),
+            couverture: num(h.model_validation.fourchette?.couverture),
+            largeurMediane: num(h.model_validation.fourchette?.largeur_mediane),
+          }
+        : null,
     },
     dvf: {
       loaded: !!h.dvf_loaded,

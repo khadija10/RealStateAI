@@ -41,7 +41,7 @@ export function RangeBar({ low, high, value, format, tone = 'light' }) {
  * Position d'un prix au m² dans la distribution d'une commune :
  * bande Q1–Q3 (50 % des ventes), trait sur la médiane, repère sur le bien.
  */
-export function MarketPositionBar({ q1, median, q3, value, format }) {
+export function MarketPositionBar({ q1, median, q3, value, format, labels = ['1er quartile', 'Médiane', '3e quartile'] }) {
   const hasValue = value != null
   const lo = Math.min(q1, hasValue ? value : q1) * 0.85
   const hi = Math.max(q3, hasValue ? value : q3) * 1.1
@@ -69,15 +69,15 @@ export function MarketPositionBar({ q1, median, q3, value, format }) {
       </div>
       <dl className="mt-1 grid grid-cols-3 gap-2 text-xs">
         <div>
-          <dt className="text-ink-muted">1er quartile</dt>
+          <dt className="text-ink-muted">{labels[0]}</dt>
           <dd className="ds-num font-medium text-ink">{format(q1)}</dd>
         </div>
         <div className="text-center">
-          <dt className="text-ink-muted">Médiane</dt>
+          <dt className="text-ink-muted">{labels[1]}</dt>
           <dd className="ds-num font-medium text-ink">{format(median)}</dd>
         </div>
         <div className="text-right">
-          <dt className="text-ink-muted">3e quartile</dt>
+          <dt className="text-ink-muted">{labels[2]}</dt>
           <dd className="ds-num font-medium text-ink">{format(q3)}</dd>
         </div>
       </dl>

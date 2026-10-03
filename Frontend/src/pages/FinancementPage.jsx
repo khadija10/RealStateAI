@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { getFinancingDossier, getFinancingRates } from '../api/client'
 import AgentChat from '../components/financement/AgentChat'
+import { AcheterLouerCard, AidesCard, ResumeDossier } from '../components/financement/FinancementExtras'
+import RequireAuth from '../components/layout/RequireAuth'
 import {
   BudgetCard,
   EndettementCard,
@@ -17,6 +19,7 @@ import { Card, ErrorState, Skeleton } from '../components/ui'
 import { useAction, useApi } from '../hooks/useApi'
 import { usePageTitle } from '../hooks/usePageTitle'
 import { usePrefill } from '../hooks/usePrefill'
+import { useSimulationHistorique } from '../hooks/useSimulationHistorique'
 import { heroFinancement } from '../illustrations'
 import { construirePayloadFinancement, FIN_DEFAUT } from '../lib/financement'
 import { dateLongue } from '../lib/format'
@@ -44,8 +47,20 @@ function Section({ titre, aide, children }) {
   )
 }
 
+/** Financement : réservé aux utilisateurs connectés, comme le reste du parcours. */
 export default function FinancementPage() {
   usePageTitle('Financement')
+  return (
+    <RequireAuth
+      title="Connectez-vous pour simuler votre financement"
+      reason="La simulation de financement est réservée aux comptes : elle peut être rattachée au bien estimé dans votre historique."
+    >
+      <Financement />
+    </RequireAuth>
+  )
+}
+
+function Financement() {
   const prefill = usePrefill()
   // Une estimation de démonstration n'est reprise que si l'utilisateur le demande.
   const [prefillActif, setPrefillActif] = useState(Boolean(prefill && !prefill.demo))
@@ -79,6 +94,28 @@ export default function FinancementPage() {
   }
 
   const d = dossier.data
+
+  // Simulation rattachée à l'estimation du bien dans l'historique (si elle vient d'une estimation).
+  useSimulationHistorique(
+    prefillActif ? prefill?.historiqueId : null,
+    'financement',
+    d
+      ? {
+          prix: values.prix,
+          apport: values.apport,
+          revenus: values.revenus,
+          duree: d.credit?.duree_annees ?? values.duree,
+          departement: values.departement,
+          verdict: d.synthese?.decision_indicative ?? null,
+          conforme_hcsf: Boolean(d.conformite_hcsf?.conforme_hcsf),
+          taux_endettement: d.conformite_hcsf?.criteres?.taux_endettement?.valeur ?? null,
+          mensualite: Math.round(d.credit?.mensualite_totale ?? 0),
+          taux: d.credit?.taux_nominal_retenu ?? null,
+          montant_emprunte: Math.round(d.plan_financement?.montant_emprunte ?? 0),
+          score: Math.round(d.score_dossier?.score_sur_100 ?? 0),
+        }
+      : null,
+  )
   const millesime = rates.data?.millesime ?? d?.meta?.base_reglementaire?.millesime_baremes
 
   return (
@@ -143,6 +180,13 @@ export default function FinancementPage() {
           <div className="mt-4">
             <BudgetCard dossier={d} />
           </div>
+
+          <Section titre={<>Acheter <em>ou louer</em> ?</>} aide="Comparaison à budget égal, avec les montants du crédit calculés par le serveur.">
+            <div className={values.primo ? 'grid gap-4 lg:grid-cols-[minmax(0,1.25fr)_minmax(0,1fr)]' : ''}>
+              <AcheterLouerCard dossier={d} values={values} />
+              <AidesCard values={values} />
+            </div>
+          </Section>
         </>
       )}
 
@@ -150,7 +194,10 @@ export default function FinancementPage() {
         <div className="grid gap-4 lg:grid-cols-2">
           <AgentChat />
           {d ? (
-            <PiecesCard key={d.pieces_justificatives?.situation} dossier={d} />
+            <div className="flex flex-col">
+              <PiecesCard key={d.pieces_justificatives?.situation} dossier={d} />
+              <ResumeDossier payload={payload} />
+            </div>
           ) : (
             <Card padding="lg" className="rounded-[22px]">
               <p className="text-sm text-ink-muted">La liste des pièces justificatives dépend de votre profil : elle s’affiche une fois le dossier calculé.</p>

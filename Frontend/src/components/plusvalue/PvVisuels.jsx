@@ -1,7 +1,6 @@
 import { cx } from '../../lib/cx'
 import { abattementIR, abattementPS, REGLES_PLUS_VALUE } from '../../lib/fiscalitePlusValue'
 import { euro, pct } from '../../lib/format'
-import { DEPARTEMENTS } from '../../lib/geo'
 import { indice, NOMS_SCENARIOS } from '../../lib/plusValue'
 import { Card, IconCheck } from '../ui'
 
@@ -46,7 +45,7 @@ export function ScenarioCards({ resultats, prix, choix, onChoix }) {
 
 // ── Éventail des trajectoires ───────────────────────────────────────────
 
-export function FanChart({ serie, scenarios, achat, vente, nomDep }) {
+export function FanChart({ serie, scenarios, achat, vente, nomDep, source = 'prix moyen annuel observé (ventes DVF)' }) {
   const L = 900
   const H = 300
   const mg = 52
@@ -81,7 +80,7 @@ export function FanChart({ serie, scenarios, achat, vente, nomDep }) {
       <div className="mb-3 flex flex-wrap items-end justify-between gap-3">
         <div>
           <h3 className="ds-h3">Trajectoire <em>du prix au m²</em></h3>
-          <p className="mt-0.5 text-[12.5px] text-ink-muted">{nomDep} · prix moyen annuel observé (ventes DVF), puis trois projections</p>
+          <p className="mt-0.5 text-[12.5px] text-ink-muted">{nomDep} · {source}, puis trois projections</p>
         </div>
         <ul className="flex flex-wrap gap-x-4 gap-y-1 text-[12px] text-ink-soft">
           <li className="flex items-center gap-1.5"><span aria-hidden="true" className="h-0.5 w-4 rounded bg-ink" />Observé</li>
@@ -147,7 +146,7 @@ export function ImpositionCard({ resultat, horizon }) {
         </div>
       ) : (
         <dl className="divide-y divide-line">
-          <Ligne label="Prix de revente">{euro(resultat.revente)}</Ligne>
+          <Ligne label={resultat.cession < resultat.revente ? 'Prix de cession (après frais de revente)' : 'Prix de revente'}>{euro(resultat.cession ?? resultat.revente)}</Ligne>
           <Ligne label={`Prix d’achat + forfait frais ${pct(R.forfaitFraisAcquisition, { digits: 1 })}`}>− {euro(resultat.prixAchat + i.fraisAcquisition)}</Ligne>
           {i.travauxRetenus > 0 && <Ligne label="Travaux retenus">− {euro(i.travauxRetenus)}</Ligne>}
           <Ligne label="Plus-value imposable" fort>{euro(i.pvImposable)}</Ligne>
@@ -206,32 +205,31 @@ export function AbattementsCard({ horizon }) {
   )
 }
 
-// ── Résilience des départements ─────────────────────────────────────────
+// ── Résilience des secteurs ou des départements ─────────────────────────
 
-export function ResilienceCard({ variations, selection, onSelect, periode }) {
-  const lignes = [...variations].sort((a, b) => b.v - a.v)
+/** Variation du prix entre la première et la dernière année observées ; clic = simuler ce lieu. */
+export function ResilienceCard({ items, selection, onSelect, titre, aide }) {
+  const lignes = [...items].sort((a, b) => b.v - a.v)
   const min = Math.min(0, ...lignes.map((l) => l.v))
   const max = Math.max(0, ...lignes.map((l) => l.v))
   const pos = (v) => ((v - min) / (max - min || 1)) * 100
   const zero = pos(0)
   return (
     <Card padding="lg" className="rounded-[22px]">
-      <h3 className="ds-h3">La résilience <em>des départements</em></h3>
-      <p className="mb-4 mt-0.5 text-[12.5px] text-ink-muted">
-        Variation du prix moyen au m² entre {periode}. Cliquez sur un département pour le simuler.
-      </p>
-      <ul className="flex flex-col gap-1">
+      <h3 className="ds-h3">{titre}</h3>
+      <p className="mb-4 mt-0.5 text-[12.5px] text-ink-muted">{aide}</p>
+      <ul className="grid gap-x-8 gap-y-1 lg:grid-cols-2">
         {lignes.map((l) => {
-          const actif = l.dep === selection
+          const actif = l.cle === selection
           return (
-            <li key={l.dep}>
+            <li key={l.cle}>
               <button
                 type="button"
                 aria-pressed={actif}
-                onClick={() => onSelect(l.dep)}
-                className={cx('grid w-full grid-cols-[9.5rem_minmax(0,1fr)_4.5rem] items-center gap-3 rounded-[10px] px-2 py-1.5 text-left text-[12.5px] transition-colors hover:bg-surface-2', actif && 'bg-accent-soft/60')}
+                onClick={() => onSelect(l.cle)}
+                className={cx('grid w-full grid-cols-[minmax(0,10rem)_minmax(0,1fr)_4.5rem] items-center gap-3 rounded-[10px] px-2 py-1.5 text-left text-[12.5px] transition-colors hover:bg-surface-2', actif && 'bg-accent-soft/60')}
               >
-                <span className={cx('truncate', actif ? 'font-semibold text-ink' : 'text-ink-soft')}>{DEPARTEMENTS[l.dep] ?? l.dep}</span>
+                <span className={cx('truncate', actif ? 'font-semibold text-ink' : 'text-ink-soft')} title={l.label}>{l.label}</span>
                 <span className="relative h-3" aria-hidden="true">
                   <span className="absolute inset-y-0 w-px bg-ink/40" style={{ left: `${zero}%` }} />
                   <span

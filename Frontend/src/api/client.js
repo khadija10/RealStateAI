@@ -143,6 +143,13 @@ export const getMarketIndices = (dep, propertyType = 'apartment', opts) =>
 // ── Historique ───────────────────────────────────────────────────────────
 
 export const getSearchHistory = (limit = 20, opts) => request(`/api/search-history?limit=${limit}`, opts)
+/**
+ * Rattache une simulation (financement ou plus-value) à une estimation de
+ * l'historique (`historique_id` renvoyé par l'estimation).
+ */
+export const saveHistorySimulation = (historiqueId, type, donnees, opts) =>
+  request(`/api/history/${historiqueId}/simulation`, { method: 'PUT', body: { type, donnees }, ...opts })
+
 export const deleteHistoryItem = (id, opts) => request(`/api/history/${id}`, { method: 'DELETE', ...opts })
 export const clearHistory = (opts) => request('/api/history', { method: 'DELETE', ...opts })
 
@@ -152,6 +159,10 @@ export const getFinancingDossier = (payload, opts) =>
   request('/api/financing/dossier', { method: 'POST', body: payload, ...opts })
 
 export const getFinancingRates = (opts) => request('/api/financing/rates', opts)
+
+/** Résumé texte du dossier, rédigé par le moteur (même corps que /dossier). */
+export const getFinancingResume = (payload, opts) =>
+  request('/api/financing/dossier/resume', { method: 'POST', body: payload, timeout: 30000, ...opts })
 
 export const sendFinancingAgentMessage = (sessionId, message, opts) =>
   request('/api/financing/agent/message', {

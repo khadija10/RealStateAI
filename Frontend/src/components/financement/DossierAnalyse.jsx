@@ -203,7 +203,9 @@ export function SoliditeCard({ dossier }) {
       <div className="grid gap-5 border-b border-line bg-surface-2/60 px-5 py-4 sm:px-6 lg:grid-cols-[13rem_minmax(0,1fr)] lg:items-center lg:gap-8">
         <div className="flex items-end justify-between gap-3 lg:block">
           <div>
-            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-soft">Score du dossier</p>
+            <p className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-soft" title="Indice propre à RealStateAI : les banques n’utilisent pas de score public, et ce n’est pas un accord de prêt.">
+              Score du dossier · indicatif
+            </p>
             <p className="ds-num mt-1 text-[40px] font-semibold leading-none tracking-[-0.04em] text-ink">
               {nb(s.score_sur_100)}<span className="text-[16px] font-medium text-ink-muted"> / 100</span>
             </p>

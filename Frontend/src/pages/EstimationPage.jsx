@@ -7,9 +7,11 @@ import { construirePayload, descriptionBien, FORM_VIDE, libelleLieu, validerForm
 import { DepartmentTrendCard, MarketContextCard } from '../components/estimation/MarketCards'
 import MarketExplorer from '../components/estimation/MarketExplorer'
 import { NextSteps, TechnicalDetails } from '../components/estimation/ResultActions'
+import { ComparablesCard, ResultAlerts } from '../components/estimation/ResultExtras'
 import { ReliabilityCard, ResultSummary } from '../components/estimation/ResultSummary'
 import { PageContainer } from '../components/layout/PageHeader'
 import { Button, Card, ErrorState, IconEstimate, IconMap, IconTrend, Illustration, Skeleton } from '../components/ui'
+import { useAuth } from '../context/AuthContext'
 import { useHealth } from '../context/HealthContext'
 import { useAction } from '../hooks/useApi'
 import { useCommuneStats, useCommuneSuggestions } from '../hooks/useMarketData'
@@ -17,7 +19,7 @@ import { usePageTitle } from '../hooks/usePageTitle'
 import { heroEstimation, vignetteBois } from '../illustrations'
 import { euro, nb, pctPoints } from '../lib/format'
 import { extraireCodePostal, findCommuneStats, localisationDepuisCodePostal } from '../lib/geo'
-import { memoriserLocalement, valeursDepuisHistorique, valeursDepuisUrl } from '../lib/estimationExport'
+import { valeursDepuisHistorique, valeursDepuisUrl } from '../lib/estimationExport'
 import { ecrireSession, lireSession } from '../lib/estimationSession'
 
 /** Pastille d'état du serveur, posée sur l'illustration du héros. */
@@ -57,8 +59,10 @@ function Manifeste() {
     ? [
         m.nTransactions != null && { v: nb(m.nTransactions), l: 'Transactions analysées' },
         m.nFeatures != null && { v: nb(m.nFeatures), l: 'Variables du modèle' },
-        m.mape != null && { v: pctPoints(m.mape), l: 'Erreur moyenne mesurée' },
-        m.r2 != null && { v: m.r2.toLocaleString('fr-FR', { maximumFractionDigits: 2 }), l: 'Coefficient R²' },
+        (m.validation?.mape ?? m.mape) != null && { v: pctPoints(m.validation?.mape ?? m.mape), l: 'Erreur moyenne mesurée' },
+        m.validation?.dans20 != null
+          ? { v: pctPoints(m.validation.dans20, 0), l: 'Estimations à moins de 20 % du prix réel' }
+          : m.r2 != null && { v: m.r2.toLocaleString('fr-FR', { maximumFractionDigits: 2 }), l: 'Coefficient R²' },
       ].filter(Boolean)
     : health?.dvf?.loaded
       ? [
@@ -183,11 +187,24 @@ export default function EstimationPage() {
   )
   const [annonce, setAnnonce] = useState('')
   const action = useAction((payload, signal) => estimatePrice(payload, { signal }))
-  const statsState = useCommuneStats()
+  const { deconnexions } = useAuth()
+  // Marché comparé au même type de bien que celui estimé (le serveur les sépare).
+  const statsState = useCommuneStats(resultat?.values?.type)
   const communes = useCommuneSuggestions()
   const resultRef = useRef(null)
   const formRef = useRef(null)
   const lastPayload = useRef(null)
+
+  // Déconnexion : le résultat d'un compte ne reste pas affiché pour le suivant.
+  const deconnexionsVues = useRef(deconnexions)
+  useEffect(() => {
+    if (deconnexions === deconnexionsVues.current) return
+    deconnexionsVues.current = deconnexions
+    action.reset()
+    setResultat(null)
+    setValues(FORM_VIDE)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deconnexions])
 
   async function estimer(payload, formValues = values) {
     lastPayload.current = { payload, formValues }
@@ -202,9 +219,6 @@ export default function EstimationPage() {
     const at = new Date().toISOString()
     setResultat({ r, values: formValues, at })
     ecrireSession({ raw, values: formValues, at })
-    if (!r.isDemo) {
-      memoriserLocalement({ query: libelleLieu(r, formValues), area_m2: Number(formValues.surface), prix: r.price })
-    }
     setAnnonce(`Estimation terminée : ${euro(r.price)}${r.isDemo ? ', en mode démonstration' : ''}.`)
     requestAnimationFrame(() => resultRef.current?.focus({ preventScroll: true }))
   }
@@ -336,6 +350,7 @@ export default function EstimationPage() {
                 <div className="border-t border-line pt-5">
                   <MarketContextCard
                     embedded
+                    secteur={r.secteur}
                     stats={stats}
                     statsState={statsState}
                     pricePerM2={r.isDemo ? null : r.pricePerM2}
@@ -346,7 +361,9 @@ export default function EstimationPage() {
                 </div>
               </div>
             </div>
-            <DepartmentTrendCard dep={dep} />
+            <ResultAlerts r={r} />
+            <DepartmentTrendCard dep={dep} typeBien={rv.type} secteur={r.secteur} prix={r.price} isDemo={r.isDemo} />
+            <ComparablesCard r={r} />
             <TechnicalDetails r={r} values={rv} stats={stats} />
             <div className="mt-8">
               <NextSteps r={r} values={rv} lieu={lieu} description={descriptionBien(rv)} at={resultat.at} stats={stats} dep={dep} />

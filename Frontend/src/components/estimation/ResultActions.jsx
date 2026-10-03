@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { METHODES } from '../../api/normalize'
+import { CLASSES_FIABILITE } from '../../lib/estimation'
 import { useAuth } from '../../context/AuthContext'
 import { useHealth } from '../../context/HealthContext'
 import { cx } from '../../lib/cx'
@@ -49,14 +50,25 @@ function StepCard({ icon: Icon, title, description, onClick, to, cta }) {
 /** Suite du parcours : financer, anticiper la revente, situer, retrouver. */
 export function NextSteps({ r, values, lieu, description, at, stats, dep }) {
   const navigate = useNavigate()
-  const { user, openAuth } = useAuth()
+  const { user, openAuth, requireAuth } = useAuth()
   const toast = useToast()
   const { health } = useHealth()
   const tendance = useDepartmentTrend(dep)
   // Bien repris par les simulateurs : prix, département (renvoyé par le
   // serveur ou déduit du code postal), libellés. Une estimation de
   // démonstration n'est jamais reprise comme prix.
-  const bien = { prix: r.price, departement: r.codeDepartement ?? dep ?? null, lieu, description, at, demo: r.isDemo }
+  const bien = {
+    prix: r.price,
+    departement: r.codeDepartement ?? dep ?? null,
+    lieu,
+    description,
+    at,
+    demo: r.isDemo,
+    type: values.type,
+    surface: Number(values.surface) || null,
+    secteur: r.secteur?.code ?? r.codeCommune ?? null,
+    historiqueId: r.historiqueId,
+  }
 
   async function copierLien() {
     try {
@@ -97,14 +109,14 @@ export function NextSteps({ r, values, lieu, description, at, stats, dep }) {
           title="Financer ce bien"
           description="Capacité d’emprunt, mensualités et frais, selon les normes HCSF."
           cta="Simuler le financement"
-          onClick={() => navigate('/financement', { state: { prefill: bien } })}
+          onClick={() => requireAuth(() => navigate('/financement', { state: { prefill: bien } }))}
         />
         <StepCard
           icon={IconTrend}
           title="Anticiper la revente"
           description="Scénarios de plus-value et fiscalité selon la durée de détention."
           cta="Simuler la plus-value"
-          onClick={() => navigate('/plus-value', { state: { prefill: bien } })}
+          onClick={() => requireAuth(() => navigate('/plus-value', { state: { prefill: bien } }))}
         />
         <StepCard
           icon={IconMap}
@@ -199,24 +211,37 @@ export function TechnicalDetails({ r, values, stats }) {
     m?.nTransactions != null && ['Ventes analysées', nb(m.nTransactions)],
   ].filter(Boolean)
 
+  const v = m?.validation
   const erreur = [
     r.localMape != null && [['Dans cette commune', r.localMapeN ? `${nb(r.localMapeN)} ventes de contrôle` : null], pctPoints(r.localMape)],
-    m?.mape != null && ['En Île-de-France', pctPoints(m.mape)],
+    (v?.mape ?? m?.mape) != null && ['En Île-de-France', pctPoints(v?.mape ?? m.mape)],
+    v?.dans10 != null && ['À moins de 10 % du prix', pctPoints(v.dans10, 0)],
+    v?.dans20 != null && ['À moins de 20 % du prix', pctPoints(v.dans20, 0)],
     m?.r2 != null && ['R² (jeu de test)', m.r2.toLocaleString('fr-FR', { maximumFractionDigits: 3 })],
-    m?.nTest != null && ['Ventes de contrôle', nb(m.nTest)],
+    (v?.nTest ?? m?.nTest) != null && [['Ventes de contrôle', v?.periode ? `${v.periode[0]} → ${v.periode[v.periode.length - 1]}` : null], nb(v?.nTest ?? m.nTest)],
+    v?.couverture != null && ['Couverture de la fourchette', pctPoints(v.couverture)],
     r.confidenceLabel && r.rangeBasis !== 'heuristique' && ['Fourchette', `à ${r.confidenceLabel.replace('%', ' %')}`],
     r.reliability != null && ['Indice de fiabilité', `${Math.round(r.reliability * 100)} / 100`],
   ].filter(Boolean)
 
   const donnees = [
     ['Méthode retenue', METHODES[r.method].label],
+    r.classeFiabilite && ['Classe de fiabilité', CLASSES_FIABILITE[r.classeFiabilite]?.titre ?? r.classeFiabilite],
     dvf && r.meta.scope && ['Périmètre', r.meta.scopeValue ? `${r.meta.scope} · ${r.meta.scopeValue}` : r.meta.scope],
     dvf && r.meta.nTransactions && ['Ventes comparables', nb(r.meta.nTransactions)],
     dvf && r.meta.dispersion != null && ['Dispersion des prix', pct(r.meta.dispersion)],
     dvf && r.meta.surfaceTolerance != null && ['Tolérance de surface', `± ${pct(r.meta.surfaceTolerance, { digits: 0 })}`],
     r.address && [['Adresse normalisée', r.address], 'BAN'],
     r.codeCommune && ['Code commune', r.codeCommune],
-    (r.dpeClasse || values.dpe) && ['Classe DPE transmise', r.dpeClasse ?? values.dpe],
+    (r.dpeClasse || values.dpe) && [
+      r.dpeSource === 'adresse' || r.dpeSource === 'numero'
+        ? ['Classe DPE', r.dpeSource === 'adresse' ? `retrouvée à l’adresse${r.dpeAppariement === 'probable' ? ' (appariement probable)' : ''}` : 'retrouvée par son numéro']
+        : 'Classe DPE transmise',
+      r.dpeClasse ?? values.dpe,
+    ],
+    r.dpeDate && ['Date du diagnostic', dateLongue(r.dpeDate)],
+    r.codePostal && ['Code postal', r.codePostal],
+    r.comparables.length > 0 && ['Ventes dans l’immeuble', nb(r.comparables.length)],
     (r.anneeConstruction || values.annee) && ['Année transmise', String(r.anneeConstruction ?? values.annee)],
     r.dpeZonePct != null && ['Logements F/G (code postal)', pctPoints(r.dpeZonePct)],
   ].filter(Boolean)

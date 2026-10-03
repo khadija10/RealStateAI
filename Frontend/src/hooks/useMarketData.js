@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
-import { getCommunes, getMarketMap, getMarketTrends } from '../api/client'
+import { getCommunes, getMarketIndices, getMarketMap, getMarketSecteurs, getMarketTrends } from '../api/client'
+import { normalizeSecteur } from '../api/normalize'
 import { indexCommuneStats } from '../lib/geo'
 import { useApi } from './useApi'
 
@@ -18,18 +19,23 @@ function cached(key, loader) {
   return cache.get(key)
 }
 
-/** Statistiques par commune (GET /api/market/map) + index de recherche. */
-export function useCommuneStats() {
-  const res = useApi(() => cached('map', () => getMarketMap()), [])
+/** Le serveur sépare le marché par type de bien : appartements ou maisons. */
+const typeMarche = (t) => (t === 'house' ? 'house' : 'apartment')
+
+/** Statistiques par commune (GET /api/market/map) + index de recherche, pour un type de bien. */
+export function useCommuneStats(typeBien) {
+  const t = typeMarche(typeBien)
+  const res = useApi(() => cached(`map:${t}`, () => getMarketMap(t)), [t])
   const index = useMemo(() => (Array.isArray(res.data) ? indexCommuneStats(res.data) : null), [res.data])
   return { ...res, rows: Array.isArray(res.data) ? res.data : [], index }
 }
 
-/** Série mensuelle du prix médian d'un département (GET /api/market/trends). */
-export function useDepartmentTrend(dep) {
+/** Série mensuelle du prix médian d'un département (GET /api/market/trends), pour un type de bien. */
+export function useDepartmentTrend(dep, typeBien) {
+  const t = typeMarche(typeBien)
   const res = useApi(
-    () => cached(`trends:${dep}`, () => getMarketTrends(dep)),
-    [dep],
+    () => cached(`trends:${dep}:${t}`, () => getMarketTrends(dep, t)),
+    [dep, t],
     { enabled: !!dep },
   )
   const rows = useMemo(
@@ -58,8 +64,9 @@ export function useCommuneSuggestions() {
  * Tendances mensuelles de tous les départements (GET /api/market/trends),
  * regroupées par code département et triées chronologiquement.
  */
-export function useAllTrends() {
-  const res = useApi(() => cached('trends:all', () => getMarketTrends()), [])
+export function useAllTrends(typeBien) {
+  const t = typeMarche(typeBien)
+  const res = useApi(() => cached(`trends:all:${t}`, () => getMarketTrends(undefined, t)), [t])
   const parDep = useMemo(() => {
     const m = {}
     for (const r of Array.isArray(res.data) ? res.data : []) (m[r.code_departement] ??= []).push(r)
@@ -67,4 +74,25 @@ export function useAllTrends() {
     return m
   }, [res.data])
   return { ...res, parDep }
+}
+
+/**
+ * Secteurs (communes, arrondissements) d'un type de bien, classés par prix,
+ * avec leur série annuelle et le loyer de référence (GET /api/market/secteurs).
+ * `disponible: false` si le serveur ne les fournit pas (ancienne version, données absentes).
+ */
+export function useSecteurs(typeBien) {
+  const t = typeMarche(typeBien)
+  const res = useApi(() => cached(`secteurs:${t}`, () => getMarketSecteurs(t)), [t])
+  const secteurs = useMemo(
+    () => (Array.isArray(res.data) ? res.data.map(normalizeSecteur).filter((s) => s?.code && s.serie.length >= 2) : []),
+    [res.data],
+  )
+  return { ...res, secteurs, disponible: secteurs.length > 0 }
+}
+
+/** Indice Notaires-INSEE trimestriel d'un département (GET /api/market/indices). */
+export function useIndiceInsee(dep, typeBien) {
+  const t = typeMarche(typeBien)
+  return useApi(() => cached(`indices:${dep}:${t}`, () => getMarketIndices(dep, t)), [dep, t], { enabled: !!dep })
 }

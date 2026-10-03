@@ -7,7 +7,7 @@
 
 import { METHODES } from '../api/normalize'
 import { heroEstimation } from '../illustrations'
-import { DPE_COULEURS, libelleFourchette, niveauFiabilite } from './estimation'
+import { CLASSES_FIABILITE, DPE_COULEURS, libelleFourchette, niveauFiabilite } from './estimation'
 import { dateHeure, dateLongue, euro, euroM2, nb, pct, pctPoints } from './format'
 import { nomDepartement } from './geo'
 import { MOIS_COURTS, syntheseAnnuelle, variationDouzeMois } from './tendance'
@@ -138,9 +138,13 @@ export function exporterRapport({ r, values, lieu, description, at, stats, dep, 
 
   const ref = reference(at, lieu)
   const methode = METHODES[r.method]
-  const fiab = niveauFiabilite(r.reliability)
+  const classe = CLASSES_FIABILITE[r.classeFiabilite]
+  const fiab = classe ? { label: classe.titre } : niveauFiabilite(r.reliability)
+  // Marché de référence : secteur renvoyé avec l'estimation, sinon statistiques de la commune
+  const medianeRef = r.secteur?.med ?? stats?.prix_m2_median ?? null
+  const ventesRef = r.secteur?.n ?? stats?.n_transactions ?? null
   const m = health?.model?.loaded ? health.model : null
-  const ecart = !r.isDemo && r.pricePerM2 != null && stats?.prix_m2_median ? r.pricePerM2 / stats.prix_m2_median - 1 : null
+  const ecart = !r.isDemo && r.pricePerM2 != null && medianeRef ? r.pricePerM2 / medianeRef - 1 : null
   const annees = trendRows.length ? syntheseAnnuelle(trendRows) : []
   const dernier = trendRows[trendRows.length - 1]
   const var12 = variationDouzeMois(trendRows)
@@ -186,7 +190,8 @@ export function exporterRapport({ r, values, lieu, description, at, stats, dep, 
 
   const modele = m
     ? [
-        m.mape != null && ['Erreur moyenne (MAPE)', esc(pctPoints(m.mape))],
+        (m.validation?.mape ?? m.mape) != null && ['Erreur moyenne (MAPE)', esc(pctPoints(m.validation?.mape ?? m.mape))],
+        m.validation?.dans20 != null && ['Estimations à moins de 20 %', esc(pctPoints(m.validation.dans20, 0))],
         m.r2 != null && ['Coefficient de détermination (R²)', esc(m.r2.toLocaleString('fr-FR', { maximumFractionDigits: 3 }))],
         m.nFeatures != null && ['Variables utilisées', esc(nb(m.nFeatures))],
         m.nTransactions != null && ['Transactions analysées', esc(nb(m.nTransactions))],
@@ -319,12 +324,14 @@ export function exporterRapport({ r, values, lieu, description, at, stats, dep, 
   <section class="kpis">
     <div class="kpi ambre"><b>${esc(euroM2(r.pricePerM2))}</b><span>Prix au m² estimé</span></div>
     <div class="kpi"><b>${r.lowPerM2 != null && r.highPerM2 != null ? `${esc(nb(r.lowPerM2))}–${esc(nb(r.highPerM2))}` : '—'}</b><span>Fourchette au m² (€)</span></div>
-    <div class="kpi"><b>${stats ? esc(euroM2(stats.prix_m2_median)) : '—'}</b><span>Médiane de la commune</span></div>
+    <div class="kpi"><b>${medianeRef != null ? esc(euroM2(medianeRef)) : '—'}</b><span>${r.secteur ? 'Médiane du secteur' : 'Médiane de la commune'}</span></div>
     <div class="kpi"><b class="${tendanceCls(ecart)}">${ecart != null ? esc(pct(ecart, { digits: 0, signed: true })) : '—'}</b><span>Écart à la médiane</span></div>
-    <div class="kpi"><b>${stats ? esc(nb(stats.n_transactions)) : '—'}</b><span>Ventes dans la commune</span></div>
+    <div class="kpi"><b>${ventesRef != null ? esc(nb(ventesRef)) : '—'}</b><span>${r.secteur ? 'Ventes du secteur' : 'Ventes dans la commune'}</span></div>
     <div class="kpi fiab">${anneau(r.reliability)}<span><b style="font-size:8pt">Fiabilité${fiab ? ` ${esc(fiab.label.toLowerCase())}` : ''}</b>${r.localMape != null ? `Erreur locale : ${esc(pctPoints(r.localMape))}` : 'Indice du serveur, sur 100'}</span></div>
   </section>
 
+  ${r.alerteType ? `<p class="alerte"><b>Type de bien à vérifier.</b> ${esc(r.alerteType)}</p>` : ''}
+  ${r.method === 'ml' && r.segmentsDifficiles.length ? `<p class="alerte"><b>Segment plus difficile pour le modèle.</b> Erreur mesurée : ${r.segmentsDifficiles.map((x) => `${esc(x.libelle)} ${esc(pctPoints(x.mape))}`).join(' ; ')}.</p>` : ''}
   ${r.isDemo ? '<p class="alerte"><b>Mode démonstration.</b> Le serveur ne disposait d’aucune donnée exploitable pour ce bien : le montant résulte d’une heuristique et ne constitue pas une estimation.</p>' : ''}
   ${r.geocodingWarning ? `<p class="alerte">${esc(r.geocodingWarning)}</p>` : ''}
 

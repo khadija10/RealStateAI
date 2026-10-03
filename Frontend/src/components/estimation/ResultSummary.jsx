@@ -3,9 +3,9 @@ import { useHealth } from '../../context/HealthContext'
 import { useCountUp } from '../../hooks/useCountUp'
 import { vignetteInterieur } from '../../illustrations'
 import { cx } from '../../lib/cx'
-import { dateHeure, euro, nb, pct, pctPoints } from '../../lib/format'
+import { dateHeure, dateLongue, euro, nb, pct, pctPoints } from '../../lib/format'
 import { Badge, Card, IconAlert, IconMap, Illustration } from '../ui'
-import { descriptionBien, libelleFourchette, libelleLieu, niveauFiabilite } from '../../lib/estimation'
+import { CLASSES_FIABILITE, descriptionBien, DPE_COULEURS, libelleFourchette, libelleLieu, niveauFiabilite } from '../../lib/estimation'
 import { RangeBar, ReliabilityRing } from './visuals'
 
 const METHOD_DOT = { ml: 'bg-[#6FD39C]', dvf: 'bg-[#8FAACB]', mock: 'bg-[#E0A650]' }
@@ -26,11 +26,13 @@ function Mesure({ value, label }) {
  */
 export function ResultSummary({ r, values, at, stats }) {
   const animated = useCountUp(r.price)
-  const mediane = stats?.prix_m2_median ?? null
+  // Médiane du secteur renvoyée avec l'estimation (même type de bien, ancien) ; à défaut, celle de la commune.
+  const mediane = r.secteur?.med ?? stats?.prix_m2_median ?? null
+  const libelleMediane = r.secteur ? 'Médiane du secteur (€/m²)' : 'Médiane de la commune (€/m²)'
   const ecart = !r.isDemo && r.pricePerM2 != null && mediane ? r.pricePerM2 / mediane - 1 : null
   const mesures = [
     r.pricePerM2 != null && { value: nb(r.pricePerM2), label: '€ par m²' },
-    mediane != null && { value: nb(mediane), label: `Médiane de la commune (€/m²)` },
+    mediane != null && { value: nb(mediane), label: libelleMediane },
     ecart != null && { value: pct(ecart, { digits: 0, signed: true }), label: 'Écart à la médiane' },
   ].filter(Boolean)
 
@@ -46,6 +48,18 @@ export function ResultSummary({ r, values, at, stats }) {
             <span className="min-w-0 break-words">
               <span className="text-[15px] font-semibold text-white">{libelleLieu(r, values)}</span>
               <span className="mt-0.5 block text-white/80">{descriptionBien(values)}</span>
+                {r.dpeClasse && (r.dpeSource === 'adresse' || r.dpeSource === 'numero') && (
+                  <span className="mt-1.5 inline-flex items-center gap-1.5 rounded-full bg-white/12 px-2 py-0.5 text-[11.5px] text-white/85 ring-1 ring-inset ring-white/15">
+                    <span
+                      className="rounded-[4px] px-1 text-[10.5px] font-semibold"
+                      style={{ background: DPE_COULEURS[r.dpeClasse]?.fond, color: DPE_COULEURS[r.dpeClasse]?.texte }}
+                    >
+                      DPE {r.dpeClasse}
+                    </span>
+                    {r.dpeSource === 'adresse' ? 'retrouvé à l’adresse' : 'retrouvé par son numéro'} · ADEME
+                    {r.dpeDate ? ` · ${dateLongue(r.dpeDate)}` : ''}
+                  </span>
+                )}
             </span>
           </p>
           <span className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-white/15 px-2.5 py-1 text-[11.5px] font-medium text-white backdrop-blur-sm">
@@ -91,8 +105,10 @@ export function ResultSummary({ r, values, at, stats }) {
 /** Fiabilité : indice du serveur + erreur mesurée du modèle. */
 export function ReliabilityCard({ r, embedded = false }) {
   const { health } = useHealth()
-  const lvl = niveauFiabilite(r.reliability)
-  const mapeGlobale = health?.model?.mape
+  const classe = CLASSES_FIABILITE[r.classeFiabilite]
+  const lvl = classe ? { label: classe.titre, tone: classe.ton } : niveauFiabilite(r.reliability)
+  const validation = health?.model?.validation
+  const mapeGlobale = validation?.mape ?? health?.model?.mape
 
   let explication
   if (r.isDemo) {
@@ -107,8 +123,9 @@ export function ReliabilityCard({ r, embedded = false }) {
   } else if (r.method === 'ml' && mapeGlobale != null) {
     explication = (
       <>
-        Pas de mesure locale pour cette commune. Sur l’ensemble des ventes de test, l’erreur moyenne du modèle est
-        de <b className="text-ink">{pctPoints(mapeGlobale)}</b>.
+        Pas de mesure locale pour cette commune. En Île-de-France, l’erreur moyenne du modèle est
+        de <b className="text-ink">{pctPoints(mapeGlobale)}</b>
+        {validation?.dans20 != null && <> ; {pctPoints(validation.dans20, 0)} des estimations tombent à moins de 20 % du prix</>}.
       </>
     )
   } else if (r.method === 'dvf' && r.meta.nTransactions) {
@@ -130,7 +147,7 @@ export function ReliabilityCard({ r, embedded = false }) {
       <div className="flex items-center gap-5">
         <ReliabilityRing value={r.reliability} size={embedded ? 84 : 112} />
         <div className="text-sm leading-relaxed text-ink-muted">
-          <p>Indice de confiance fourni par le serveur pour cette estimation, de 0 à 100.</p>
+          <p>{classe ? <><b className="font-medium text-ink">{classe.titre}</b> : {classe.texte}</> : 'Indice de confiance fourni par le serveur pour cette estimation, de 0 à 100.'}</p>
           {embedded && explication && <p className="mt-2 text-ink-soft">{explication}</p>}
         </div>
       </div>
