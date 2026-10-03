@@ -463,6 +463,8 @@ Déjà réglé avant la relecture : largeurs de conteneur, couleurs de la compar
 
 ### 10.4 À éviter
 
+La liste complète, avec les chiffres périmés à ne pas reprendre et les captures à refaire, est dans [`memoire_a_eviter.md`](memoire_a_eviter.md). L'essentiel :
+
 - Écrire « objectif atteint » sans préciser le critère, ou arrondir 78 % à « 8 sur 10 » sans « près de ».
 - Citer les écarts avec les prix Notaires-INSEE (section 6.2) : leur source exacte n'est pas vérifiée.
 - Présenter la grille tarifaire comme un prix pratiqué : c'est un modèle économique cible.
