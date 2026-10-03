@@ -7,6 +7,7 @@ Prévu pour être remplacé par Google Places sans changer l'interface.
 
 from __future__ import annotations
 
+import urllib.error
 import urllib.parse
 import urllib.request
 import json
@@ -24,6 +25,25 @@ MARKET_REF_PATH = "data/samples/market_reference.parquet"
 def _mois_index_courant() -> int:
     now = datetime.now()
     return (now.year - 2000) * 12 + now.month
+
+
+# Réponses BAN déjà obtenues (adresse → résultat) : une adresse réestimée ou
+# revue depuis l'historique ne refait pas d'appel réseau.
+_CACHE_BAN: dict[str, dict] = {}
+_CACHE_MAX = 5000
+
+
+def _appeler_ban(url: str) -> dict:
+    """Appel BAN avec un second essai : un délai dépassé isolé ne fait plus
+    basculer l'estimation sur le repli DVF (constaté sur Clichy, rapport v1.5)."""
+    derniere: Exception | None = None
+    for delai in (5, 10):
+        try:
+            with urllib.request.urlopen(url, timeout=delai) as resp:
+                return json.loads(resp.read())
+        except (TimeoutError, urllib.error.URLError, OSError) as exc:
+            derniere = exc
+    raise derniere  # type: ignore[misc]
 
 
 def geocoder_adresse(adresse: str, code_postal: str | None = None) -> dict:
@@ -50,8 +70,12 @@ def geocoder_adresse(adresse: str, code_postal: str | None = None) -> dict:
         params["postcode"] = code_postal
     url = f"{BAN_URL}?{urllib.parse.urlencode(params)}"
 
-    with urllib.request.urlopen(url, timeout=5) as resp:
-        data = json.loads(resp.read())
+    data = _CACHE_BAN.get(url)
+    if data is None:
+        data = _appeler_ban(url)
+        if len(_CACHE_BAN) >= _CACHE_MAX:
+            _CACHE_BAN.pop(next(iter(_CACHE_BAN)))
+        _CACHE_BAN[url] = data
 
     features = data.get("features", [])
     if not features:
