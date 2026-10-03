@@ -124,9 +124,10 @@ def _points_forts(profil: ProfilEmprunteur, analyse: dict) -> list[str]:
     if score.get("apport", 0) >= 0.75:
         points.append("Apport personnel supérieur au niveau généralement attendu.")
     if analyse["reste_a_vivre"]["conforme"]:
+        rav = analyse["reste_a_vivre"]
         points.append(
-            f"Reste à vivre de {analyse['reste_a_vivre']['reste_a_vivre']:,.0f} €, "
-            "au-dessus du minimum d'usage.".replace(",", " "))
+            f"Reste à vivre de {rav['reste_a_vivre']:,.0f} € par mois, soit {rav['marge']:,.0f} € "
+            f"de plus que le minimum d'usage ({rav['minimum_requis']:,.0f} €).".replace(",", " "))
     if score.get("saut_de_charge", 0) >= 0.8:
         points.append(
             "La future mensualité est proche du loyer actuel : la capacité à "

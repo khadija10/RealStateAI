@@ -267,6 +267,7 @@ class EstimationResponse(BaseModel):
     code_postal: str | None = None
     historique_id: int | None = None       # ligne d'historique, pour y rattacher les simulations
     segments_difficiles: list[dict[str, Any]] | None = None  # erreur mesurée des segments du bien
+    immeuble_reference: dict[str, Any] | None = None  # médiane des ventes de l'immeuble, ramenée au secteur
     adresse_sans_numero: bool | None = None  # rue seule : l'immeuble n'est pas identifié
 
 
@@ -375,6 +376,36 @@ def _segments_difficiles(segments: dict, *, departement: str | None, type_bien: 
 
 
 ANNEES_SECTEUR = (2021, 2022, 2023, 2024, 2025)
+
+
+def _ramener_ventes_au_secteur(comparables: list[dict], secteur: dict | None, surface: float) -> dict | None:
+    """Ventes de l'immeuble ramenées au marché de la dernière année avec la série
+    annuelle du secteur, celle que la page affiche (« Évolution depuis 2021 »).
+
+    Le modèle utilise l'indice de référence de la commune sur 12 mois ; pour
+    l'affichage, on ramène chaque vente avec la même série que le graphique du
+    secteur, sinon une vente de 2021 pouvait « monter » alors que la courbe du
+    secteur baisse. Renvoie la médiane de l'immeuble appliquée à la surface."""
+    eco = (secteur or {}).get("eco") or []
+    serie = {a: v for a, v in zip(ANNEES_SECTEUR, eco) if v}
+    if not comparables or not serie:
+        return None
+    annee_ref = max(serie)
+    ramenes = []
+    for c in comparables:
+        try:
+            annee = int(str(c.get("date", ""))[:4])
+        except ValueError:
+            continue
+        base = serie.get(min(max(annee, min(serie)), annee_ref))
+        if base and c.get("prix_m2"):
+            c["prix_m2_aujourdhui"] = round(c["prix_m2"] * serie[annee_ref] / base)
+            ramenes.append(c["prix_m2_aujourdhui"])
+        c["annee_reference"] = annee_ref
+    if not ramenes:
+        return None
+    med = float(pd.Series(ramenes).median())
+    return {"prix_m2": round(med), "valeur": round(med * surface, -3), "n": len(ramenes), "annee": annee_ref}
 
 
 def _construire_secteurs(df: "pd.DataFrame | None") -> dict:
@@ -1207,6 +1238,8 @@ def estimate(
                     normalized.dpe_appariement = ml_result.get("dpe_appariement")
                     normalized.secteur = getattr(request.app.state, "secteurs", {}).get(
                         (str(ml_result.get("code_commune") or ""), _type_secteur(type_bien)))
+                    normalized.immeuble_reference = _ramener_ventes_au_secteur(
+                        normalized.comparables_immeuble, normalized.secteur, surface)
                 if lm.get("mape"):
                     normalized.reliability = round(max(0.30, min(0.95, 1.0 - lm["mape"] / 100)), 2)
                 # Score géocodage BAN

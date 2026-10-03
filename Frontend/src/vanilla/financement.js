@@ -10,14 +10,14 @@ export const html = `
   <div class="illus" id="fin-illus-heros"></div>
   <div class="accroche">
     <h1>Financer<em>votre projet</em></h1>
-    <p>Capacité d'emprunt, plan de financement et dossier de prêt, calculés par le
-       moteur de règles déterministe — normes du Haut Conseil de stabilité financière.</p>
+    <p>Capacité d'emprunt, plan de financement et dossier de prêt, calculés selon les
+       règles appliquées par les banques (normes du Haut Conseil de stabilité financière).</p>
   </div>
 </section>
 
 <h2 class="titre-section">Votre <em>situation</em></h2>
-<p class="sous">Renseignez votre situation puis lancez le calcul : chaque montant est calculé
-  par le backend, sans aucune approximation côté navigateur.</p>
+<p class="sous">Renseignez votre situation, puis lancez le calcul. Les montants suivent les
+  règles des banques et les barèmes de frais de notaire 2026.</p>
 
 <section class="simu">
   <div class="clair">
@@ -98,7 +98,7 @@ export const html = `
 
 <div data-resultat hidden>
 <h2 class="titre-section">Points <em>forts et vigilance</em></h2>
-<p class="sous">Évalués automatiquement par le moteur déterministe à partir de votre dossier.</p>
+<p class="sous">Évalués à partir de votre situation, selon les critères des banques.</p>
 <section class="deux">
   <div class="clair">
     <h3 style="margin:0 0 14px;font-weight:400;font-size:22px">Points <em>forts</em></h3>
@@ -112,7 +112,7 @@ export const html = `
 
 </div>
 <h2 class="titre-section">Posez <em>vos questions</em></h2>
-<p class="sous">Agent connecté au même moteur déterministe : il appelle les calculs réels, il n'invente jamais de chiffre.</p>
+<p class="sous">L'assistant utilise les mêmes calculs que la simulation : il ne donne jamais un chiffre au hasard.</p>
 <section class="clair" style="display:flex;flex-direction:column;gap:14px">
   <div id="fin-fil" style="display:flex;flex-direction:column;gap:10px;min-height:120px;max-height:360px;overflow-y:auto"></div>
   <form id="fin-chat-form" style="display:flex;gap:8px">
@@ -315,7 +315,7 @@ export function mount(root, { apiBase = '', prefill } = {}) {
     $('#fin-jauge').innerHTML = jauge(endettement)
     const rav = d.reste_a_vivre || {}
     $('#fin-encart-endett').innerHTML = conforme
-      ? `Marge disponible : <b>${euro(Math.max(0, rav.marge || 0))}</b> de reste à vivre au-delà du minimum d'usage.`
+      ? `Reste à vivre : <b>${euro(rav.reste_a_vivre || 0)}</b> par mois, soit <b>${euro(Math.max(0, rav.marge || 0))}</b> de plus que le minimum d'usage (${euro(rav.minimum_requis || 0)}).`
       : `Au-delà de 35 %, le dossier ne passe que par la <b>marge de dérogation</b> : 20 % des dossiers d'une banque par trimestre.`
 
     const acq = plan.detail_frais_acquisition || {}

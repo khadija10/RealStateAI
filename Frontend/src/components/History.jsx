@@ -26,10 +26,10 @@ const TYPE_LABELS = {
 
 // Mêmes libellés que la page Estimation (classe mesurée par le protocole d'évaluation)
 const CLASSES = {
-  fiable: { titre: 'Secteur fiable', ton: 'bg-emerald-50 text-emerald-700' },
-  indicative: { titre: 'Indicative', ton: 'bg-amber-50 text-amber-800' },
-  a_completer: { titre: 'Secteur difficile', ton: 'bg-red-50 text-red-700' },
-  donnees_insuffisantes: { titre: 'Peu de ventes de contrôle', ton: 'bg-stone-100 text-ink-muted' },
+  fiable: { titre: 'Fiabilité élevée', ton: 'bg-emerald-50 text-emerald-700' },
+  indicative: { titre: 'Fiabilité correcte', ton: 'bg-amber-50 text-amber-800' },
+  a_completer: { titre: 'Fiabilité limitée', ton: 'bg-red-50 text-red-700' },
+  donnees_insuffisantes: { titre: 'Peu de références', ton: 'bg-stone-100 text-ink-muted' },
 }
 
 const TRIS = {
@@ -108,14 +108,15 @@ function ComparisonSummary({ a, b, onClear }) {
   const diff = b.estimated_price - a.estimated_price
   const diffPct = formatPct((diff / a.estimated_price) * 100)
   const cheaper = diff < 0 ? 'B' : diff > 0 ? 'A' : null
-  const fourchette = (x) => x.resultat?.price_range ? `${formatEUR(x.resultat.price_range.low)} – ${formatEUR(x.resultat.price_range.high)}` : '—'
-  const classe = (x) => CLASSES[x.resultat?.classe_fiabilite]?.titre ?? '—'
-  const dpe = (x) => x.resultat?.dpe_classe || x.dpe_classe || '—'
+  const NR = 'non renseigné'
+  const fourchette = (x) => x.resultat?.price_range ? `${formatEUR(x.resultat.price_range.low)} – ${formatEUR(x.resultat.price_range.high)}` : NR
+  const classe = (x) => CLASSES[x.resultat?.classe_fiabilite]?.titre ?? NR
+  const dpe = (x) => x.resultat?.dpe_classe || x.dpe_classe || NR
 
   const rows = [
     { label: 'Adresse / Commune', a: titre(a), b: titre(b) },
-    { label: 'Type', a: TYPE_LABELS[a.property_type] ?? '—', b: TYPE_LABELS[b.property_type] ?? '—' },
-    { label: 'Surface', a: a.area_m2 ? `${a.area_m2} m²` : '—', b: b.area_m2 ? `${b.area_m2} m²` : '—' },
+    { label: 'Type', a: TYPE_LABELS[a.property_type] ?? NR, b: TYPE_LABELS[b.property_type] ?? NR },
+    { label: 'Surface', a: a.area_m2 ? `${a.area_m2} m²` : NR, b: b.area_m2 ? `${b.area_m2} m²` : NR },
     { label: 'DPE', a: dpe(a), b: dpe(b) },
     { label: 'Prix estimé', a: formatEUR(a.estimated_price), b: formatEUR(b.estimated_price), highlight: true },
     { label: 'Fourchette', a: fourchette(a), b: fourchette(b) },
@@ -134,25 +135,25 @@ function ComparisonSummary({ a, b, onClear }) {
 
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div className="bg-stone-50 rounded-xl p-4">
-          <p className="text-[13px] text-ink-muted mb-1">Écart de prix</p>
-          <p className={`text-xl font-semibold tabular-nums ${diff === 0 ? 'text-ink' : diff < 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-            {diff > 0 ? '+' : ''}{formatEUR(diff)}
+          <p className="text-[13px] text-ink-muted mb-1">Prix de B par rapport à A</p>
+          <p className="text-xl font-semibold tabular-nums text-ink">
+            {diff === 0 ? 'identique' : `${formatEUR(Math.abs(diff))} ${diff < 0 ? 'de moins' : 'de plus'}`}
           </p>
           <p className="text-[13px] text-ink-muted mt-0.5">{diff > 0 ? '+' : ''}{diffPct}</p>
         </div>
 
         {ppmA && ppmB && (
           <div className="bg-stone-50 rounded-xl p-4">
-            <p className="text-[13px] text-ink-muted mb-1">Écart prix / m²</p>
-            <p className={`text-xl font-semibold tabular-nums ${ppmB === ppmA ? 'text-ink' : ppmB < ppmA ? 'text-emerald-600' : 'text-red-500'}`}>
-              {ppmB - ppmA > 0 ? '+' : ''}{formatEUR(Math.round(ppmB - ppmA))}
+            <p className="text-[13px] text-ink-muted mb-1">Prix au m² de B par rapport à A</p>
+            <p className="text-xl font-semibold tabular-nums text-ink">
+              {Math.round(ppmB - ppmA) === 0 ? 'identique' : `${formatEUR(Math.abs(Math.round(ppmB - ppmA)))} ${ppmB < ppmA ? 'de moins' : 'de plus'}`}
             </p>
             <p className="text-[13px] text-ink-muted mt-0.5">par m²</p>
           </div>
         )}
 
         <div className="bg-stone-50 rounded-xl p-4">
-          <p className="text-[13px] text-ink-muted mb-1">Prix le plus bas</p>
+          <p className="text-[13px] text-ink-muted mb-1">Le moins cher</p>
           {cheaper ? (
             <>
               <p className="text-xl font-semibold text-seine">Bien {cheaper}</p>

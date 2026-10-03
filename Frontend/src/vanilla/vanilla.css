@@ -393,3 +393,14 @@
    .bloc-tete span les passait en gris sur fond foncé) */
 .rsai-vanilla .bloc-tete .puce{color:var(--blanc)}
 .rsai-vanilla .bloc-tete .puce.claire{color:var(--encre)}
+
+/* Fourchette au premier plan sous le prix, avec sa signification en clair */
+.rsai-vanilla .fourchette b{color:var(--encre);font-weight:700}
+.rsai-vanilla .fourchette small{display:block;margin-top:4px;font-size:13px;color:var(--gris)}
+/* Méthodologie repliée : le détail technique reste accessible sans encombrer */
+.rsai-vanilla details.methodo summary{cursor:pointer;list-style:none;display:flex;align-items:center;gap:10px}
+.rsai-vanilla details.methodo summary::-webkit-details-marker{display:none}
+.rsai-vanilla details.methodo summary h3{margin:0;font-weight:400;font-size:23px;letter-spacing:-.01em}
+.rsai-vanilla details.methodo summary::after{content:"+";margin-left:auto;font-size:22px;color:var(--gris)}
+.rsai-vanilla details.methodo[open] summary::after{content:"−"}
+.rsai-vanilla details.methodo[open] .detail-grille{margin-top:14px}

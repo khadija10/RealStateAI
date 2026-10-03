@@ -72,13 +72,13 @@ export const html = `
 <h2 class="titre-section">La <em>fiscalité</em></h2>
 <p class="sous">Barème 2026 : 19 % d'impôt sur le revenu et 17,2 % de prélèvements sociaux,
   allégés par la durée de détention.</p>
-<section class="deux">
+<section class="deux" id="pv-fiscalite">
   <div class="clair">
     <h3>Votre <em>imposition</em></h3>
     <p class="aide" id="pv-aide-impot"></p>
     <div id="pv-detail-impot"></div>
   </div>
-  <div class="clair">
+  <div class="clair" id="pv-carte-abattements">
     <h3>L'effet <em>du temps</em></h3>
     <p class="aide">Abattement selon la durée de détention</p>
     <div id="pv-abattements"></div>
@@ -87,7 +87,7 @@ export const html = `
 
 </div>
 <h2 class="titre-section">La résilience <em>des secteurs</em></h2>
-<p class="sous">Variation du prix au m² entre 2021 et 2025. La baisse n'a pas frappé tous les
+<p class="sous" id="pv-resilience-sous">Variation du prix au m² entre 2021 et 2025. La baisse n'a pas frappé tous les
   quartiers de la même façon — c'est ce qui rend l'emplacement décisif.</p>
 <section class="graphe" style="margin-top:0"><div id="pv-resilience"></div></section>
 
@@ -139,6 +139,10 @@ function impot(prixAchat, prixVente, annees, rp, travaux = 0) {
   const ir = baseIR * FISCAL.ir, ps = basePS * FISCAL.ps, surtaxe = baseIR * tauxSurtaxe(baseIR)
   return { exonere: false, pvBrute: pv, prixRevient, baseIR, basePS, ir, ps, surtaxe, total: ir + ps + surtaxe, abattIR: abattementIR(annees), abattPS: abattementPS(annees) }
 }
+// Montants projetés arrondis au millier : une projection à l'euro près
+// suggérerait une précision qu'elle n'a pas.
+const rond = (x) => Math.round(x / 1000) * 1000
+
 function scenarios(serie) {
   return scenariosMarche(serie, [2021, 2022, 2023, 2024, 2025])
 }
@@ -250,14 +254,14 @@ export function mount(root, { apiBase = '', prefill } = {}) {
       <button type="button" class="carte-scen" data-i="${i}" aria-pressed="${i === choixScen}">
         <div class="t"><i style="background:${COULEURS[i]}"></i>${['Scénario bas', 'Scénario central', 'Scénario haut'][i]} · ${r.nom}</div>
         <div class="r">${pct(r.taux, 2)} / an</div>
-        <div class="v">Revente <b>${euro(r.revente)}</b> · plus-value <b>${pct(r.revente / prix - 1)}</b></div>
+        <div class="v">Revente <b>${euro(rond(r.revente))}</b> · plus-value <b>${pct(r.revente / prix - 1)}</b></div>
       </button>`).join('')
 
     const r = res[choixScen], pv = r.revente - prix
     $('#pv-lib-scen').textContent = `Plus-value brute · ${['scénario bas', 'scénario central', 'scénario haut'][choixScen]}`
     const g = $('#pv-pv')
     const nul = Math.abs(pv) < 500
-    g.textContent = nul ? euro(0) : (pv > 0 ? '+' : '−') + ' ' + euro(Math.abs(pv))
+    g.textContent = nul ? euro(0) : (pv > 0 ? '+' : '−') + ' ' + euro(rond(Math.abs(pv)))
     g.className = 'grand ' + (nul ? '' : pv > 0 ? 'pos' : 'neg')
     $('#pv-precision').textContent = `${s.nom} · achat ${annee}, revente ${vente} · ${pct(r.taux, 2)} par an au-delà de 2025`
     $('#pv-revente').textContent = k(r.revente)
@@ -274,6 +278,10 @@ export function mount(root, { apiBase = '', prefill } = {}) {
       impot: r.imp.exonere ? 0 : Math.round(r.imp.total), net: Math.round(r.net),
     })
     $('#pv-abattements').innerHTML = courbeAbattements(horizon)
+    // Résidence principale : exonérée quelle que soit la durée, la courbe des
+    // abattements n'apporte rien et la carte d'imposition prend toute la largeur.
+    $('#pv-carte-abattements').hidden = usage === 'rp'
+    $('#pv-fiscalite').style.gridTemplateColumns = usage === 'rp' ? '1fr' : ''
   }
 
   function eventail(s, annee, vente, sc) {
@@ -348,11 +356,20 @@ export function mount(root, { apiBase = '', prefill } = {}) {
   }
 
   function resilience() {
-    // Les 25 secteurs aux plus gros volumes de ventes, plus le secteur choisi.
+    // Secteur choisi : comparé aux secteurs voisins de son département (les plus
+    // gros volumes de ventes). Sans choix : les 25 plus gros secteurs de la région.
     const tous = Object.values(SECTEURS)
     if (!tous.length) return
-    const retenus = tous.sort((a, b) => b.n - a.n).slice(0, 25)
-    if (SECTEURS[sel.value] && !retenus.includes(SECTEURS[sel.value])) retenus.push(SECTEURS[sel.value])
+    const choisi = SECTEURS[sel.value]
+    const dep = choisi ? choisi.code.slice(0, 2) : null
+    const NOMS_DEP = { 75: 'Paris', 77: 'Seine-et-Marne', 78: 'Yvelines', 91: 'Essonne', 92: 'Hauts-de-Seine',
+                       93: 'Seine-Saint-Denis', 94: 'Val-de-Marne', 95: "Val-d'Oise" }
+    const retenus = (dep ? tous.filter((s) => s.code.startsWith(dep)) : tous).sort((a, b) => b.n - a.n).slice(0, dep ? 15 : 25)
+    if (choisi && !retenus.includes(choisi)) retenus.push(choisi)
+    $('#pv-resilience-sous').textContent = (dep
+      ? `${choisi.nom} comparé aux principaux secteurs ${dep === '75' ? 'de Paris' : `du département (${NOMS_DEP[dep] || dep})`}`
+      : 'Les principaux secteurs d\'Île-de-France') +
+      " : variation du prix au m² entre 2021 et 2025. La baisse n'a pas frappé tous les quartiers de la même façon."
     const lignes = retenus.map((s) => ({ c: s.code, nom: s.nom, v: s.eco[4] / s.eco[0] - 1 })).sort((a, b) => b.v - a.v)
     const L = 900, hLigne = 24, mg = 230, H = lignes.length * hLigne + 30
     const min = Math.min(...lignes.map((l) => l.v)), max = Math.max(0, ...lignes.map((l) => l.v))
