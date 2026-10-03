@@ -114,11 +114,7 @@ export const html = `
   </div>
 </section>
 
-<div class="bas">
-  <span>Données : DVF — DGFiP / Etalab · Fiscalité : CGI art. 150 U, 150 VC, 200 B, 1609 nonies G</span>
-  <span>Simulation indicative : ni conseil fiscal, ni conseil en investissement.</span>
-  <span>RealStateAI — v${__APP_VERSION__}</span>
-</div>
+<p class="mention">Simulation indicative : ni conseil fiscal, ni conseil en investissement. Fiscalité : Code général des impôts, articles 150 U, 150 VC, 200 B et 1609 nonies G.</p>
 `
 
 const FISCAL = {

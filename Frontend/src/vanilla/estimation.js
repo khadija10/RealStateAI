@@ -5,7 +5,6 @@ import { heroEstimation } from './illustrations-vanilla.js'
 import { scenariosMarche } from './scenarios.js'
 
 export const html = `
-<div class="fond-page" id="rsai-fond-page" aria-hidden="true"></div>
 <section class="heros" id="haut">
   <div class="illus" id="illus-heros"></div>
   <div class="etat-api" id="etat-api"><i></i><span>Vérification…</span></div>
@@ -64,6 +63,20 @@ export const html = `
   <button type="button" class="estimer secondaire" id="rsai-estimer-affine">Estimer avec ces précisions</button>
 </details>
 
+
+<section class="manifeste" id="rsai-manifeste">
+  <div class="etiq">Notre approche</div>
+  <div>
+    <h2>Un modèle entraîné sur <em>toutes</em> les ventes notariées d'Île-de-France,
+      et dont nous publions <em>l'erreur réelle</em>, quartier par quartier.</h2>
+    <div class="stats">
+      <div class="stat"><b id="rsai-stat-ventes">—</b><span>Ventes notariées analysées</span></div>
+      <div class="stat"><b>4</b><span>Sources publiques croisées : ventes, DPE, quartier, bâtiment</span></div>
+      <div class="stat"><b id="rsai-stat-mape">—</b><span id="rsai-stat-mape-lib">Écart moyen avec le prix de vente réel</span></div>
+      <div class="stat"><b id="rsai-stat-20">—</b><span>Estimations à moins de 20 % du prix réel</span></div>
+    </div>
+  </div>
+</section>
 
 <h2 class="titre-section" id="rsai-resultat">Votre <em>estimation</em></h2>
 <p class="sous" id="rsai-attente">Renseignez l'adresse du bien (ou son secteur), sa surface et son nombre
@@ -147,26 +160,8 @@ export const html = `
   </div>
 </section>
 
-<section class="manifeste">
-  <div class="etiq">Notre approche</div>
-  <div>
-    <h2>Un modèle entraîné sur <em>toutes</em> les ventes notariées d'Île-de-France,
-      et dont nous publions <em>l'erreur réelle</em>, quartier par quartier.</h2>
-    <div class="stats">
-      <div class="stat"><b id="rsai-stat-ventes">—</b><span>Ventes notariées analysées</span></div>
-      <div class="stat"><b>4</b><span>Sources publiques croisées : ventes, DPE, quartier, bâtiment</span></div>
-      <div class="stat"><b id="rsai-stat-mape">—</b><span id="rsai-stat-mape-lib">Écart moyen avec le prix de vente réel</span></div>
-      <div class="stat"><b id="rsai-stat-20">—</b><span>Estimations à moins de 20 % du prix réel</span></div>
-    </div>
-  </div>
-</section>
 
 
-<div class="bas">
-  <span>Sources : ventes notariées DVF (DGFiP, Etalab) · DPE (ADEME) · quartiers IRIS (INSEE) · bâtiments BDNB (CSTB)</span>
-  <span>Estimation indicative, ne constitue pas une expertise immobilière.</span>
-  <span>RealStateAI — v${__APP_VERSION__}</span>
-</div>
 `
 
 const ANNEES = [2021, 2022, 2023, 2024, 2025]
@@ -355,7 +350,6 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
   // en développement) ne doit rien écrire : sinon la grille se remplit en double.
   let actif = true
   $('#illus-heros').innerHTML = heroEstimation()
-  $('#rsai-fond-page').innerHTML = heroEstimation()
 
   // Communes servies par le backend, cherchables à la saisie (datalist) ; aucune présélection.
   const selecteur = $('#rsai-secteur')
@@ -586,6 +580,8 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
 
   function afficher(r, s, adresse, surface, pieces, type) {
     $('#rsai-attente').hidden = true
+    // la présentation laisse la place au résultat
+    $('#rsai-manifeste').hidden = true
     $('#rsai-bloc-resultat').hidden = false
     const avecSecteur = !!(s && s.eco?.length >= 2)
     $$('[data-secteur]').forEach((el) => { el.hidden = !avecSecteur })

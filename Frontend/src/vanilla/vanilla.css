@@ -518,3 +518,9 @@
 .rsai-vanilla .ensuite-icone{flex:none;width:36px;height:36px}
 .rsai-vanilla .position-txt{margin:22px 0 0;font-size:14px;line-height:1.55;color:var(--gris)}
 .rsai-vanilla .position-txt b{color:var(--encre);font-weight:600}
+
+/* Mention propre à une page (caractère indicatif, références légales) : une note
+   sous le contenu, pas un second pied de page */
+.rsai-vanilla .mention{margin:28px 8px 0;font-size:13px;line-height:1.5;color:var(--gris)}
+/* Bouton de calcul du financement : séparé des cases à cocher */
+.rsai-vanilla #fin-calculer{margin-top:20px}

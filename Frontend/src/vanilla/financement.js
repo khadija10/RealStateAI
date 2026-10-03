@@ -145,11 +145,7 @@ export const html = `
 </section>
 
 </div>
-<div class="bas">
-  <span>Normes HCSF · Barèmes DMTO et émoluments 2026 · Moteur de règles RealStateAI</span>
-  <span>Simulation indicative : ni conseil en financement, ni offre de prêt.</span>
-  <span>RealStateAI — v${__APP_VERSION__}</span>
-</div>
+<p class="mention">Simulation indicative : ni conseil en financement, ni offre de prêt. Normes HCSF, barèmes des droits de mutation et des émoluments du notaire 2026.</p>
 `
 
 const euro = (n) => Math.round(n).toLocaleString('fr-FR') + ' €'
