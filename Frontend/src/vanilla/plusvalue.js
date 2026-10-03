@@ -256,8 +256,9 @@ export function mount(root, { apiBase = '', prefill } = {}) {
     const r = res[choixScen], pv = r.revente - prix
     $('#pv-lib-scen').textContent = `Plus-value brute · ${['scénario bas', 'scénario central', 'scénario haut'][choixScen]}`
     const g = $('#pv-pv')
-    g.textContent = (pv >= 0 ? '+' : '−') + ' ' + euro(Math.abs(pv))
-    g.className = 'grand ' + (pv >= 0 ? 'pos' : 'neg')
+    const nul = Math.abs(pv) < 500
+    g.textContent = nul ? euro(0) : (pv > 0 ? '+' : '−') + ' ' + euro(Math.abs(pv))
+    g.className = 'grand ' + (nul ? '' : pv > 0 ? 'pos' : 'neg')
     $('#pv-precision').textContent = `${s.nom} · achat ${annee}, revente ${vente} · ${pct(r.taux, 2)} par an au-delà de 2025`
     $('#pv-revente').textContent = k(r.revente)
     $('#pv-impot').textContent = r.imp.exonere ? 'Exonéré' : k(r.imp.total)

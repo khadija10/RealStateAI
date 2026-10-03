@@ -167,6 +167,8 @@ def estimer_prix(
         "score_geocodage": geo["score"],
         "geocodage_incertain": geo.get("score_bas", False),
         "id_parcelle": id_parcelle,
+        # Adresse sans numéro (rue seule) : pas d'immeuble identifiable
+        "adresse_sans_numero": not geo.get("numero"),
         "code_postal": geo.get("code_postal"),
         "zone_part_dpe_fg": zone_part_dpe_fg,
         "comparables_immeuble": immeuble["comparables_immeuble"],
