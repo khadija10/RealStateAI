@@ -242,6 +242,8 @@ Exemple au 54 rue de Malte, 75011, sur 66 m² : avec le DPE retrouvé à l'adres
 | `POST /api/predictions/estimate` (suite) | `immeuble_reference` (médiane des reventes de l'immeuble ramenée au secteur, nombre de ventes sur plan écartées), `alerte_type`, `adresse_sans_numero` ; chaque comparable porte `vefa` |
 | `GET /api/market/map`, `GET /api/market/trends` | paramètres `type_bien` (`apartment`, `house`) et `marche` (`tous`, `ancien`, `neuf`) ; calculés sur le dataset servi, fichiers statiques en repli |
 | `GET /api/auth/me` | date d'inscription, affichée dans le profil |
+| `GET /api/market/indices` | **nouveau** : indice Notaires-INSEE trimestriel des prix de l'ancien du département (depuis 1992 ou 1996) ; Paris sans indice maisons, repli sur les appartements signalé par `type_reel` |
+| `GET /api/market/secteurs` (suite) | chaque secteur porte `loyer` : loyer d'annonce au m² de la Carte des loyers 2025 (ANIL), fourchette, niveau d'estimation (commune ou maille) |
 
 ### 5.4 Frontend
 
@@ -260,6 +262,9 @@ Exemple au 54 rue de Malte, 75011, sur 66 m² : avec le DPE retrouvé à l'adres
 - **Fiabilité cohérente** : l'anneau prend la couleur de la classe, et les libellés sont « Fiabilité élevée », « correcte », « limitée », « Peu de références ».
 - **Financement** : section **« Acheter ou louer ? »** (point mort sur le vrai prêt et le loyer saisi), **aides à vérifier** (PTZ, prêt Action Logement, droits de mutation), « indice de solidité · indicatif » au lieu de « score », mention réglementaire de l'assistant (IOBSP), montants saisissables à côté des sliders.
 - **Plus-value** : scénarios « tendance prolongée / stabilité / reprise modérée » ; courbe des abattements masquée en résidence principale ; résilience comparée aux secteurs du même département.
+- **Plus-value, chiffre principal revu** : le scénario central (stabilité) affichait « 0 € » pour 73 % des secteurs d'appartements et 85 % des secteurs de maisons dès que l'achat tombait en 2025 ou 2026 — le parcours depuis l'Estimation. Il est remplacé par le **prix de revente minimum** qui couvre achat, frais d'acquisition, frais d'agence à la revente (5 %, désactivable) et impôt, avec la hausse annuelle correspondante et les scénarios qui l'atteignent.
+- **Plus-value, historique long** : part des périodes passées de même durée (indices Notaires-INSEE depuis 1992 ou 1996) où les prix ont dépassé ce seuil, sur tout l'historique et depuis 2010. Présentée comme une fréquence passée, pas une probabilité : l'historique comprend la hausse de 1998-2007.
+- **Plus-value, loyer équivalent** : loyer d'un bien équivalent (Carte des loyers ANIL 2025), rendement locatif brut et loyers cumulés sur la détention.
 - **Carte et référence du marché** : filtres « Appartements | Maisons » et « Tout le marché | Ancien | Neuf (sur plan) » ; échelle de couleur d'une seule teinte (sable → brun), lisible par les daltoniens ; moyenne glissante sur 3 mois.
 - **Système de design** : titres de page uniformes, une seule largeur de colonne, badges à trois sens fixes (information, statut, alerte), cases à cocher pour les options indépendantes et boutons radio pour les choix exclusifs, focus clavier visible, contrastes contrôlés (textes secondaires ≥ 6:1, bouton d'action 4,66:1 pour un seuil de 4,5:1).
 - **Navigation** : Historique et Profil dans l'espace du compte, en haut à droite ; résultat de l'estimation placé avant le bloc de présentation ; suggestions d'adresse limitées à l'Île-de-France.
@@ -507,6 +512,8 @@ La liste complète, avec les chiffres périmés à ne pas reprendre et les captu
 | `Backend/main.py` | API : secteurs, validation, nouveaux champs |
 | `Frontend/src/vanilla/estimation.js` | page d'estimation, chiffres servis par l'API, segments difficiles |
 | `Frontend/src/vanilla/scenarios.js`, `historique.js` | scénarios de plus-value communs, enregistrement des simulations |
+| `data-pipeline/src/realstate_data/ingestion/references_marche.py`, `data/samples/indices_prix_insee.json`, `data/samples/loyers_anil.json` | références hors DVF (`make references`) : indices INSEE et loyers ANIL |
+| `Frontend/src/vanilla/plusvalue.js` | prix de revente minimum, historique long, loyer équivalent |
 | `Frontend/src/components/History.jsx` | historique regroupé par bien |
 | `Backend/database.py` | historique : résultat complet et simulations (colonnes `resultat`, `simulations`) |
 | `ml/exporter_segments.py`, `Backend/models/segments_performance.json` | erreur mesurée par segment, servie à l'application |

@@ -285,3 +285,35 @@ def test_secteurs_calcules_sur_l_ancien():
                 "date_mutation": "2025-03-01", "prix_au_m2": 7400, "est_vefa": True} for _ in range(20)]
     s = _construire_secteurs(pd.DataFrame(lignes))[("93008", "apartment")]
     assert s["n"] == 12 and s["med"] < 3500     # les 20 ventes sur plan sont écartées
+
+
+def test_indices_insee_par_departement(tmp_path):
+    import main
+    ref = {"source": "INSEE", "series": {
+        "75": {"apartment": {"debut": "1992-Q1", "fin": "2026-Q2", "valeurs": [40.0, 41.0]}},
+        "93": {"apartment": {"debut": "1992-Q1", "fin": "2026-Q2", "valeurs": [47.0, 48.0]},
+               "house": {"debut": "1992-Q1", "fin": "2026-Q2", "valeurs": [46.0, 47.0]}}}}
+    f = tmp_path / "indices.json"
+    f.write_text(json.dumps(ref))
+    main._reference_json.cache_clear()
+    try:
+        with patch.object(main, "_INDICES_INSEE_PATH", f), TestClient(app) as c:
+            r = c.get("/api/market/indices", params={"dep": "93", "property_type": "house"}).json()
+            assert r["type_reel"] == "house" and r["valeurs"] == [46.0, 47.0]
+            # Paris n'a pas d'indice « maisons » : repli sur les appartements, signalé
+            r = c.get("/api/market/indices", params={"dep": "75", "property_type": "house"}).json()
+            assert r["type_reel"] == "apartment"
+            assert c.get("/api/market/indices", params={"dep": "13"}).status_code == 404
+        with patch.object(main, "_INDICES_INSEE_PATH", tmp_path / "absent.json"), TestClient(app) as c:
+            main._reference_json.cache_clear()
+            assert c.get("/api/market/indices", params={"dep": "93"}).status_code == 503
+    finally:
+        main._reference_json.cache_clear()
+
+
+def test_secteurs_portent_le_loyer_anil():
+    with TestClient(app) as c:
+        if not c.app.state.secteurs:
+            pytest.skip("dataset absent : secteurs non calculés")
+        secteurs = c.get("/api/market/secteurs").json()
+        assert all("loyer" in s for s in secteurs)

@@ -25,6 +25,7 @@ import logging
 import os
 import sys
 from contextlib import asynccontextmanager
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Literal
 
@@ -1501,6 +1502,18 @@ _SAMPLES_DIR = next(
 )
 _COMMUNE_STATS_PATH = _SAMPLES_DIR / "commune_stats.json"
 _MARKET_TRENDS_PATH = _SAMPLES_DIR / "market_trends.json"
+_INDICES_INSEE_PATH = _SAMPLES_DIR / "indices_prix_insee.json"
+_LOYERS_ANIL_PATH = _SAMPLES_DIR / "loyers_anil.json"
+
+
+@lru_cache(maxsize=None)
+def _reference_json(path: Path) -> dict:
+    """Références hors DVF (indices INSEE, loyers ANIL), générées par
+    `make references` ; vide si le fichier manque, l'interface s'en passe."""
+    try:
+        return json.loads(path.read_text())
+    except (OSError, ValueError):
+        return {}
 
 
 def _filtres_marche(type_bien: str, marche: str) -> tuple[str, str]:
@@ -1538,7 +1551,25 @@ def market_secteurs(
                 if t == typ and s["n"] >= min_ventes]
     if not secteurs:
         raise HTTPException(503, "Statistiques de secteur non disponibles.")
-    return sorted(secteurs, key=lambda s: -s["med"])
+    loyers = _reference_json(_LOYERS_ANIL_PATH).get("communes", {})
+    return sorted(({**s, "loyer": loyers.get(s["code"], {}).get(typ)} for s in secteurs), key=lambda s: -s["med"])
+
+
+@app.get(f"{API_PREFIX}/market/indices", tags=["marché"])
+def market_indices(
+    dep: str = Query(..., description="Code département (75, 92…)"),
+    property_type: str = Query(default="apartment", description="apartment | house"),
+):
+    """Indice Notaires-INSEE trimestriel des prix de l'ancien du département,
+    depuis 1992 ou 1996. Paris n'a pas d'indice « maisons » : on renvoie
+    celui des appartements, signalé par `type_reel`."""
+    ref = _reference_json(_INDICES_INSEE_PATH)
+    series = ref.get("series", {}).get(dep)
+    if not series:
+        raise HTTPException(404 if ref else 503, "Indice de prix non disponible pour ce département.")
+    typ = _type_secteur(property_type)
+    reel = typ if typ in series else next(iter(series))
+    return {**series[reel], "dep": dep, "type_reel": reel, "source": ref.get("source")}
 
 
 @app.get(f"{API_PREFIX}/market/trends", tags=["marché"])

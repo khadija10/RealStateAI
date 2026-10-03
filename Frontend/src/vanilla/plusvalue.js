@@ -6,6 +6,7 @@ import { heroPlusValue } from '../illustrations.js'
 import { enregistreurSimulation } from './historique.js'
 import { scenariosMarche } from './scenarios.js'
 import { champsMontants, afficherMontant } from './montants.js'
+import { HYPOTHESES } from './acheterlouer.js'
 
 export const html = `
 <section class="heros heros-simple">
@@ -35,6 +36,11 @@ export const html = `
         <button type="button" class="bascule" data-u="rp" role="radio" aria-checked="true" aria-pressed="true">Résidence principale</button>
         <button type="button" class="bascule" data-u="inv" role="radio" aria-checked="false" aria-pressed="false">Investissement</button>
       </div></div>
+    <div class="choix"><label>Revente</label>
+      <div class="bascules">
+        <button type="button" class="bascule" data-r="agence" role="radio" aria-checked="true" aria-pressed="true">Par une agence (${Math.round(100 * HYPOTHESES.fraisRevente)} %)</button>
+        <button type="button" class="bascule" data-r="particulier" role="radio" aria-checked="false" aria-pressed="false">Entre particuliers</button>
+      </div></div>
     <button type="button" class="bouton-accent" id="pv-simuler">Simuler la plus-value</button>
     <p class="aide" id="pv-etat"></p>
   </div>
@@ -47,9 +53,9 @@ export const html = `
       <div class="precision" id="pv-precision"></div>
     </div>
     <div class="mesures" data-resultat hidden>
-      <div class="mesure"><b id="pv-revente">—</b><span>Prix de revente</span></div>
-      <div class="mesure"><b id="pv-impot">—</b><span>Impôt sur la plus-value</span></div>
-      <div class="mesure"><b id="pv-net">—</b><span>Gain net après frais</span></div>
+      <div class="mesure"><b id="pv-revente">—</b><span>Revente selon les scénarios</span></div>
+      <div class="mesure"><b id="pv-impot">—</b><span id="pv-l-impot">Impôt sur la plus-value</span></div>
+      <div class="mesure"><b id="pv-net">—</b><span id="pv-l-net">Gain net après frais</span></div>
     </div>
   </div>
 </section>
@@ -70,6 +76,22 @@ export const html = `
 </section>
 
 <div data-resultat hidden>
+<h2 class="titre-section">Ce que dit <em>l'historique</em></h2>
+<p class="sous">Cinq ans de ventes ne suffisent pas pour juger d'une revente lointaine. Les indices
+  Notaires-INSEE remontent à 1992 ou 1996 : on y compare le seuil à toutes les périodes passées de même durée.</p>
+<section class="deux">
+  <div class="clair">
+    <h3>Le seuil, <em>face au passé</em></h3>
+    <p class="aide" id="pv-histo-aide"></p>
+    <div id="pv-histo"></div>
+  </div>
+  <div class="clair">
+    <h3>Et si vous <em>louiez</em> ?</h3>
+    <p class="aide" id="pv-loyer-aide"></p>
+    <div id="pv-loyer"></div>
+  </div>
+</section>
+
 <h2 class="titre-section">La <em>fiscalité</em></h2>
 <p class="sous">Barème 2026 : 19 % d'impôt sur le revenu et 17,2 % de prélèvements sociaux,
   allégés par la durée de détention.</p>
@@ -106,8 +128,9 @@ export const html = `
   </div>
   <div>
     <h3>Ce que la simulation <em>ignore</em></h3>
-    <p>Les frais d'agence à la revente, l'inflation, les travaux réellement engagés et les
-       cas d'exonération particuliers.</p>
+    <p>L'inflation, le coût du crédit, les travaux réellement engagés et les cas
+       d'exonération particuliers. Les frais d'agence à la revente sont comptés à
+       ${Math.round(100 * HYPOTHESES.fraisRevente)} % du prix, sauf vente entre particuliers.</p>
     <p>Les frais d'acquisition sont retenus <b>au forfait de 7,5 %</b>, et les travaux au
        forfait de 15 % au-delà de cinq ans de détention, comme le prévoit le Code général
        des impôts.</p>
@@ -163,6 +186,33 @@ function fraisReels(prix) {
   return droits + emo * 1.2 + prix * 0.001 + 1200
 }
 
+// Hausse annuelle des prix (au-delà de 2025) à partir de laquelle la revente
+// couvre le prix d'achat, les frais d'acquisition et l'impôt. Le gain net
+// croît avec le taux : une dichotomie suffit.
+function seuilRentabilite(net) {
+  let bas = -0.5, haut = 0.5
+  if (net(haut) < 0) return Infinity
+  if (net(bas) >= 0) return -Infinity
+  for (let i = 0; i < 60; i++) { const m = (bas + haut) / 2; if (net(m) < 0) bas = m; else haut = m }
+  return haut
+}
+
+// Croissance annuelle des prix sur chaque période passée de `ans` années,
+// trimestre par trimestre (périodes chevauchantes) : la distribution observée,
+// pas une probabilité.
+function periodesHistoriques(ind, ans) {
+  const q = 4 * ans, v = ind.valeurs, out = []
+  const [a0, t0] = ind.debut.split('-Q').map(Number)
+  for (let i = 0; i + q < v.length; i++) {
+    const debut = a0 + (t0 - 1 + i) / 4
+    out.push({ debut, taux: Math.pow(v[i + q] / v[i], 1 / ans) - 1 })
+  }
+  return out
+}
+const NOMS_DEP = { 75: 'Paris', 77: 'Seine-et-Marne', 78: 'Yvelines', 91: 'Essonne', 92: 'Hauts-de-Seine',
+                   93: 'Seine-Saint-Denis', 94: 'Val-de-Marne', 95: "Val-d'Oise" }
+const DEPUIS_RECENT = 2010
+
 let uid = 0
 const id = (p) => p + (++uid)
 function tourCarte() {
@@ -180,7 +230,8 @@ const COULEURS = ['var(--rouge)', 'var(--taupe)', 'var(--vert)']
 
 export function mount(root, { apiBase = '', prefill } = {}) {
   const $ = (sel) => root.querySelector(sel)
-  let usage = 'rp', choixScen = 1, simule = false
+  let usage = 'rp', choixScen = 1, simule = false, agence = true
+  const INDICES = {}   // « 93|apartment » → série INSEE, null si indisponible
   let SECTEURS = {}
   let actif = true   // réponses ignorées après démontage (double montage React en développement)
   const historique = enregistreurSimulation(apiBase, prefill?.historique_id, 'plusvalue')
@@ -245,11 +296,18 @@ export function mount(root, { apiBase = '', prefill } = {}) {
     const horizon = +$('#pv-horizon').value, vente = annee + horizon
 
     const sc = scenarios(s.eco), frais = fraisReels(prix)
+    // Les frais de revente (agence) réduisent le prix de cession, base de l'impôt.
+    const fr = agence ? HYPOTHESES.fraisRevente : 0
+    const bilan = (revente) => {
+      const cession = revente * (1 - fr), imp = impot(prix, cession, horizon, usage === 'rp')
+      return { cession, imp, net: cession - prix - frais - imp.total }
+    }
     const res = sc.map((x) => {
       const revente = (prix * indice(s.eco, vente, x.taux)) / indice(s.eco, annee, x.taux)
-      const imp = impot(prix, revente, horizon, usage === 'rp')
-      return { ...x, revente, imp, net: revente - prix - frais - imp.total }
+      return { ...x, revente, ...bilan(revente) }
     })
+    const dep = s.code.slice(0, 2), cle = dep + '|' + (prefill?.type === 'house' ? 'house' : 'apartment')
+    if (!(cle in INDICES)) chargerIndice(cle)
 
     $('#pv-scen').innerHTML = res.map((r, i) => `
       <button type="button" class="carte-scen" data-i="${i}" aria-pressed="${i === choixScen}">
@@ -259,15 +317,43 @@ export function mount(root, { apiBase = '', prefill } = {}) {
       </button>`).join('')
 
     const r = res[choixScen], pv = r.revente - prix
-    $('#pv-lib-scen').textContent = `Plus-value brute · ${['scénario bas', 'scénario central', 'scénario haut'][choixScen]}`
+    const noms = ['scénario bas', 'scénario central', 'scénario haut']
     const g = $('#pv-pv')
-    const nul = Math.abs(pv) < 500
-    g.textContent = nul ? euro(0) : (pv > 0 ? '+' : '−') + ' ' + euro(rond(Math.abs(pv)))
-    g.className = 'grand ' + (nul ? '' : pv > 0 ? 'pos' : 'neg')
-    $('#pv-precision').textContent = `${s.nom} · achat ${annee}, revente ${vente} · ${pct(r.taux, 2)} par an au-delà de 2025`
-    $('#pv-revente').textContent = k(r.revente)
-    $('#pv-impot').textContent = r.imp.exonere ? 'Exonéré' : k(r.imp.total)
+    if (vente <= 2025) {
+      // Revente avant la fin des données : le résultat est observé, pas projeté.
+      $('#pv-lib-scen').textContent = 'Plus-value brute · observée sur les ventes réelles'
+      const nul = Math.abs(pv) < 500
+      g.textContent = nul ? euro(0) : (pv > 0 ? '+' : '−') + ' ' + euro(rond(Math.abs(pv)))
+      g.className = 'grand ' + (nul ? '' : pv > 0 ? 'pos' : 'neg')
+      $('#pv-precision').textContent = `${s.nom} · achat ${annee}, revente ${vente} · médianes DVF, aucune projection`
+    } else {
+      // Le résultat d'un seul scénario (souvent la stabilité, donc 0 €) ne dit
+      // rien. On affiche la hausse nécessaire pour ne pas perdre d'argent, et
+      // les scénarios qui l'atteignent.
+      const seuil = seuilRentabilite((t) => bilan((prix * indice(s.eco, vente, t)) / indice(s.eco, annee, t)).net)
+      // Affiché en euros : le prix de revente qui couvre tout, arrondi au millier
+      // supérieur ; le rythme annuel correspondant passe dans la ligne de précision.
+      const minimum = Math.ceil((prix * indice(s.eco, vente, seuil)) / indice(s.eco, annee, seuil) / 1000) * 1000
+      $('#pv-lib-scen').textContent = 'Prix de revente minimum pour couvrir vos frais'
+      g.textContent = isFinite(seuil) ? euro(minimum) : seuil > 0 ? 'Hors de portée' : '—'
+      g.className = 'grand ' + (seuil <= 0 ? 'pos' : seuil > sc[2].taux ? 'neg' : '')
+      const ok = res.map((x, i) => x.taux >= seuil - 1e-9 ? i : -1).filter((i) => i >= 0)
+      const verdict = (isFinite(seuil) ? `Soit ${pct(seuil, 1)} par an, ` : '') + (ok.length === 3 ? 'atteint dans les trois scénarios'
+        : ok.length === 0 ? 'atteint dans aucun des trois scénarios'
+        : `atteint seulement dans le ${ok.map((i) => noms[i]).join(' et le ')}`)
+      const h = histoire(cle, vente - Math.max(annee, 2025), seuil)
+      $('#pv-precision').textContent = `${verdict}` +
+        (h ? ` · dépassé dans ${Math.round(100 * h.part)} % des périodes de ${h.ans} ans depuis ${h.depuis}` : '') +
+        ` · ${s.nom}, achat ${annee}, revente ${vente}` + (annee < 2025 ? ' · variation observée jusqu\'en 2025 incluse' : '')
+      afficherHistoire(h, seuil, s)
+    }
+    if (vente <= 2025) afficherHistoire(null, null, s)
+    loyer(s, prix, horizon)
+    $('#pv-revente').textContent = `${k(res[0].revente)} – ${k(res[2].revente)}`
+    $('#pv-impot').textContent = r.imp.exonere ? 'Exonéré' : r.imp.total < 500 ? 'Aucun' : k(r.imp.total)
     $('#pv-net').textContent = (r.net < 0 ? '−' : '') + k(Math.abs(r.net))
+    $('#pv-l-impot').textContent = `Impôt · ${noms[choixScen]}`
+    $('#pv-l-net').textContent = `Gain net après frais · ${noms[choixScen]}`
 
     eventail(s, annee, vente, sc)
     fiscalite(r, prix, horizon)
@@ -283,6 +369,102 @@ export function mount(root, { apiBase = '', prefill } = {}) {
     // abattements n'apporte rien et la carte d'imposition prend toute la largeur.
     $('#pv-carte-abattements').hidden = usage === 'rp'
     $('#pv-fiscalite').style.gridTemplateColumns = usage === 'rp' ? '1fr' : ''
+  }
+
+  async function chargerIndice(cle) {
+    INDICES[cle] = null
+    const [dep, type] = cle.split('|')
+    try {
+      const r = await fetch(`${apiBase}/api/market/indices?dep=${dep}&property_type=${type}`, { signal: AbortSignal.timeout(8000) })
+      if (r.ok) INDICES[cle] = await r.json()
+    } catch { /* l'historique est un complément : la page s'en passe */ }
+    if (actif && INDICES[cle]) calculer()
+  }
+
+  // Part des périodes passées de même durée où les prix ont progressé au moins
+  // au rythme du seuil, sur tout l'historique et depuis DEPUIS_RECENT.
+  function histoire(cle, ans, seuil) {
+    const ind = INDICES[cle]
+    if (!ind || ans < 1 || !isFinite(seuil)) return null
+    const p = periodesHistoriques(ind, ans)
+    if (!p.length) return { ind, ans, periodes: p, trop: true }
+    const part = (l) => l.filter((x) => x.taux >= seuil).length / l.length
+    const recentes = p.filter((x) => x.debut >= DEPUIS_RECENT)
+    const tri = [...p].sort((a, b) => a.taux - b.taux)
+    return { ind, ans, periodes: p, part: part(p), depuis: Math.floor(p[0].debut),
+             recent: recentes.length >= 12 ? part(recentes) : null, nRecent: recentes.length,
+             pire: tri[0], meilleure: tri[tri.length - 1] }
+  }
+
+  function afficherHistoire(h, seuil, s) {
+    const aide = $('#pv-histo-aide'), cible = $('#pv-histo')
+    if (!h) {
+      aide.textContent = ''
+      cible.innerHTML = `<p class="aide">${seuil === null ? 'Revente avant fin 2025 : le résultat est déjà observé, il n\'y a rien à projeter.'
+        : 'Indice historique indisponible pour ce département.'}</p>`
+      return
+    }
+    const dep = h.ind.dep, nomDep = NOMS_DEP[dep] || dep
+    const typ = h.ind.type_reel === 'house' ? 'maisons' : 'appartements'
+    const periode = (x) => `${Math.floor(x.debut)}-${Math.floor(x.debut) + h.ans}`
+    if (h.trop) {
+      aide.textContent = `${nomDep}, ${typ}`
+      cible.innerHTML = `<p class="aide">L'indice ne remonte pas assez loin pour observer des périodes de ${h.ans} ans.</p>`
+      return
+    }
+    aide.textContent = `Indice Notaires-INSEE · ${nomDep}, ${typ}${dep === '75' && s && prefill?.type === 'house' ? ' (pas d\'indice maisons à Paris)' : ''} · ${h.periodes.length} périodes de ${h.ans} ans`
+    // Une barre par trimestre de départ : la croissance annuelle obtenue en
+    // revendant autant d'années plus tard. Vert : au-dessus du seuil.
+    const L = 460, H = 200, mg = 40, md = 8, mh = 10, mb = 26
+    const valeurs = h.periodes.map((x) => x.taux).concat(seuil, 0)
+    const min = Math.min(...valeurs), max = Math.max(...valeurs), ecart = max - min || 0.01
+    const y = (v) => mh + (H - mh - mb) * (1 - (v - min) / ecart)
+    const pasX = (L - mg - md) / h.periodes.length
+    const a0 = Math.floor(h.periodes[0].debut), a1 = Math.floor(h.periodes[h.periodes.length - 1].debut)
+    const ticks = []
+    for (let a = Math.ceil(a0 / 5) * 5; a <= a1; a += 5) ticks.push(a)
+    const xA = (a) => mg + ((a - h.periodes[0].debut) * 4 + 0.5) * pasX
+    const graduations = [min, 0, max].filter((v, i, t) => t.indexOf(v) === i)
+    cible.innerHTML = `
+      <div class="histo-chiffre"><b>${Math.round(100 * h.part)} %</b> des périodes de ${h.ans} ans depuis ${h.depuis}
+        ont dépassé le seuil de ${pct(seuil, 1)} / an${h.recent !== null ? `, <b>${Math.round(100 * h.recent)} %</b> de celles commencées depuis ${DEPUIS_RECENT}` : ''}.</div>
+      <svg viewBox="0 0 ${L} ${H}" style="width:100%;height:auto" role="img" aria-label="Croissance annuelle des prix sur chaque période de ${h.ans} ans depuis ${h.depuis}, comparée au seuil de ${pct(seuil, 1)} par an">
+        ${graduations.map((v) => `<line x1="${mg}" x2="${L - md}" y1="${y(v)}" y2="${y(v)}" stroke="var(--ligne)"/>
+          <text x="${mg - 6}" y="${y(v) + 4}" text-anchor="end" font-size="11" font-family="Inter" fill="var(--gris)">${pct(v, 0)}</text>`).join('')}
+        ${h.periodes.map((x, i) => `<rect x="${(mg + i * pasX).toFixed(1)}" width="${Math.max(1, pasX - 0.6).toFixed(1)}"
+          y="${Math.min(y(x.taux), y(0)).toFixed(1)}" height="${Math.max(0.5, Math.abs(y(x.taux) - y(0))).toFixed(1)}"
+          fill="${x.taux >= seuil ? 'var(--vert)' : 'var(--taupe)'}" opacity="${x.taux >= seuil ? 0.85 : 0.6}"/>`).join('')}
+        <line x1="${mg}" x2="${L - md}" y1="${y(seuil)}" y2="${y(seuil)}" stroke="var(--brun)" stroke-width="1.8" stroke-dasharray="6 4"/>
+        <text x="${L - md}" y="${y(seuil) - 5}" text-anchor="end" font-size="11" font-family="Inter" fill="var(--brun)">seuil ${pct(seuil, 1)}</text>
+        ${ticks.map((a) => `<text x="${xA(a)}" y="${H - 8}" text-anchor="middle" font-size="11" font-family="Inter" fill="var(--gris)">${a}</text>`).join('')}
+      </svg>
+      <p class="aide" style="margin:10px 0 0">Chaque barre : achat au trimestre indiqué, revente ${h.ans} ans plus tard.
+        Pire période ${periode(h.pire)} : ${pct(h.pire.taux, 1)} / an ; meilleure ${periode(h.meilleure)} : ${pct(h.meilleure.taux, 1)} / an.
+        L'historique comprend la forte hausse de 1998-2007 : c'est une fréquence passée, pas une probabilité.</p>`
+  }
+
+  // Loyer d'annonce d'un bien équivalent (Carte des loyers ANIL). La surface
+  // est déduite du prix et de la médiane au m² du secteur.
+  function loyer(s, prix, horizon) {
+    const aide = $('#pv-loyer-aide'), cible = $('#pv-loyer'), l = s.loyer
+    if (!l) { aide.textContent = ''; cible.innerHTML = '<p class="aide">Loyer d\'annonce indisponible pour ce secteur.</p>'; return }
+    const surface = prix / s.med, mois = surface * l.m2
+    const hl = HYPOTHESES.hausseLoyer
+    let cumul = 0
+    for (let a = 0; a < horizon; a++) cumul += 12 * mois * Math.pow(1 + hl, a)
+    const arr = (n) => euro(Math.round(n / 10) * 10)
+    aide.textContent = `Carte des loyers 2025 (ANIL) · ${l.niveau === 'commune' ? `${l.annonces.toLocaleString('fr-FR')} annonces de la commune` : 'estimé sur les communes voisines'}`
+    cible.innerHTML = `
+      <div class="histo-chiffre"><b>≈ ${arr(mois)}</b> par mois, charges comprises, pour environ ${Math.round(surface)} m²
+        (${arr(surface * l.bas)} à ${arr(surface * l.haut)}).</div>
+      <table><tbody>
+        <tr><td>Loyer au m²</td><td class="n">${l.m2.toFixed(1).replace('.', ',')} € / mois</td></tr>
+        <tr><td>Rendement locatif brut</td><td class="n">${pct((12 * mois) / prix, 1)} / an</td></tr>
+        <tr><td>Loyers sur ${horizon} an${horizon > 1 ? 's' : ''} (+${Math.round(100 * hl)} % par an)</td><td class="n">${k(cumul)}</td></tr>
+      </tbody></table>
+      <p class="aide" style="margin:10px 0 0">${usage === 'rp'
+        ? `C'est ce que coûterait la location d'un bien équivalent pendant la détention. L'achat évite ce loyer mais coûte les intérêts du crédit, la taxe foncière et l'entretien : l'onglet Financement calcule à partir de quand l'achat devient plus avantageux.`
+        : `Ce que le bien pourrait rapporter en loyers bruts, avant charges, vacance locative et impôts. Le rendement total d'un investissement ajoute ces loyers nets au gain de revente ci-dessus.`}</p>`
   }
 
   function eventail(s, annee, vente, sc) {
@@ -327,7 +509,7 @@ export function mount(root, { apiBase = '', prefill } = {}) {
     const i = r.imp
     aide.textContent = `Détention de ${horizon} an${horizon > 1 ? 's' : ''} · scénario sélectionné`
     cible.innerHTML = `<table><tbody>
-      <tr><td>Prix de revente</td><td class="n">${euro(r.revente)}</td></tr>
+      <tr><td>Prix de cession${r.cession < r.revente ? ' (net des frais d\'agence)' : ''}</td><td class="n">${euro(r.cession)}</td></tr>
       <tr><td>Prix d'acquisition majoré des forfaits</td><td class="n">− ${euro(i.prixRevient || prix)}</td></tr>
       <tr><td>Plus-value brute imposable</td><td class="n">${euro(i.pvBrute)}</td></tr>
       <tr><td>Impôt sur le revenu, 19 % · abattement ${Math.round(100 * i.abattIR)} %</td><td class="n">${euro(i.ir)}</td></tr>
@@ -362,8 +544,6 @@ export function mount(root, { apiBase = '', prefill } = {}) {
     if (!tous.length) return
     const choisi = SECTEURS[sel.value]
     const dep = choisi ? choisi.code.slice(0, 2) : null
-    const NOMS_DEP = { 75: 'Paris', 77: 'Seine-et-Marne', 78: 'Yvelines', 91: 'Essonne', 92: 'Hauts-de-Seine',
-                       93: 'Seine-Saint-Denis', 94: 'Val-de-Marne', 95: "Val-d'Oise" }
     const retenus = (dep ? tous.filter((s) => s.code.startsWith(dep)) : tous).sort((a, b) => b.n - a.n).slice(0, dep ? 15 : 25)
     if (choisi && !retenus.includes(choisi)) retenus.push(choisi)
     $('#pv-resilience-sous').textContent = (dep
@@ -396,6 +576,11 @@ export function mount(root, { apiBase = '', prefill } = {}) {
     const b = e.target.closest('.carte-scen'); if (!b) return
     choixScen = +b.dataset.i; calculer()
   })
+  root.querySelectorAll('[data-r]').forEach((b) => b.addEventListener('click', () => {
+    agence = b.dataset.r === 'agence'
+    root.querySelectorAll('[data-r]').forEach((x) => { x.setAttribute('aria-pressed', String(x === b)); x.setAttribute('aria-checked', String(x === b)) })
+    calculer()
+  }))
   root.querySelectorAll('[data-u]').forEach((b) => b.addEventListener('click', () => {
     usage = b.dataset.u
     root.querySelectorAll('[data-u]').forEach((x) => { x.setAttribute('aria-pressed', String(x === b)); x.setAttribute('aria-checked', String(x === b)) })

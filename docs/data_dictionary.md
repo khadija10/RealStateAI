@@ -241,6 +241,20 @@ Voir `data-pipeline/src/realstate_data/enrichment/bdnb.py`.
 caractéristiques physiques d'un immeuble changent rarement en cinq ans ; la
 part de logement social peut évoluer à la marge.
 
+## Références hors DVF — indices INSEE et loyers ANIL
+
+Deux petits JSON versionnés dans `data/samples/`, produits par `make references`
+(`realstate_data.ingestion.references_marche`). Ils ne passent pas par la table gold
+et ne servent pas au modèle : seulement à la page Plus-value, via le backend.
+
+| Fichier | Source | Contenu |
+|---|---|---|
+| `indices_prix_insee.json` | Indices Notaires-INSEE des prix des logements anciens (BDM, jeu `IPLA-IPLNA-2015`), CVS, base 100 en 2015 | une série trimestrielle par département et type (`apartment`, `house`), depuis 1992 (75, 92, 93, 94) ou 1996 ; pas d'indice maisons pour Paris |
+| `loyers_anil.json` | Carte des loyers 2025 (ANIL, ministère du Logement), data.gouv.fr | par code commune INSEE et type : loyer d'annonce prédit au m² charges comprises (`m2`), intervalle (`bas`, `haut`), `niveau` (`commune` ou `maille` de communes voisines), nombre d'annonces de la commune |
+
+Les codes communes de l'ANIL sont ceux de DVF (arrondissements de Paris compris) :
+la jointure avec les secteurs est directe.
+
 ## Pièges connus et limites assumées
 
 - **Étage : aucune source ouverte, pas de proxy identifié.** DVF ne trace pas l'étage, ni aucune source administrative française — ce n'est collecté nulle part en dehors des annonces immobilières elles-mêmes (non open data). C'est une limite structurelle assumée, pas un oubli du pipeline.

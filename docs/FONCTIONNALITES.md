@@ -67,9 +67,12 @@ RealStateAI estime le prix des logements en Île-de-France (Paris et les 7 dépa
 
 ## 3. Plus-value
 
-- **Saisie** : secteur, prix d'achat, année d'achat (2021 à 2026), horizon de revente (1 à 30 ans), résidence principale ou investissement. Le bien et son secteur sont préremplis quand on arrive depuis une estimation.
-- **Trois scénarios tirés du marché observé** : tendance 2021-2025, rythme de la dernière année, stabilité des prix. Pour chacun : prix de revente et plus-value.
-- **Résultat du scénario choisi** : plus-value brute, prix de revente, impôt sur la plus-value et gain net après frais d'acquisition.
+- **Saisie** : secteur, prix d'achat, année d'achat (2021 à 2026), horizon de revente (1 à 30 ans), résidence principale ou investissement, revente par une agence (5 % de frais) ou entre particuliers. Le bien et son secteur sont préremplis quand on arrive depuis une estimation.
+- **Trois scénarios** : tendance 2021-2025 du secteur prolongée (bornée à ±4 %/an), stabilité des prix, reprise modérée à 2 %/an. Pour chacun : prix de revente et plus-value.
+- **Prix de revente minimum** (chiffre principal, en euros) : prix qui couvre le prix d'achat, les frais d'acquisition, les frais de revente et l'impôt. En dessous : la hausse annuelle correspondante (seuil de rentabilité), les scénarios qui l'atteignent et la part des périodes passées qui l'ont dépassée. Remplace l'ancien « 0 € » du scénario central, affiché pour presque tout achat en 2025 ou 2026. Une revente avant fin 2025 affiche la plus-value réellement observée.
+- **Résultat du scénario choisi** : fourchette de revente des trois scénarios, impôt et gain net après frais du scénario choisi.
+- **Historique long** : indices Notaires-INSEE des prix de l'ancien par département (depuis 1992 ou 1996). Part des périodes passées de même durée où les prix ont dépassé le seuil, sur tout l'historique et depuis 2010, avec un graphique par trimestre de départ.
+- **Loyer équivalent** : Carte des loyers 2025 (ANIL) par commune. Loyer mensuel d'un bien équivalent, rendement locatif brut et loyers cumulés sur la détention. Données générées par `make references`.
 - **Trajectoire du prix au m²** : prix observés de 2021 à 2025, puis l'éventail des trois scénarios jusqu'à la revente.
 - **Fiscalité 2026** : exonération de la résidence principale, sinon impôt sur le revenu à 19 % et prélèvements sociaux à 17,2 %, avec les abattements pour durée de détention, la surtaxe sur les plus-values élevées, et les forfaits d'acquisition et de travaux. Une courbe montre les abattements.
 - **Résilience des secteurs** : variation du prix au m² de 2021 à 2025 pour les 25 secteurs aux plus gros volumes de ventes, avec le secteur choisi mis en évidence.

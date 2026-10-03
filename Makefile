@@ -2,7 +2,7 @@
 # Makefile — point d'entrée unique du projet RealStateAI.
 # Objectif soutenance : le jury tape "make install && make run" et ça tourne.
 # =============================================================================
-.PHONY: help install setup ingest data train run stop lint test clean-data clean
+.PHONY: help install setup ingest references data train run stop lint test clean-data clean
 
 PY_PIPELINE := data-pipeline/.venv/bin/python
 PIP_PIPELINE := data-pipeline/.venv/bin/pip
@@ -57,6 +57,9 @@ setup:  ## Crée les environnements virtuels Python
 
 ingest:  ## Télécharge les millésimes DVF (idempotent — reprend depuis le cache)
 	$(PY_PIPELINE) -m realstate_data.pipeline ingest
+
+references:  ## Télécharge les indices de prix INSEE et les loyers ANIL (petits JSON versionnés)
+	$(PY_PIPELINE) -m realstate_data.ingestion.references_marche
 
 data:  ## Pipeline complet bronze → silver → gold
 	$(PY_PIPELINE) -m realstate_data.pipeline run
