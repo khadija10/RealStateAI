@@ -1,145 +1,170 @@
-// Client API pour le backend FastAPI RealEstateAI.
-// Base URL configurable via la variable d'environnement Vite VITE_API_URL
-// (voir .env.example). Par défaut, pointe sur le backend local.
+// Client HTTP unique pour le backend FastAPI RealStateAI.
+// Base URL configurable via la variable Vite VITE_API_URL (voir .env.example).
+//
+// Toutes les pages passent par ce module : jeton d'authentification,
+// délai maximal, annulation (AbortSignal) et messages d'erreur sont gérés
+// ici, une seule fois.
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+export const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 const TOKEN_KEY = 'reai_token'
+const DEFAULT_TIMEOUT_MS = 15000
 
 export function getToken() {
   try { return localStorage.getItem(TOKEN_KEY) } catch { return null }
 }
 export function saveToken(t) {
-  try { localStorage.setItem(TOKEN_KEY, t) } catch { /* ignore */ }
+  try { localStorage.setItem(TOKEN_KEY, t) } catch { /* navigation privée */ }
 }
 export function clearToken() {
-  try { localStorage.removeItem(TOKEN_KEY) } catch { /* ignore */ }
+  try { localStorage.removeItem(TOKEN_KEY) } catch { /* navigation privée */ }
 }
 
-class ApiError extends Error {
-  constructor(message, status) {
+/**
+ * Erreur d'appel à l'API.
+ * - `status` : code HTTP (0 si le serveur est injoignable).
+ * - `kind`   : 'http' | 'network' | 'timeout' | 'aborted'.
+ * Le message est celui du champ `detail` renvoyé par le backend quand il existe.
+ */
+export class ApiError extends Error {
+  constructor(message, status, kind = 'http') {
     super(message)
+    this.name = 'ApiError'
     this.status = status
+    this.kind = kind
   }
 }
 
-async function request(path, options = {}) {
+export const isAbortError = (e) => e instanceof ApiError && e.kind === 'aborted'
+
+/**
+ * Appel générique. `body` objet → sérialisé en JSON.
+ * `signal` permet d'annuler l'appel (changement de page, nouvelle saisie).
+ */
+export async function request(path, { method = 'GET', body, signal, timeout = DEFAULT_TIMEOUT_MS, headers } = {}) {
   const token = getToken()
-  const authHeader = token ? { Authorization: `Bearer ${token}` } : {}
+  const controller = new AbortController()
+  let timedOut = false
+  const timer = timeout ? setTimeout(() => { timedOut = true; controller.abort() }, timeout) : null
+  const onAbort = () => controller.abort()
+  if (signal) {
+    if (signal.aborted) controller.abort()
+    else signal.addEventListener('abort', onAbort, { once: true })
+  }
+
   let response
   try {
-    response = await fetch(`${BASE_URL}${path}`, {
-      headers: { 'Content-Type': 'application/json', ...authHeader },
-      ...options,
+    response = await fetch(`${API_BASE}${path}`, {
+      method,
+      signal: controller.signal,
+      headers: {
+        ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}),
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        ...headers,
+      },
+      body: body === undefined ? undefined : typeof body === 'string' ? body : JSON.stringify(body),
     })
   } catch {
-    throw new ApiError(
-      "Impossible de joindre le serveur d'estimation. Vérifiez que le backend tourne.",
-      0
-    )
+    if (timedOut) {
+      throw new ApiError('Le serveur met trop de temps à répondre. Réessayez dans un instant.', 0, 'timeout')
+    }
+    if (signal?.aborted) throw new ApiError('Requête annulée.', 0, 'aborted')
+    throw new ApiError("Impossible de joindre le serveur. Vérifiez votre connexion ou que le backend est démarré.", 0, 'network')
+  } finally {
+    if (timer) clearTimeout(timer)
+    signal?.removeEventListener('abort', onAbort)
+  }
+
+  const text = await response.text()
+  let data = null
+  if (text) {
+    try { data = JSON.parse(text) } catch { data = text }
   }
 
   if (!response.ok) {
-    let detail = `Erreur serveur (${response.status})`
-    try {
-      const body = await response.json()
-      detail = body.detail || body.message || detail
-    } catch {
-      // pas de corps JSON exploitable
-    }
-    throw new ApiError(detail, response.status)
+    const detail = data && typeof data === 'object' ? data.detail || data.message : null
+    throw new ApiError(
+      typeof detail === 'string' && detail ? detail : messageParDefaut(response.status),
+      response.status,
+      'http',
+    )
   }
-
-  return response.json()
+  return data
 }
 
-export function getHealth() {
-  return request('/api/health')
+function messageParDefaut(status) {
+  if (status === 401) return 'Votre session a expiré. Reconnectez-vous.'
+  if (status === 404) return 'Ressource introuvable.'
+  if (status === 429) return 'Trop de tentatives. Patientez une minute avant de réessayer.'
+  if (status === 503) return 'Ce service est momentanément indisponible.'
+  if (status >= 500) return `Erreur du serveur (${status}). Réessayez dans un instant.`
+  return `Requête refusée (${status}).`
 }
 
-export function getCommunes() {
-  return request('/api/metadata/communes')
-}
+// ── Système ──────────────────────────────────────────────────────────────
 
-export function estimatePrice(payload) {
-  return request('/api/predictions/estimate', {
+export const getHealth = (opts) => request('/api/health', { timeout: 8000, ...opts })
+
+export const getCommunes = (q, opts) =>
+  request(q ? `/api/metadata/communes?q=${encodeURIComponent(q)}` : '/api/metadata/communes', opts)
+
+// ── Estimation ───────────────────────────────────────────────────────────
+
+/** Réponse brute ; voir api/normalize.js pour la forme utilisée par l'UI. */
+export const estimatePrice = (payload, opts) =>
+  request('/api/predictions/estimate', { method: 'POST', body: payload, timeout: 25000, ...opts })
+
+// ── Marché ───────────────────────────────────────────────────────────────
+
+export const getMarketMap = (opts) => request('/api/market/map', opts)
+
+export const getMarketTrends = (dep, opts) =>
+  request(dep ? `/api/market/trends?dep=${encodeURIComponent(dep)}` : '/api/market/trends', opts)
+
+// ── Historique ───────────────────────────────────────────────────────────
+
+export const getSearchHistory = (limit = 20, opts) => request(`/api/search-history?limit=${limit}`, opts)
+export const deleteHistoryItem = (id, opts) => request(`/api/history/${id}`, { method: 'DELETE', ...opts })
+export const clearHistory = (opts) => request('/api/history', { method: 'DELETE', ...opts })
+
+// ── Financement ──────────────────────────────────────────────────────────
+
+export const getFinancingDossier = (payload, opts) =>
+  request('/api/financing/dossier', { method: 'POST', body: payload, ...opts })
+
+export const getFinancingRates = (opts) => request('/api/financing/rates', opts)
+
+export const sendFinancingAgentMessage = (sessionId, message, opts) =>
+  request('/api/financing/agent/message', {
     method: 'POST',
-    body: JSON.stringify(payload),
+    body: { session_id: sessionId, message },
+    timeout: 30000,
+    ...opts,
   })
-}
 
-export function getMarketMap() {
-  return request('/api/market/map')
-}
+export const resetFinancingAgent = (sessionId, opts) =>
+  request(`/api/financing/agent/${encodeURIComponent(sessionId)}`, { method: 'DELETE', ...opts })
 
-export function getMarketTrends(dep) {
-  return request(dep ? `/api/market/trends?dep=${dep}` : '/api/market/trends')
-}
+// ── Authentification ─────────────────────────────────────────────────────
 
-export function getSearchHistory(limit = 20) {
-  return request(`/api/search-history?limit=${limit}`)
-}
+export const register = (email, password) =>
+  request('/api/auth/register', { method: 'POST', body: { email, password } })
 
-export function getFinancingDossier(payload) {
-  return request('/api/financing/dossier', {
-    method: 'POST',
-    body: JSON.stringify(payload),
-  })
-}
+export const login = (email, password) =>
+  request('/api/auth/login', { method: 'POST', body: { email, password } })
 
-export function register(email, password) {
-  return request('/api/auth/register', {
-    method: 'POST',
-    body: JSON.stringify({ email, password }),
-  })
-}
+export const getMe = (opts) => request('/api/auth/me', opts)
 
-export function login(email, password) {
-  return request('/api/auth/login', {
-    method: 'POST',
-    body: JSON.stringify({ email, password }),
-  })
-}
+export const forgotPassword = (email) =>
+  request('/api/auth/forgot-password', { method: 'POST', body: { email } })
 
-export function getMe() {
-  return request('/api/auth/me')
-}
+export const resetPassword = (token, newPassword) =>
+  request('/api/auth/reset-password', { method: 'POST', body: { token, new_password: newPassword } })
 
-export function deleteHistoryItem(id) {
-  return request(`/api/history/${id}`, { method: 'DELETE' })
-}
-
-export function forgotPassword(email) {
-  return request('/api/auth/forgot-password', {
-    method: 'POST',
-    body: JSON.stringify({ email }),
-  })
-}
-
-export function resetPassword(token, newPassword) {
-  return request('/api/auth/reset-password', {
-    method: 'POST',
-    body: JSON.stringify({ token, new_password: newPassword }),
-  })
-}
-
-export function changePassword(currentPassword, newPassword) {
-  return request('/api/auth/me/password', {
+export const changePassword = (currentPassword, newPassword) =>
+  request('/api/auth/me/password', {
     method: 'PUT',
-    body: JSON.stringify({ current_password: currentPassword, new_password: newPassword }),
+    body: { current_password: currentPassword, new_password: newPassword },
   })
-}
 
-export function clearHistory() {
-  return request('/api/history', { method: 'DELETE' })
-}
-
-export function deleteAccount() {
-  return request('/api/auth/me', { method: 'DELETE' })
-}
-
-export function getFinancingRates() {
-  return request('/api/financing/rates')
-}
-
-export { ApiError }
+export const deleteAccount = () => request('/api/auth/me', { method: 'DELETE' })

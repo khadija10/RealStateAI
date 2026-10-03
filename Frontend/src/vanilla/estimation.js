@@ -500,7 +500,8 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement } = {}) {
   if (params.get('type')) $('#rsai-type').value = params.get('type')
   if (params.get('address')) $('#rsai-adresse').value = params.get('address')
   if (params.get('secteur') && SECTEURS[params.get('secteur')]) selecteur.value = params.get('secteur')
-  if ([...params.keys()].length) window.history.replaceState({}, '', window.location.pathname)
+  // L'état d'historique est conservé : il appartient au routeur (react-router).
+  if ([...params.keys()].length) window.history.replaceState(window.history.state, '', window.location.pathname)
 
   chargerSecteurs(); estimer(false); verifierApi()
 

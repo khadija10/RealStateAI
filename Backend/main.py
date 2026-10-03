@@ -975,6 +975,14 @@ def estimate(
                 logger.info("Réponse renvoyée par le modèle ML")
                 normalized = _normalize_ml_result(ml_result, surface)
                 code_commune = ml_result.get("code_commune") if isinstance(ml_result, dict) else None
+                # Localisation déjà calculée par le géocodage BAN, réexposée telle
+                # quelle pour le frontend (contexte marché, financement).
+                # code_departement : même dérivation que ml/geocoding.py (2 premiers caractères).
+                if isinstance(ml_result, dict):
+                    normalized.adresse_normalisee = ml_result.get("adresse_normalisee")
+                    normalized.commune = ml_result.get("commune")
+                    normalized.code_commune = code_commune
+                    normalized.code_departement = code_commune[:2] if code_commune else None
                 lm = getattr(request.app.state, "local_mape", {}).get(code_commune or "", {})
                 normalized.local_mape = lm.get("mape") if lm else None
                 normalized.local_mape_n = lm.get("n") if lm else None

@@ -1,155 +1,269 @@
 @import url('https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Inter:wght@300;400;500;600;700&display=swap');
 @import "tailwindcss";
 
-@theme {
-  /* Palette — reprise du design system "RealStateAI" (artefacts Claude) */
-  --color-stone-50: #F3F1EC;   /* fond */
-  --color-stone-100: #E3DED6;  /* ligne */
-  --color-stone-600: #77716A;  /* gris */
-  --color-ink: #141311;        /* encre */
-  --color-ink-muted: #77716A;  /* gris */
-  --color-seine: #2A1F17;      /* accent principal — brun profond, boutons et liens */
-  --color-seine-dark: #000000;
-  --color-limestone: #A38C77;  /* taupe — accent secondaire, décoratif */
-  --color-limestone-light: #D9CBB9; /* sable */
-  --color-surface: #FFFFFF;    /* blanc */
+/* ==========================================================================
+   Design system RealStateAI
+   --------------------------------------------------------------------------
+   Identité : brun / taupe / ambre / sable, Instrument Serif + Inter.
+   Les tokens "sémantiques" (canvas, surface, line, brand, accent, success…)
+   sont la référence pour tout nouveau composant (src/components/ui).
+   Les tokens "historiques" (stone-*, seine, limestone…) restent définis tant
+   que les anciens composants n'ont pas été migrés.
+   ========================================================================== */
 
+@theme {
+  /* ── Typographie ──────────────────────────────────────────────────────── */
+  --font-display: 'Instrument Serif', Georgia, serif;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  /* ── Couleurs sémantiques ─────────────────────────────────────────────── */
+  --color-canvas: #F3F1EC;        /* fond de page */
+  --color-surface: #FFFFFF;       /* cartes, barres, menus */
+  --color-surface-2: #FAF8F4;     /* zones en retrait, survols */
+  --color-line: #E3DED6;          /* bordures */
+  --color-line-strong: #CFC7BB;   /* bordures des champs */
+  --color-ink: #141311;           /* texte principal */
+  --color-ink-soft: #3D3832;      /* texte secondaire appuyé */
+  --color-ink-muted: #6B655E;     /* texte secondaire (contraste AA sur canvas) */
+
+  --color-brand: #2A1F17;         /* brun profond : actions principales */
+  --color-brand-hover: #3A2B21;
+  --color-on-brand: #FFFFFF;
+
+  --color-accent: #C2893A;        /* ambre : accents décoratifs uniquement */
+  --color-accent-ink: #8A5A1C;    /* ambre lisible en texte */
+  --color-accent-soft: #F5EBDD;
+
+  --color-taupe: #A38C77;
+  --color-sable: #D9CBB9;
+
+  --color-success: #3E7A5B;
+  --color-success-soft: #E6F0EA;
+  --color-warning: #A9701F;
+  --color-warning-soft: #F7EDDC;
+  --color-danger: #B5533F;
+  --color-danger-soft: #F7E6E1;
+  --color-info: #4E6C8C;
+  --color-info-soft: #E5ECF3;
+
+  /* ── Couleurs historiques (anciens composants, à retirer après migration) */
+  --color-stone-50: #F3F1EC;
+  --color-stone-100: #E3DED6;
+  --color-stone-600: #77716A;
+  --color-seine: #2A1F17;
+  --color-seine-dark: #000000;
+  --color-limestone: #A38C77;
+  --color-limestone-light: #D9CBB9;
   --color-vert: #3E7A5B;
   --color-rouge: #B5533F;
   --color-ambre: #C2893A;
 
-  --font-display: 'Instrument Serif', Georgia, serif;
-  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  /* ── Rayons ───────────────────────────────────────────────────────────── */
+  --radius-control: 10px;         /* boutons, champs */
+  --radius-card: 16px;            /* cartes */
+  --radius-panel: 22px;           /* grands panneaux, modales */
+  --radius-xl: 1rem;              /* historique */
+  --radius-2xl: 1.5rem;           /* historique */
+  --radius-3xl: 1.75rem;          /* historique */
 
-  --radius-xl: 1rem;
-  --radius-2xl: 1.5rem;
-  --radius-3xl: 1.75rem;
+  /* ── Ombres : discrètes, jamais décoratives ───────────────────────────── */
+  --shadow-xs: 0 1px 2px rgba(20, 19, 17, 0.05);
+  --shadow-sm: 0 1px 2px rgba(20, 19, 17, 0.04), 0 4px 14px -6px rgba(20, 19, 17, 0.10);
+  --shadow-overlay: 0 1px 2px rgba(20, 19, 17, 0.06), 0 18px 48px -16px rgba(20, 19, 17, 0.28);
+  --shadow-card: 0 1px 2px rgba(20, 19, 17, 0.04), 0 10px 34px -8px rgba(20, 19, 17, 0.12); /* historique */
 
-  --shadow-card: 0 1px 2px rgba(20,19,17,0.04), 0 10px 34px -8px rgba(20,19,17,0.12);
+  /* ── Largeurs ─────────────────────────────────────────────────────────── */
+  --container-page: 76rem;        /* 1216 px */
+
+  /* ── Mouvement ────────────────────────────────────────────────────────── */
+  --ease-soft: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --animate-fade-in: fade-in 240ms var(--ease-soft) both;
+  --animate-pop-in: pop-in 180ms var(--ease-soft) both;
+  --animate-sheet-in: sheet-in 260ms var(--ease-soft) both;
+
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes pop-in {
+    from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+    to { opacity: 1; transform: none; }
+  }
+  @keyframes sheet-in {
+    from { opacity: 0; transform: translateY(24px); }
+    to { opacity: 1; transform: none; }
+  }
 }
+
+/* ── Mode sombre : mêmes tokens, autres valeurs ───────────────────────── */
+
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --color-canvas: #121110;
+  --color-surface: #1C1A18;
+  --color-surface-2: #22201D;
+  --color-line: #2E2B27;
+  --color-line-strong: #433D36;
+  --color-ink: #F1EEE8;
+  --color-ink-soft: #D6D0C7;
+  --color-ink-muted: #A39C93;
+
+  --color-brand: #EDE4D6;
+  --color-brand-hover: #FFFFFF;
+  --color-on-brand: #1C1A18;
+
+  --color-accent: #D39B4C;
+  --color-accent-ink: #E2B270;
+  --color-accent-soft: rgba(211, 155, 76, 0.14);
+
+  --color-success: #6FB08C;
+  --color-success-soft: rgba(111, 176, 140, 0.14);
+  --color-warning: #E0A650;
+  --color-warning-soft: rgba(224, 166, 80, 0.14);
+  --color-danger: #E08A76;
+  --color-danger-soft: rgba(224, 138, 118, 0.14);
+  --color-info: #8FAACB;
+  --color-info-soft: rgba(143, 170, 203, 0.14);
+
+  --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 18px -8px rgba(0, 0, 0, 0.5);
+  --shadow-overlay: 0 1px 2px rgba(0, 0, 0, 0.4), 0 20px 50px -16px rgba(0, 0, 0, 0.7);
+
+  /* historiques */
+  --color-stone-50: #121110;
+  --color-stone-100: #2E2B27;
+  --color-stone-600: #A39C93;
+  --color-seine: #D9CBB9;
+  --color-seine-dark: #EFE3D2;
+  --color-limestone: #C2A68C;
+  --color-limestone-light: rgba(163, 140, 119, 0.2);
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3), 0 10px 34px -8px rgba(0, 0, 0, 0.5);
+}
+
+/* ── Base ─────────────────────────────────────────────────────────────── */
 
 @layer base {
   html {
     scroll-behavior: smooth;
+    -webkit-text-size-adjust: 100%;
   }
   body {
-    background-color: var(--color-stone-50);
+    background-color: var(--color-canvas);
     color: var(--color-ink);
     font-family: var(--font-sans);
+    font-feature-settings: 'cv11', 'ss01';
     -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
   }
   ::selection {
-    background: var(--color-limestone-light);
+    background: var(--color-sable);
+    color: #141311;
   }
   :focus-visible {
-    outline: 2px solid var(--color-seine);
+    outline: 2px solid var(--color-accent);
     outline-offset: 2px;
+  }
+  button:not(:disabled),
+  [role='button']:not([aria-disabled='true']) {
+    cursor: pointer;
   }
 }
 
-/* Emphase "serif" du design — toujours en italique, comme dans les artefacts */
+/* ── Typographie du design system ─────────────────────────────────────── */
+
+@layer components {
+  /* Surtitre : petites capitales espacées */
+  .ds-eyebrow {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-ink-muted);
+  }
+  /* Titre de page : serif, l'italique est réservé à l'emphase (<em>) */
+  .ds-title {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(2.125rem, 1.6rem + 2.2vw, 3.25rem);
+    line-height: 1.04;
+    letter-spacing: -0.01em;
+    color: var(--color-ink);
+  }
+  .ds-h2 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: clamp(1.625rem, 1.35rem + 1.1vw, 2.125rem);
+    line-height: 1.1;
+    color: var(--color-ink);
+  }
+  .ds-h3 {
+    font-family: var(--font-display);
+    font-weight: 400;
+    font-size: 1.375rem;
+    line-height: 1.2;
+    color: var(--color-ink);
+  }
+  .ds-title em,
+  .ds-h2 em,
+  .ds-h3 em {
+    font-style: italic;
+    color: var(--color-ink-soft);
+  }
+  .ds-lead {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--color-ink-muted);
+  }
+  /* Grand chiffre en serif droite (prix, indicateurs clés) */
+  .ds-figure {
+    font-family: var(--font-display);
+    font-style: normal;
+    font-weight: 400;
+    letter-spacing: -0.01em;
+    line-height: 1;
+  }
+  /* Chiffres : alignement tabulaire */
+  .ds-num {
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+  }
+}
+
+/* Emphase "serif" historique — toujours en italique, comme dans les artefacts */
 .font-display {
   font-family: var(--font-display);
   font-style: italic;
   font-weight: 400;
 }
 
-/* ── Dark mode ───────────────────────────────────────────────────────────── */
+/* ── Surcharges du mode sombre pour les anciens composants ─────────────
+   (Historique, Profil, Carte, Tendances, fenêtre de connexion). Elles
+   seront supprimées quand ces composants utiliseront les tokens. Elles ne
+   ciblent que des classes historiques, jamais les composants ui/. */
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) {
-    --color-stone-50: #121110;
-    --color-stone-100: #2E2B27;
-    --color-stone-600: #A39C93;
-    --color-ink: #F1EEE8;
-    --color-ink-muted: #A39C93;
-    --color-seine: #D9CBB9;
-    --color-seine-dark: #EFE3D2;
-    --color-limestone: #C2A68C;
-    --color-limestone-light: rgba(163,140,119,0.2);
-    --color-surface: #1C1A18;
-    --shadow-card: 0 1px 3px rgba(0,0,0,0.3), 0 10px 34px -8px rgba(0,0,0,0.5);
-  }
-}
-
-:root[data-theme="dark"] {
-  --color-stone-50: #121110;
-  --color-stone-100: #2E2B27;
-  --color-stone-600: #A39C93;
-  --color-ink: #F1EEE8;
-  --color-ink-muted: #A39C93;
-  --color-seine: #D9CBB9;
-  --color-seine-dark: #EFE3D2;
-  --color-limestone: #C2A68C;
-  --color-limestone-light: rgba(163,140,119,0.2);
-  --color-surface: #1C1A18;
-  --shadow-card: 0 1px 3px rgba(0,0,0,0.3), 0 10px 34px -8px rgba(0,0,0,0.5);
-}
-
-/* Surfaces blanches en mode sombre */
-:root[data-theme="dark"] .bg-white,
-:root[data-theme="dark"] header,
-:root[data-theme="dark"] nav { background-color: #1C1A18 !important; }
-
+:root[data-theme="dark"] .bg-white { background-color: #1C1A18 !important; }
 :root[data-theme="dark"] .bg-stone-50 { background-color: #1C1A18 !important; }
 :root[data-theme="dark"] .bg-stone-50\/50 { background-color: rgba(28,26,24,0.5) !important; }
 :root[data-theme="dark"] .hover\:bg-stone-50\/60:hover { background-color: rgba(28,26,24,0.6) !important; }
 :root[data-theme="dark"] .bg-red-50 { background-color: rgba(181,83,63,0.16) !important; }
 :root[data-theme="dark"] .bg-emerald-50 { background-color: rgba(62,122,91,0.16) !important; }
 :root[data-theme="dark"] .bg-amber-50 { background-color: rgba(194,137,58,0.18) !important; }
-
-/* bg-ink / bg-seine utilisés comme fond de bouton : rester sombres même en dark mode */
 :root[data-theme="dark"] .bg-ink { background-color: #3A2B21 !important; }
 :root[data-theme="dark"] .border-ink { border-color: #3A2B21 !important; }
 :root[data-theme="dark"] .bg-seine { background-color: #3A2B21 !important; }
 :root[data-theme="dark"] .hover\:bg-seine-dark:hover,
 :root[data-theme="dark"] .hover\:bg-seine\/90:hover { background-color: #54402F !important; }
-
-/* Bordures visibles en dark mode */
 :root[data-theme="dark"] .border-stone-200 { border-color: #3D372F !important; }
 :root[data-theme="dark"] .border-stone-100 { border-color: #2E2B27 !important; }
 :root[data-theme="dark"] .hover\:border-stone-400:hover { border-color: #6B6256 !important; }
 
-/* Inputs, selects, textarea */
-:root[data-theme="dark"] input,
-:root[data-theme="dark"] select,
-:root[data-theme="dark"] textarea {
-  background-color: #1C1A18 !important;
-  border-color: #3D372F !important;
-  color: var(--color-ink) !important;
-}
-:root[data-theme="dark"] input::placeholder,
-:root[data-theme="dark"] textarea::placeholder { color: var(--color-ink-muted) !important; }
-:root[data-theme="dark"] input:focus,
-:root[data-theme="dark"] select:focus,
-:root[data-theme="dark"] textarea:focus { background-color: #1C1A18 !important; }
-
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .bg-white,
-  :root:not([data-theme="light"]) header,
-  :root:not([data-theme="light"]) nav { background-color: #1C1A18 !important; }
-  :root:not([data-theme="light"]) .bg-stone-50 { background-color: #1C1A18 !important; }
-  :root:not([data-theme="light"]) .bg-ink { background-color: #3A2B21 !important; }
-  :root:not([data-theme="light"]) .bg-seine { background-color: #3A2B21 !important; }
-  :root:not([data-theme="light"]) .border-ink { border-color: #3A2B21 !important; }
-  :root:not([data-theme="light"]) .border-stone-200 { border-color: #3D372F !important; }
-  :root:not([data-theme="light"]) .border-stone-100 { border-color: #2E2B27 !important; }
-  :root:not([data-theme="light"]) input,
-  :root:not([data-theme="light"]) select,
-  :root:not([data-theme="light"]) textarea {
-    background-color: #1C1A18 !important;
-    border-color: #3D372F !important;
-    color: var(--color-ink) !important;
-  }
-}
-
-/* ── Formulaires : curseurs type "artefact" ─────────────────────────────── */
+/* ── Curseurs (pages Financement / Plus-value) ────────────────────────── */
 input[type="range"] {
   -webkit-appearance: none;
   appearance: none;
   height: 4px;
   border-radius: 999px;
-  background: var(--color-stone-100);
+  background: var(--color-line);
   outline: none;
 }
 input[type="range"]::-webkit-slider-thumb {
@@ -170,17 +284,7 @@ input[type="range"]::-moz-range-thumb {
   cursor: pointer;
 }
 
-/* ── Pastille / "puce" de statut, reprise des artefacts ─────────────────── */
-.pill-tab {
-  border-radius: 999px;
-  white-space: nowrap;
-}
-
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(4px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
+/* ── Accessibilité du mouvement ───────────────────────────────────────── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after {
     animation-duration: 0.01ms !important;

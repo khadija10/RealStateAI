@@ -3,14 +3,26 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>RealEstateAI — Estimation immobilière</title>
-    <meta name="description" content="Estimez la valeur d'un bien immobilier en Île-de-France à partir des données DVF." />
-    <meta name="theme-color" content="#2E86C1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>RealStateAI — Estimation immobilière en Île-de-France</title>
+    <meta name="description" content="Estimez la valeur d'un bien immobilier en Île-de-France à partir des ventes notariées (DVF), simulez son financement et sa plus-value." />
+    <meta name="theme-color" content="#F3F1EC" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#121110" media="(prefers-color-scheme: dark)" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="default" />
-    <meta name="apple-mobile-web-app-title" content="RealEstateAI" />
+    <meta name="apple-mobile-web-app-title" content="RealStateAI" />
     <link rel="manifest" href="/manifest.json" />
+    <!-- Thème appliqué avant le premier rendu : évite un flash clair en mode sombre. -->
+    <script>
+      (function () {
+        var t = null
+        try { t = localStorage.getItem('reai_theme') } catch (e) {}
+        if (t !== 'dark' && t !== 'light') {
+          t = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
+        }
+        document.documentElement.setAttribute('data-theme', t)
+      })()
+    </script>
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css" />
   </head>
