@@ -16,8 +16,9 @@ export const REPRISE_MODEREE = 0.02
 export function scenariosMarche(eco, annees) {
   const n = eco.length - 1
   const brut = Math.pow(eco[n] / eco[0], 1 / (annees[n] - annees[0])) - 1
-  // Une médiane annuelle peut sauter quand peu de ventes la composent (Bobigny :
-  // 7 453 €/m² en 2021, 4 141 € en 2022) : le rythme projeté est limité à ±4 %/an.
+  // Garde-fou : une médiane annuelle peut sauter quand peu de ventes la composent.
+  // (Le cas de Bobigny, 7 453 €/m² en 2021, venait des ventes sur plan : les secteurs
+  // sont désormais calculés sur l'ancien seul.) Le rythme projeté reste limité à ±4 %/an.
   const tendance = Math.max(-RYTHME_MAX, Math.min(RYTHME_MAX, brut))
   const limite = Math.abs(brut) > RYTHME_MAX
   return [

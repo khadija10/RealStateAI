@@ -427,14 +427,19 @@ def _ramener_ventes_au_secteur(comparables: list[dict], secteur: dict | None, su
 
 def _construire_secteurs(df: "pd.DataFrame | None") -> dict:
     """Statistiques de marché par commune et type de bien, calculées une fois
-    au démarrage sur le dataset chargé : médiane et déciles de la dernière
-    année, nombre de ventes, médiane annuelle 2021-2025.
+    au démarrage sur le dataset chargé, sur l'ancien seul : médiane et déciles
+    de la dernière année, nombre de ventes, médiane annuelle 2021-2025.
 
     Remplace les chiffres écrits en dur dans le frontend : une mise à jour du
     dataset se reflète sans toucher au code de l'interface."""
     colonnes = ["code_commune", "commune", "type_bien_norm", "date_mutation", "prix_au_m2"]
     if df is None or not set(colonnes) <= set(df.columns):
         return {}
+    # Ancien seul : un bien estimé est presque toujours une revente, et les ventes sur
+    # plan (VEFA) faussent la médiane et la courbe du secteur (Bobigny, appartements :
+    # 7 453 €/m² en 2021 avec 65 % de neuf, contre 3 333 € dans l'ancien).
+    if "est_vefa" in df.columns:
+        df = df[~df["est_vefa"].fillna(False).astype(bool)]
     cles = ["code_commune", "type_bien_norm"]
     # L'année est la partition du parquet (annee=2025/), absente des fichiers lus un à un
     annee = pd.to_datetime(df["date_mutation"], errors="coerce").dt.year
