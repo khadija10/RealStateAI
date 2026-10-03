@@ -362,8 +362,8 @@ export default function EstimationPage() {
               </div>
             </div>
             <ResultAlerts r={r} />
-            <DepartmentTrendCard dep={dep} typeBien={rv.type} secteur={r.secteur} prix={r.price} isDemo={r.isDemo} />
-            <ComparablesCard r={r} />
+            <DepartmentTrendCard dep={dep} typeBien={rv.type} secteur={r.secteur} />
+            <ComparablesCard r={r} values={rv} />
             <TechnicalDetails r={r} values={rv} stats={stats} />
             <div className="mt-8">
               <NextSteps r={r} values={rv} lieu={lieu} description={descriptionBien(rv)} at={resultat.at} stats={stats} dep={dep} />

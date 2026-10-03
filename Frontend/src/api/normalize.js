@@ -75,6 +75,9 @@ export function normalizeEstimate(d) {
     comparables: Array.isArray(d.comparables_immeuble)
       ? d.comparables_immeuble.filter((c) => c && num(c.prix) != null)
       : [],
+    // Liste présente (même vide) : le serveur a cherché les ventes de l'immeuble ;
+    // absente (null) : la recherche n'a pas eu lieu (ancienne version, autre méthode).
+    comparablesRecherches: Array.isArray(d.comparables_immeuble),
     immeubleReference: d.immeuble_reference && num(d.immeuble_reference.prix_m2) != null ? d.immeuble_reference : null,
 
     // Détail de la méthode

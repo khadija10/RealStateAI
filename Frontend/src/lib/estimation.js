@@ -11,8 +11,6 @@ export const FORM_VIDE = {
   rooms: '',
   dpe: '',
   annee: '',
-  numeroDpe: '',
-  numeroLot: '',
 }
 
 export const ANNEE_MAX = new Date().getFullYear()
@@ -35,7 +33,6 @@ export function validerFormulaire(v) {
     const a = Number(v.annee)
     if (!Number.isInteger(a) || a < 1800 || a > ANNEE_MAX) e.annee = `Entre 1800 et ${ANNEE_MAX}.`
   }
-  if (v.numeroDpe && !/^[0-9A-Za-z]{13}$/.test(v.numeroDpe.trim())) e.numeroDpe = '13 lettres ou chiffres, sans espace.'
   return e
 }
 
@@ -52,8 +49,6 @@ export function construirePayload(v) {
   }
   if (v.dpe) p.dpe_classe = v.dpe
   if (v.annee !== '') p.annee_construction = Number(v.annee)
-  if (v.numeroDpe?.trim()) p.numero_dpe = v.numeroDpe.trim().toUpperCase()
-  if (v.numeroLot?.trim()) p.numero_lot = v.numeroLot.trim()
   return p
 }
 

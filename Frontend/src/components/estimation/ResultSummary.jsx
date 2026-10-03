@@ -145,7 +145,7 @@ export function ReliabilityCard({ r, embedded = false }) {
         {lvl && <Badge tone={lvl.tone}>{lvl.label}</Badge>}
       </div>
       <div className="flex items-center gap-5">
-        <ReliabilityRing value={r.reliability} size={embedded ? 84 : 112} />
+        <ReliabilityRing value={r.reliability} size={embedded ? 104 : 120} />
         <div className="text-sm leading-relaxed text-ink-muted">
           <p>{classe ? <><b className="font-medium text-ink">{classe.titre}</b> : {classe.texte}</> : 'Indice de confiance fourni par le serveur pour cette estimation, de 0 à 100.'}</p>
           {embedded && explication && <p className="mt-2 text-ink-soft">{explication}</p>}

@@ -45,7 +45,7 @@ function Critere({ icon: Icon, label, htmlFor, error, errorId, inactive, separe,
  */
 export default function EstimationSearchBar({ values, onChange, onSubmit, loading, communes }) {
   const [errors, setErrors] = useState({})
-  const [criteres, setCriteres] = useState(Boolean(values.dpe || values.annee || values.numeroDpe || values.numeroLot))
+  const [criteres, setCriteres] = useState(Boolean(values.dpe || values.annee))
   const listId = useId()
   const criteresId = useId()
 
@@ -61,7 +61,7 @@ export default function EstimationSearchBar({ values, onChange, onSubmit, loadin
     setErrors(errs)
     const first = Object.keys(errs)[0]
     if (first) {
-      if (first === 'annee' || first === 'numeroDpe') setCriteres(true)
+      if (first === 'annee') setCriteres(true)
       requestAnimationFrame(() => document.getElementById(`estim-${first}`)?.focus())
       return
     }
@@ -214,7 +214,7 @@ export default function EstimationSearchBar({ values, onChange, onSubmit, loadin
           </span>
           <span className="font-medium text-ink">{criteres ? 'Masquer' : 'Plus de critères'}</span>
           {!criteres &&
-            (values.dpe || values.annee || values.numeroDpe || values.numeroLot ? (
+            (values.dpe || values.annee ? (
               <span className="flex items-center gap-1.5">
                 {values.dpe && (
                   <span
@@ -229,19 +229,9 @@ export default function EstimationSearchBar({ values, onChange, onSubmit, loadin
                     {values.annee}
                   </span>
                 )}
-                {values.numeroDpe && (
-                  <span className="inline-flex h-5 items-center rounded-full bg-surface-2 px-2 text-[11px] font-medium text-ink-soft ring-1 ring-inset ring-line">
-                    N° DPE
-                  </span>
-                )}
-                {values.numeroLot && (
-                  <span className="inline-flex h-5 items-center rounded-full bg-surface-2 px-2 text-[11px] font-medium text-ink-soft ring-1 ring-inset ring-line">
-                    Lot {values.numeroLot}
-                  </span>
-                )}
               </span>
             ) : (
-              <span className="hidden text-ink-muted sm:inline">DPE, année, n° de DPE ou de lot · facultatif</span>
+              <span className="hidden text-ink-muted sm:inline">DPE, année de construction · facultatif</span>
             ))}
         </button>
 
@@ -276,40 +266,6 @@ export default function EstimationSearchBar({ values, onChange, onSubmit, loadin
               })}
             </div>
           </fieldset>
-
-          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-            <label htmlFor="estim-numeroDpe" className="text-[12px] text-ink-muted" title="Numéro ADEME à 13 caractères, sur le diagnostic : le serveur retrouve alors la classe et l’année du bien">
-              N° de DPE
-            </label>
-            <input
-              id="estim-numeroDpe"
-              maxLength={13}
-              autoComplete="off"
-              spellCheck={false}
-              placeholder="13 caractères"
-              className={cx(
-                'h-8 w-[8.5rem] rounded-[9px] bg-surface px-2.5 text-[13px] font-medium uppercase text-ink outline-none ring-1 ring-inset transition-shadow placeholder:font-normal placeholder:normal-case placeholder:text-ink-muted/80 focus:ring-2 focus:ring-ink-muted',
-                errors.numeroDpe ? 'ring-danger' : 'ring-line hover:ring-line-strong',
-              )}
-              value={values.numeroDpe ?? ''}
-              onChange={set('numeroDpe')}
-              {...err('numeroDpe')}
-            />
-            {errors.numeroDpe && <p id="estim-numeroDpe-err" className="text-xs text-danger">{errors.numeroDpe}</p>}
-          </div>
-
-          <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
-            <label htmlFor="estim-numeroLot" className="text-[12px] text-ink-muted" title="Numéro de lot de copropriété, sur le titre de propriété">N° de lot</label>
-            <input
-              id="estim-numeroLot"
-              maxLength={20}
-              autoComplete="off"
-              placeholder="facultatif"
-              className="h-8 w-24 rounded-[9px] bg-surface px-2.5 text-[13px] font-medium text-ink outline-none ring-1 ring-inset ring-line transition-shadow placeholder:font-normal placeholder:text-ink-muted/80 hover:ring-line-strong focus:ring-2 focus:ring-ink-muted"
-              value={values.numeroLot ?? ''}
-              onChange={set('numeroLot')}
-            />
-          </div>
 
           <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
             <label htmlFor="estim-annee" className="text-[12px] text-ink-muted">Année de construction</label>

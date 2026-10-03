@@ -107,7 +107,7 @@ export function ReliabilityRing({ value, size = 112 }) {
         transform="rotate(-90 55 55)"
         className="transition-[stroke-dasharray] duration-700 ease-soft"
       />
-      <text x="55" y="60" textAnchor="middle" fontSize="28" fontFamily="var(--font-display)" fill="var(--color-ink)">
+      <text x="55" y="61" textAnchor="middle" fontSize="30" fontWeight="600" letterSpacing="-0.5" fontFamily="var(--font-sans)" fill="var(--color-ink)">
         {value != null ? Math.round(value * 100) : '—'}
       </text>
       <text x="55" y="77" textAnchor="middle" fontSize="8.5" letterSpacing="1.2" fill="var(--color-ink-muted)">

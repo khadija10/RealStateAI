@@ -2,8 +2,7 @@ import { useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { useDepartmentTrend } from '../../hooks/useMarketData'
 import { cx } from '../../lib/cx'
-import { euro, euroM2, nb, pct } from '../../lib/format'
-import { NOMS_SCENARIOS, scenarios } from '../../lib/plusValue'
+import { euroM2, nb, pct } from '../../lib/format'
 import { nomDepartement } from '../../lib/geo'
 import { syntheseAnnuelle, variationDouzeMois } from '../../lib/tendance'
 import LineChart from '../charts/LineChart'
@@ -182,7 +181,7 @@ function Tendance({ v, inverse = false }) {
 }
 
 /** Évolution mensuelle du prix médian du département (GET /api/market/trends). */
-export function DepartmentTrendCard({ dep, typeBien, secteur = null, prix = null, isDemo = false }) {
+export function DepartmentTrendCard({ dep, typeBien, secteur = null }) {
   const { rows, loading, error, reload } = useDepartmentTrend(dep, typeBien)
   const serieSecteur = secteur?.serie?.length >= 2 ? secteur.serie : null
 
@@ -227,14 +226,6 @@ export function DepartmentTrendCard({ dep, typeBien, secteur = null, prix = null
       valeursSecteur,
     }
   }, [rows, serieSecteur])
-
-  // Valeur dans 10 ans : trois scénarios tirés de la série observée (secteur, sinon département).
-  const projection = useMemo(() => {
-    if (isDemo || prix == null || !data) return null
-    const serie = serieSecteur ?? data.annees.map((a) => ({ annee: a.annee, prix: a.prix }))
-    if (serie.length < 2) return null
-    return scenarios(serie).map((sc) => ({ ...sc, valeur: prix * (1 + sc.taux) ** 10 }))
-  }, [isDemo, prix, data, serieSecteur])
 
   const nom = nomDepartement(dep)
 
@@ -339,24 +330,6 @@ export function DepartmentTrendCard({ dep, typeBien, secteur = null, prix = null
                 : 'Moyenne annuelle des prix médians mensuels, pondérée par le nombre de ventes de chaque mois. '}
               La jauge situe chaque année entre la plus basse et la plus haute de la période.
             </p>
-            {projection && (
-              <div className="mt-5 flex flex-col gap-3 rounded-[16px] bg-accent-soft/45 p-4 ring-1 ring-inset ring-accent/15 lg:flex-row lg:items-center lg:justify-between">
-                <div className="min-w-0">
-                  <p className="text-[13px] font-medium text-ink">Valeur dans 10 ans, selon le marché observé</p>
-                  <p className="mt-0.5 text-[12px] text-ink-muted">
-                    Trois scénarios tirés de la série ci-dessus, pas des prévisions : le simulateur de plus-value détaille la fiscalité.
-                  </p>
-                </div>
-                <dl className="grid shrink-0 grid-cols-3 gap-2">
-                  {projection.map((sc, i) => (
-                    <div key={sc.id} className={cx('rounded-[12px] px-3 py-2', i === 1 ? 'bg-brand text-on-brand' : 'bg-surface ring-1 ring-inset ring-line')}>
-                      <dt className={cx('text-[11px]', i === 1 ? 'text-on-brand/75' : 'text-ink-muted')}>{NOMS_SCENARIOS[i].replace('Scénario ', '')} · {pct(sc.taux, { digits: 1, signed: true })}/an</dt>
-                      <dd className="ds-num mt-0.5 whitespace-nowrap text-[15px] font-semibold">{euro(sc.valeur)}</dd>
-                    </div>
-                  ))}
-                </dl>
-              </div>
-            )}
           </div>
         </>
       )}
