@@ -317,3 +317,18 @@ def test_secteurs_portent_le_loyer_anil():
             pytest.skip("dataset absent : secteurs non calculés")
         secteurs = c.get("/api/market/secteurs").json()
         assert all("loyer" in s for s in secteurs)
+
+
+def test_correction_recente_du_point_haut_au_point_bas():
+    """Scénario de baisse commun : rythme annuel de la dernière correction de l'indice."""
+    from main import _correction_recente
+    # 2020-T1 → 2023-T4 : point haut 2022-T1 (120), point bas 2023-T1 (108), puis reprise
+    valeurs = [100, 102, 104, 106, 110, 112, 115, 118, 120, 116, 112, 110, 108, 109, 110, 111]
+    c = _correction_recente({"debut": "2020-Q1", "valeurs": valeurs})
+    assert (c["de"], c["a"]) == ("2022-T1", "2023-T1")
+    assert c["taux"] == pytest.approx(108 / 120 - 1, abs=1e-4)   # 4 trimestres = 1 an
+
+
+def test_correction_recente_absente_sans_baisse():
+    from main import _correction_recente
+    assert _correction_recente({"debut": "2021-Q1", "valeurs": [100, 101, 102, 103, 104, 105, 106, 107]}) is None

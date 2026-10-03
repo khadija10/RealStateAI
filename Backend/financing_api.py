@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 from typing import Literal
@@ -51,6 +52,9 @@ class FinancingDossierRequest(BaseModel):
     charges_logement_previsionnelles: float = Field(default=0, ge=0)
     nb_enfants_moins_14: int | None = Field(default=None, ge=0)
     reference_dossier: str | None = Field(default=None, max_length=100)
+    # Conditions proposées par la banque, si l'utilisateur les connaît (sinon barème)
+    taux_nominal: float | None = Field(default=None, ge=0, le=0.15)
+    taux_assurance: float | None = Field(default=None, ge=0, le=0.02)
 
 
 class FinancingAgentRequest(BaseModel):
@@ -76,6 +80,8 @@ def create_financing_dossier(payload: FinancingDossierRequest) -> dict:
             charges_logement_previsionnelles=payload.charges_logement_previsionnelles,
             nb_enfants_moins_14=payload.nb_enfants_moins_14,
             reference_dossier=payload.reference_dossier,
+            taux_annuel=payload.taux_nominal,
+            taux_assurance=payload.taux_assurance,
         )
     except (TypeError, ValueError, KeyError) as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
@@ -86,6 +92,22 @@ def create_financing_dossier(payload: FinancingDossierRequest) -> dict:
 def summarize_financing_dossier(payload: FinancingDossierRequest) -> dict[str, str]:
     dossier = create_financing_dossier(payload)
     return {"resume": resumer_dossier(dossier)}
+
+
+@router.get("/agent/statut")
+def financing_agent_status() -> dict[str, bool]:
+    """L'assistant est-il utilisable ? (clé d'API présente ; aucun appel réseau)
+
+    La page masque l'assistant plutôt que d'afficher une fonction en panne."""
+    try:
+        from dotenv import load_dotenv
+        import openai  # noqa: F401
+    except ImportError:
+        return {"disponible": False}
+    load_dotenv(FINANCING_SRC.parent / ".env")
+    load_dotenv()
+    cle = os.getenv("XAI_API_KEY") or os.getenv("LLM_API_KEY")
+    return {"disponible": bool(cle) and not cle.startswith("colle_ta_cle")}
 
 
 @router.post("/agent/message")

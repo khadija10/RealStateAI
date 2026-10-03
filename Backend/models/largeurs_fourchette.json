@@ -1,0 +1,14 @@
+{
+  "source": "ml/exporter_largeurs.py",
+  "mesure_le": "2026-10-03T15:35:07",
+  "periode": [
+    "2025-07",
+    "2025-09"
+  ],
+  "n": 36181,
+  "demi_largeur_pct": {
+    "tiers_1": 21.1,
+    "mediane": 24.2,
+    "tiers_2": 27.7
+  }
+}

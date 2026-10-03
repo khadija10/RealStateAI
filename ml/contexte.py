@@ -95,10 +95,16 @@ def _gold(gold_path: Path) -> duckdb.DuckDBPyConnection:
     cle = str(gold_path)
     if cle not in _CACHE:
         con = duckdb.connect()
+        # Suffixe et nom de voie : affichage des ventes proches seulement,
+        # absents des gold plus anciens (et des jeux de test)
+        source = f"read_parquet('{gold_path}/**/*.parquet', hive_partitioning=true, union_by_name=true)"
+        dispo = {c[0] for c in con.execute(f"DESCRIBE SELECT * FROM {source}").fetchall()}
+        adresse_voie = ", ".join(c if c in dispo else f"NULL::VARCHAR AS {c}"
+                                 for c in ("adresse_suffixe", "adresse_nom_voie"))
         con.execute(f"""
             CREATE TABLE g AS
             SELECT id_parcelle, code_type_local, code_commune, code_postal, zone_part_dpe_fg,
-                   latitude, longitude, adresse_numero,
+                   latitude, longitude, adresse_numero, {adresse_voie},
                    date_mutation, mois_index, surface_bati, nb_pieces, valeur_fonciere,
                    prix_m2, prix_m2_reference_12m, lot1_numero, code_iris,
                    revenu_median_iris, part_logements_collectifs_iris, part_proprietaires_iris,
@@ -164,6 +170,76 @@ def features_immeuble(id_parcelle: str | None, code_type_local: str, mois_index:
             resultat["prix_m2_precedent_indexe"] = meme[0][5] * prix_m2_reference
             resultat["mois_depuis_vente_precedente"] = mois_index - meme[0][6]
     return resultat
+
+
+# Ventes comparables de proximité : ce que regarde d'abord un agent quand
+# l'immeuble n'a pas de vente récente. Mêmes critères qu'un agent : même type
+# de bien, surface à ±20 %, reventes (pas de ventes sur plan), 24 derniers
+# mois publiés ; rayon de 300 m, élargi à 600 m puis 1 km (grande couronne) s'il y a
+# moins de 5 ventes.
+RAYONS_PROXIMITE_M = (300, 600, 1000)
+TOLERANCE_SURFACE_PROXIMITE = 0.20
+MIN_VENTES_PROXIMITE = 5
+
+
+_MOTS_MINUSCULES = {"de", "du", "des", "la", "le", "les", "et", "sur", "sous", "aux", "au", "en"}
+
+
+def _nom_voie(voie: str | None) -> str:
+    """« RUE DE CHEVREUSE » → « Rue de Chevreuse »."""
+    mots = (voie or "").lower().split()
+    return " ".join(m if i and m in _MOTS_MINUSCULES else
+                    ("d'" + m[2:].capitalize() if m.startswith("d'") else
+                     "l'" + m[2:].capitalize() if m.startswith("l'") else m.capitalize())
+                    for i, m in enumerate(mots))
+
+
+def ventes_proximite(latitude: float, longitude: float, code_type_local: str, surface: float,
+                     prix_m2_reference: float | None, id_parcelle: str | None = None,
+                     n: int = 8, gold_path: Path = GOLD_PATH) -> dict:
+    """Ventes similaires les plus proches, hors de l'immeuble du bien, avec leur
+    prix au m² ramené au marché du jour (même indexation que les ventes de l'immeuble)."""
+    vide = {"ventes": [], "rayon_m": None}
+    if latitude is None or longitude is None or not Path(gold_path).exists():
+        return vide
+    con = _gold(gold_path)
+    fin_donnees = con.execute("SELECT max(mois_index) FROM g").fetchone()[0]
+    m_lat = 111_320.0
+    m_lon = 111_320.0 * float(np.cos(np.radians(latitude)))
+    for rayon in RAYONS_PROXIMITE_M:
+        lignes = con.execute("""
+            SELECT date_mutation, surface_bati, nb_pieces, valeur_fonciere, prix_m2,
+                   prix_m2 / prix_m2_reference_12m AS ratio,
+                   adresse_numero, adresse_suffixe, adresse_nom_voie,
+                   sqrt(((latitude - ?) * ?)^2 + ((longitude - ?) * ?)^2) AS distance
+            FROM g
+            WHERE code_type_local = ? AND prix_m2_reference_12m > 0
+              AND NOT coalesce(est_vefa, false)
+              AND (id_parcelle IS DISTINCT FROM ?)
+              AND surface_bati BETWEEN ? AND ?
+              AND mois_index > ?
+              AND abs(latitude - ?) < ? AND abs(longitude - ?) < ?
+            ORDER BY distance, mois_index DESC
+        """, [latitude, m_lat, longitude, m_lon, code_type_local, id_parcelle,
+              surface * (1 - TOLERANCE_SURFACE_PROXIMITE), surface * (1 + TOLERANCE_SURFACE_PROXIMITE),
+              fin_donnees - FENETRE_IMMEUBLE_MOIS,
+              latitude, rayon / m_lat, longitude, rayon / m_lon]).fetchall()
+        lignes = [v for v in lignes if v[9] <= rayon]
+        if len(lignes) >= MIN_VENTES_PROXIMITE or rayon == RAYONS_PROXIMITE_M[-1]:
+            break
+    if not lignes:
+        return vide
+    ventes = []
+    for v in lignes[:n]:
+        numero = f"{int(v[6])}{(v[7] or '').lower()} " if v[6] is not None and str(v[6]).isdigit() else ""
+        ventes.append({
+            "date": str(v[0])[:10], "surface_m2": v[1], "nb_pieces": v[2],
+            "prix": round(v[3]), "prix_m2": round(v[4]),
+            "prix_m2_aujourdhui": round(v[5] * prix_m2_reference) if prix_m2_reference else None,
+            "adresse": f"{numero}{_nom_voie(v[8])}".strip() or None,
+            "distance_m": int(round(v[9], -1)),
+        })
+    return {"ventes": ventes, "rayon_m": rayon}
 
 
 def features_iris(latitude: float, longitude: float, code_commune: str,

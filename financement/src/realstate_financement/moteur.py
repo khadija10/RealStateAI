@@ -107,10 +107,14 @@ def budget_maximum(profil: ProfilEmprunteur, departement: str = "75",
 
 
 def analyser_projet(profil: ProfilEmprunteur, projet: Projet,
-                    taux_annuel: float | None = None) -> dict:
+                    taux_annuel: float | None = None,
+                    taux_assurance: float | None = None) -> dict:
     """
     Analyse complète d'un projet identifié : plan de financement, conformité
     réglementaire, score du dossier et points de vigilance.
+
+    `taux_annuel` et `taux_assurance` remplacent les hypothèses du barème
+    quand l'utilisateur connaît les conditions proposées par sa banque.
     """
     from realstate_financement.scoring import scorer_dossier
 
@@ -127,7 +131,7 @@ def analyser_projet(profil: ProfilEmprunteur, projet: Projet,
     # Les frais de dossier et de garantie sont le plus souvent intégrés au
     # financement plutôt que payés comptant.
     emprunt_total = emprunt + credit["total_frais_credit"]
-    mensualite = mensualite_totale(emprunt_total, taux, duree)
+    mensualite = mensualite_totale(emprunt_total, taux, duree, taux_assurance)
 
     conformite = evaluer_conformite(profil, projet, mensualite, duree)
     score = scorer_dossier(profil, mensualite, besoin_avant_credit)
@@ -178,7 +182,7 @@ def analyser_projet(profil: ProfilEmprunteur, projet: Projet,
             "duree_annees": duree,
             "duree_maximale_autorisee": duree_max,
             "taux_nominal_retenu": round(taux, 4),
-            **cout_total_credit(emprunt_total, taux, duree),
+            **cout_total_credit(emprunt_total, taux, duree, taux_assurance),
         },
         "taux_endettement": round(taux_endettement(mensualite, profil), 4),
         "reste_a_vivre": rav,

@@ -173,6 +173,10 @@ def estimer_prix(
         "code_postal": geo.get("code_postal"),
         "zone_part_dpe_fg": zone_part_dpe_fg,
         "comparables_immeuble": immeuble["comparables_immeuble"],
+        # Ventes similaires autour du bien, hors immeuble (n'entrent pas dans le modèle)
+        "comparables_proximite": ctx.ventes_proximite(
+            geo["latitude"], geo["longitude"], code_type_local, surface_m2,
+            marche["prix_m2_reference_12m"], id_parcelle=id_parcelle),
         "dpe_trouve": dpe_source in ("numero", "adresse"),
         "dpe_source": dpe_source,
         "dpe_date": dpe.get("dpe_date") if dpe_source in ("numero", "adresse") else None,

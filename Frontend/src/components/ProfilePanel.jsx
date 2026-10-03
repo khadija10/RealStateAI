@@ -116,8 +116,8 @@ export default function ProfilePanel({ user, onLogout }) {
 
       {/* Changer le mot de passe */}
       <div className="bg-white rounded-2xl border border-stone-100 shadow-[var(--shadow-card)] p-6">
-        <h3 className="font-display text-xl text-ink mb-5">
-          Changer le <em>mot de passe</em>
+        <h3 className="text-[13px] font-semibold uppercase tracking-[0.1em] text-ink-muted mb-5">
+          Changer le mot de passe
         </h3>
         <form onSubmit={handleSubmit} className="space-y-4">
           <PwInput
@@ -169,8 +169,8 @@ export default function ProfilePanel({ user, onLogout }) {
 
       {/* Supprimer le compte */}
       <div className="bg-white rounded-2xl border border-red-100 shadow-[var(--shadow-card)] p-6">
-        <h3 className="font-display text-xl text-ink mb-4">
-          Zone de <em>danger</em>
+        <h3 className="text-[13px] font-semibold uppercase tracking-[0.1em] text-red-600 mb-4">
+          Supprimer mon compte
         </h3>
         <p className="text-xs text-ink-muted mb-4">
           La suppression de votre compte est définitive. Toutes vos estimations seront effacées.

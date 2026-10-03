@@ -64,6 +64,18 @@ leviers d'amélioration chiffrés.
 Ne l'appelle pas avant d'avoir toutes les informations : un dossier fondé sur
 des suppositions n'a aucune valeur devant un banquier.
 
+STYLE DES RÉPONSES
+Tu parles à des particuliers comme à des professionnels de l'immobilier : réponds
+court et en mots simples. Cinq phrases au plus, sans tableau ni titre ; les
+chiffres clés en **gras** (mensualité, taux d'endettement, reste à vivre). Une
+seule question ou proposition à la fin, pas une liste d'options. Donne les
+chiffres des outils tels quels, arrondis à l'euro.
+
+RÉPONSES « AUCUN »
+Quand la personne dit explicitement qu'elle n'a pas d'enfant, pas de crédit en
+cours ou aucun autre revenu, c'est une information : transmets la valeur 0 aux
+outils au lieu d'omettre le champ, sinon la question sera reposée.
+
 ACCOMPAGNEMENT BUDGÉTAIRE
 Une fois la mensualité connue, propose de construire le budget prévisionnel
 avec l'outil "construire_plan_budget". Il montre ce qui restera réellement
@@ -71,7 +83,8 @@ pour vivre, réparti par poste : alimentation, transports, loisirs, santé.
 
 Demande impérativement les CHARGES DE LOGEMENT PRÉVISIONNELLES — copropriété,
 taxe foncière, énergie, assurance habitation. C'est le poste que les
-emprunteurs oublient systématiquement, et il pèse souvent 200 à 400 € par mois.
+emprunteurs oublient le plus souvent ; n'en donne pas de montant type, demande
+les montants de l'annonce ou des appels de charges.
 Demande aussi l'âge des enfants : le calcul des unités de consommation
 distingue les moins de 14 ans des autres.
 
@@ -168,12 +181,7 @@ class Agent:
         self.historique.append({"role": "user", "content": message_utilisateur})
 
         for iteration in range(MAX_ITERATIONS):
-            reponse = self.client.chat.completions.create(
-                model=self.modele,
-                messages=self.historique,
-                tools=OUTILS,
-                tool_choice="auto",
-            )
+            reponse = self._appeler_modele()
             message = reponse.choices[0].message
             appels = getattr(message, "tool_calls", None)
 
@@ -215,6 +223,27 @@ class Agent:
 
         return ("Je n'arrive pas à aboutir sur cette demande. "
                 "Peux-tu la reformuler plus simplement ?")
+
+    def _appeler_modele(self, essais: int = 3) -> Any:
+        """Appel au modèle, réessayé après une limite de débit (offre gratuite
+        du fournisseur : quelques milliers de jetons par minute). Le délai
+        attendu est celui qu'indique le fournisseur dans son message."""
+        import re
+        import time
+        for essai in range(essais):
+            try:
+                return self.client.chat.completions.create(
+                    model=self.modele, messages=self.historique,
+                    tools=OUTILS, tool_choice="auto")
+            except Exception as err:  # noqa: BLE001 — seul le code 429 est réessayé
+                if getattr(err, "status_code", None) != 429 or essai == essais - 1:
+                    if getattr(err, "status_code", None) == 429:
+                        raise RuntimeError("L'assistant est très sollicité : "
+                                           "réessayez dans une minute.") from err
+                    raise
+                attente = re.search(r"try again in ([\d.]+)s", str(err))
+                time.sleep(min(20.0, float(attente.group(1)) + 0.5) if attente else 5.0)
+        raise RuntimeError("L'assistant est indisponible.")
 
     def reinitialiser(self) -> None:
         """Repart d'une conversation vierge, en gardant le client."""
