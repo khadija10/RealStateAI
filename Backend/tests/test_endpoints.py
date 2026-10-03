@@ -668,3 +668,12 @@ def test_mediane_immeuble_hors_ventes_sur_plan():
               {"date": "2021-08-01", "prix_m2": 3900, "vefa": True}]
     ref = _ramener_ventes_au_secteur(ventes, secteur, 50)
     assert ref["prix_m2"] == 2900 and ref["n"] == 2 and ref["n_vefa"] == 1
+
+
+def test_alerte_type_de_bien_incoherent():
+    from main import _alerte_type
+    assert "appartements" in _alerte_type("house", {"2": 3})
+    assert _alerte_type("house", {"2": 3, "1": 1}) is None     # une maison s'y est déjà vendue
+    assert _alerte_type("house", {"2": 2}) is None             # trop peu de ventes pour conclure
+    assert _alerte_type("apartment", {"1": 5}) is not None
+    assert _alerte_type("apartment", {}) is None
