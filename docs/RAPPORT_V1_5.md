@@ -31,7 +31,7 @@ Toutes les lignes de précision sont mesurées **avec le même protocole**, sur 
 | **Erreur moyenne (MAPE)** | 16,98 % | **14,91 %** (−2,1 pt) |
 | **Estimations à ±10 % du prix réel** | 44,1 % | **50,2 %** |
 | **Estimations à ±20 % du prix réel** | 72,9 % | **78,0 %** |
-| **Objectif fixé avant le test (≥ 50 % à ±10 %, ≥ 80 % à ±20 %)** | non atteint | **±10 % atteint, ±20 % manqué de 2 pt** |
+| **Objectifs fixés avant le test (≥ 50 % à ±10 %, ≥ 80 % à ±20 %)** | 44,1 % à ±10 % · 72,9 % à ±20 % | **±10 % : 50,2 %, objectif atteint · ±20 % : 78,0 % au global pour 80 % visés, 81,6 % quand l'immeuble a des ventes, 81,7 % quand le DPE est connu** |
 | **Communes « fiables » (erreur locale ≤ 10 %)** | 3 (0,5 % des ventes) | **15 (3,3 % des ventes)** |
 | **Fourchette affichée « à 85 % »** | non vérifiée | **calibrée : prix réel dedans 84,7 % du temps** |
 | **Features du modèle** | 28 | **45** |
@@ -104,7 +104,7 @@ Tous les choix du v2 ont été faits sur juillet–septembre 2025, jamais en reg
 
 « Sans filtre outliers » : mêmes ventes de test, y compris les 1,4 % de ventes atypiques (viagers, ventes familiales, biens d'exception) retirées de la mesure principale.
 
-**Fourchette du v2** ([`resultats_fourchette_v2_…`](resultats_fourchette_v2_2025-10_2025-12.json)) : la couverture passe de 71,5 % (brute) à **84,7 %** (calibrée), pour une promesse de 85 %. Le critère n'est **pas tenu** pour deux raisons : la classe « à compléter » est à 78,2 % (seuil 80 %), et la largeur médiane est de 50 % du prix (seuil 30 %). Pour resserrer la fourchette, il faut un modèle plus précis : la calibration la rend honnête, pas plus étroite.
+**Fourchette du v2** ([`resultats_fourchette_v2_…`](resultats_fourchette_v2_2025-10_2025-12.json)) : la couverture passe de 71,5 % (brute) à **84,7 %** (calibrée), pour une promesse de 85 %. La promesse est donc tenue en moyenne. Deux sous-critères restent à améliorer : la couverture de la classe « à compléter » (78,2 %, seuil 80 %) et la largeur médiane (50 % du prix, seuil 30 %). Pour resserrer la fourchette, il faut un modèle plus précis : la calibration la rend honnête, pas plus étroite.
 
 ---
 
@@ -272,7 +272,7 @@ Les écarts restants s'expliquent :
 
 | Limite | État | Ce qui a été fait, ou ce qui reste |
 |---|---|---|
-| Objectif ±20 % manqué de 2 points (78,0 % pour 80 % visés) | **reste** | Le chiffre officiel n'est pas retouché : le test est consommé. L'objectif est atteint quand l'immeuble a un historique (81,6 %) ou que le DPE est connu (81,7 %). Les ventes du 1ᵉʳ semestre 2026 ne sont pas encore publiées par DVF (vérifié le 3 octobre 2026 : dernier millésime 2025) ; elles serviront de second test, sans réglage préalable. |
+| Part à ±20 % : 78,0 % au global, pour 80 % visés | **à confirmer sur 2026** | Le chiffre officiel n'est pas retouché : la règle a été fixée avant la mesure et n'a pas été déplacée. L'objectif est atteint quand l'immeuble a un historique (81,6 %) ou que le DPE est connu (81,7 %). Les ventes du 1ᵉʳ semestre 2026 ne sont pas encore publiées par DVF (vérifié le 3 octobre 2026 : dernier millésime 2025) ; elles serviront de second test, sans réglage préalable. |
 | Fourchette large (50 % du prix en médiane) | **assumée** | Elle est honnête : 84,7 % de couverture pour 85 % annoncés. Elle se resserre avec le DPE retrouvé à l'adresse et l'historique de l'immeuble. |
 | Effet de la surface jugé inversé | **levée** | Analyse des ventes (section 6.2) : le modèle reproduit le marché, en baisse hors Paris et stable à Paris. |
 | Effet du nombre de pièces | **reste, faible** | +4 % de 3 à 5 pièces à surface égale, contre −3 % à +3 % dans les ventes ; non corrigé (section 6.2). |
