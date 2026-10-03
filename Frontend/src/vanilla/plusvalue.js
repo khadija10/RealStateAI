@@ -5,6 +5,7 @@
 import { heroPlusValue } from '../illustrations.js'
 import { enregistreurSimulation } from './historique.js'
 import { scenariosMarche } from './scenarios.js'
+import { champsMontants, afficherMontant } from './montants.js'
 
 export const html = `
 <section class="heros heros-simple">
@@ -31,8 +32,8 @@ export const html = `
       <input type="range" id="pv-horizon" min="1" max="30" step="1" value="10"></div>
     <div class="choix"><label>Usage du bien</label>
       <div class="bascules">
-        <button type="button" class="bascule" data-u="rp" aria-pressed="true">Résidence principale</button>
-        <button type="button" class="bascule" data-u="inv" aria-pressed="false">Investissement</button>
+        <button type="button" class="bascule" data-u="rp" role="radio" aria-checked="true" aria-pressed="true">Résidence principale</button>
+        <button type="button" class="bascule" data-u="inv" role="radio" aria-checked="false" aria-pressed="false">Investissement</button>
       </div></div>
     <button type="button" class="bouton-accent" id="pv-simuler">Simuler la plus-value</button>
     <p class="aide" id="pv-etat"></p>
@@ -185,6 +186,7 @@ export function mount(root, { apiBase = '', prefill } = {}) {
   let SECTEURS = {}
   let actif = true   // réponses ignorées après démontage (double montage React en développement)
   const historique = enregistreurSimulation(apiBase, prefill?.historique_id, 'plusvalue')
+  champsMontants(root, [['pv-prix', 'pv-o-prix']])
 
   $('#pv-illus-heros').innerHTML = heroPlusValue()
   $('#pv-illus-carte').innerHTML = tourCarte()
@@ -233,7 +235,7 @@ export function mount(root, { apiBase = '', prefill } = {}) {
   function curseurs() {
     root.querySelectorAll('input[type=range]').forEach((r) => r.style.setProperty('--p', (100 * (r.value - r.min)) / (r.max - r.min) + '%'))
     const horizon = +$('#pv-horizon').value
-    $('#pv-o-prix').textContent = euro(+$('#pv-prix').value)
+    afficherMontant($('#pv-o-prix'), euro(+$('#pv-prix').value))
     $('#pv-o-horizon').textContent = horizon + (horizon > 1 ? ' ans' : ' an') + ' · ' + (+$('#pv-annee').value + horizon)
   }
 
@@ -338,22 +340,21 @@ export function mount(root, { apiBase = '', prefill } = {}) {
   }
 
   function courbeAbattements(h) {
-    const L = 460, H = 220, mg = 34, mb = 30, mh = 16
-    const x = (a) => mg + (a * (L - mg - 12)) / 30, y = (v) => mh + (H - mh - mb) * (1 - v)
+    const L = 460, H = 210, mg = 44, md = 26, mb = 30, mh = 14
+    const x = (a) => mg + (a * (L - mg - md)) / 30, y = (v) => mh + (H - mh - mb) * (1 - v)
     let ir = '', ps = ''
     for (let a = 0; a <= 30; a++) { ir += (a ? 'L' : 'M') + x(a) + ' ' + y(abattementIR(a)) + ' '; ps += (a ? 'L' : 'M') + x(a) + ' ' + y(abattementPS(a)) + ' ' }
-    return `<svg viewBox="0 0 ${L} ${H}" style="width:100%;height:auto" role="img" aria-label="Abattements selon la durée de détention">
-      ${[0, 0.5, 1].map((v) => `<line x1="${mg}" x2="${L - 12}" y1="${y(v)}" y2="${y(v)}" stroke="var(--ligne)"/>
-        <text x="${mg - 6}" y="${y(v) + 4}" text-anchor="end" font-size="10" font-family="Inter" fill="var(--gris)">${v * 100}%</text>`).join('')}
+    return `<svg viewBox="0 0 ${L} ${H}" style="width:100%;height:auto" role="img" aria-label="Abattements selon la durée de détention : exonération totale de l'impôt sur le revenu après 22 ans, des prélèvements sociaux après 30 ans">
+      ${[0, 0.5, 1].map((v) => `<line x1="${mg}" x2="${L - md}" y1="${y(v)}" y2="${y(v)}" stroke="var(--ligne)"/>
+        <text x="${mg - 8}" y="${y(v) + 4}" text-anchor="end" font-size="13" font-family="Inter" fill="var(--gris)">${v * 100} %</text>`).join('')}
       <path d="${ir}" fill="none" stroke="var(--brun)" stroke-width="2.5"/>
-      <path d="${ps}" fill="none" stroke="var(--ambre)" stroke-width="2.5"/>
+      <path d="${ps}" fill="none" stroke="var(--ambre)" stroke-width="2.5" stroke-dasharray="7 4"/>
       <line x1="${x(h)}" x2="${x(h)}" y1="${mh}" y2="${H - mb}" stroke="var(--encre)" stroke-dasharray="3 4"/>
       <circle cx="${x(h)}" cy="${y(abattementIR(h))}" r="4.5" fill="var(--blanc)" stroke="var(--brun)" stroke-width="2.5"/>
       <circle cx="${x(h)}" cy="${y(abattementPS(h))}" r="4.5" fill="var(--blanc)" stroke="var(--ambre)" stroke-width="2.5"/>
-      ${[0, 5, 10, 15, 22, 30].map((a) => `<text x="${x(a)}" y="${H - 10}" text-anchor="middle" font-size="10" font-family="Inter" fill="var(--gris)">${a} ans</text>`).join('')}
-      <text x="${x(22) + 4}" y="${y(1) - 4}" font-size="10.5" font-family="Inter" fill="var(--brun)">Impôt sur le revenu</text>
-      <text x="${x(11)}" y="${y(0.3) - 6}" font-size="10.5" font-family="Inter" fill="var(--ambre)">Prélèvements sociaux</text>
-    </svg>`
+      ${[0, 5, 10, 15, 22, 30].map((a) => `<text x="${x(a)}" y="${H - 8}" text-anchor="${a === 30 ? 'end' : a === 0 ? 'start' : 'middle'}" font-size="13" font-family="Inter" fill="var(--gris)">${a} ans</text>`).join('')}
+    </svg>
+    <div class="legende-graphe" style="margin-top:8px"><span><i style="background:var(--brun)"></i>Impôt sur le revenu</span><span><i style="background:var(--ambre)"></i>Prélèvements sociaux (pointillés)</span></div>`
   }
 
   function resilience() {
@@ -372,18 +373,19 @@ export function mount(root, { apiBase = '', prefill } = {}) {
       : 'Les principaux secteurs d\'Île-de-France') +
       " : variation du prix au m² entre 2021 et 2025. La baisse n'a pas frappé tous les quartiers de la même façon."
     const lignes = retenus.map((s) => ({ c: s.code, nom: s.nom, v: s.eco[4] / s.eco[0] - 1 })).sort((a, b) => b.v - a.v)
-    const L = 900, hLigne = 24, mg = 230, H = lignes.length * hLigne + 30
-    const min = Math.min(...lignes.map((l) => l.v)), max = Math.max(0, ...lignes.map((l) => l.v))
-    const x = (v) => mg + ((L - mg - 60) * (v - min)) / (max - min || 1), zero = x(0)
-    $('#pv-resilience').innerHTML = `<svg viewBox="0 0 ${L} ${H}" style="width:100%;height:auto" role="img" aria-label="Variation du prix au m² entre 2021 et 2025 par secteur">
-      <line x1="${zero}" x2="${zero}" y1="0" y2="${H - 20}" stroke="var(--encre)"/>
+    // Barres qui partent juste après le libellé : l'œil relie directement la commune
+    // à sa valeur. La longueur dit l'ampleur ; le signe est écrit, et la couleur
+    // le double (hausse en vert, baisse en taupe), sans porter l'information seule.
+    const L = 900, hLigne = 26, mg = 230, H = lignes.length * hLigne + 8
+    const ampleur = Math.max(...lignes.map((l) => Math.abs(l.v)), 0.01)
+    const larg = (v) => ((L - mg - 80) * Math.abs(v)) / ampleur
+    $('#pv-resilience').innerHTML = `<svg viewBox="0 0 ${L} ${H}" style="width:100%;height:auto" role="img"
+      aria-label="Variation du prix au m² entre 2021 et 2025 : ${lignes.map((l) => `${l.nom} ${pct(l.v)}`).join(', ')}">
       ${lignes.map((l, i) => {
-        const yy = i * hLigne + 6, act = l.c === sel.value
-        return `<text x="${mg - 10}" y="${yy + 13}" text-anchor="end" font-size="12" font-family="Inter" fill="${act ? 'var(--encre)' : 'var(--gris)'}" font-weight="${act ? 600 : 400}">${l.nom}</text>
-        <rect x="${Math.min(zero, x(l.v))}" y="${yy + 3}" width="${Math.abs(x(l.v) - zero)}" height="14" rx="4" fill="${act ? 'var(--brun)' : l.v < -0.1 ? 'var(--rouge)' : 'var(--taupe)'}" opacity="${act ? 1 : 0.55}"/>
-        ${Math.abs(x(l.v) - zero) > 64
-          ? `<text x="${Math.min(zero, x(l.v)) + 8}" y="${yy + 14}" text-anchor="start" font-size="12" font-weight="600" font-family="Inter" fill="${act ? '#fff' : 'var(--encre)'}">${pct(l.v)}</text>`
-          : `<text x="${x(l.v) - 6}" y="${yy + 14}" text-anchor="end" font-size="12" font-family="Inter" fill="var(--encre)">${pct(l.v)}</text>`}`
+        const yy = i * hLigne + 4, act = l.c === sel.value
+        return `<text x="${mg - 12}" y="${yy + 14}" text-anchor="end" font-size="13" font-family="Inter" fill="${act ? 'var(--encre)' : 'var(--gris)'}" font-weight="${act ? 600 : 400}">${l.nom}</text>
+        <rect x="${mg}" y="${yy + 2}" width="${Math.max(2, larg(l.v))}" height="16" rx="4" fill="${act ? 'var(--brun)' : l.v >= 0 ? 'var(--vert)' : 'var(--taupe)'}" opacity="${act ? 1 : 0.6}"/>
+        <text x="${mg + Math.max(2, larg(l.v)) + 8}" y="${yy + 15}" font-size="13" font-weight="${act ? 700 : 500}" font-family="Inter" fill="var(--encre)">${pct(l.v)}</text>`
       }).join('')}
     </svg>`
   }
@@ -398,7 +400,7 @@ export function mount(root, { apiBase = '', prefill } = {}) {
   })
   root.querySelectorAll('[data-u]').forEach((b) => b.addEventListener('click', () => {
     usage = b.dataset.u
-    root.querySelectorAll('[data-u]').forEach((x) => x.setAttribute('aria-pressed', String(x === b)))
+    root.querySelectorAll('[data-u]').forEach((x) => { x.setAttribute('aria-pressed', String(x === b)); x.setAttribute('aria-checked', String(x === b)) })
     calculer()
   }))
 

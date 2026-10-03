@@ -193,3 +193,9 @@ input[type="range"]::-moz-range-thumb {
 /* Le bandeau des pages Estimation, Financement et Plus-value va bord à bord
    (100vw) : pas de défilement horizontal dû à la barre de défilement. */
 body { overflow-x: clip; }
+
+/* Titre de page des onglets sans bandeau : même règle que les titres de section
+   des pages Estimation, Financement, Plus-value (sans-serif, mot clé en italique). */
+.titre-page { font-family: var(--font-sans); font-weight: 400; font-size: clamp(34px, 4.3vw, 50px);
+  letter-spacing: -0.02em; line-height: 1.05; color: var(--color-ink); white-space: nowrap; }
+.titre-page em { font-family: var(--font-display); font-style: italic; }

@@ -4,6 +4,7 @@
 // au lieu du calcul JS local de l'artefact.
 import { heroFinancement } from '../illustrations.js'
 import { enregistreurSimulation } from './historique.js'
+import { champsMontants, afficherMontant } from './montants.js'
 
 export const html = `
 <section class="heros heros-simple">
@@ -53,9 +54,10 @@ export const html = `
           <option value="78">Yvelines (78)</option><option value="91">Essonne (91)</option>
           <option value="95">Val-d'Oise (95)</option></select></div>
     </div>
+    <p class="champ-lib">Cochez ce qui s'applique</p>
     <div class="bascules">
-      <button type="button" class="bascule" id="fin-primo" aria-pressed="true">Primo-accédant</button>
-      <button type="button" class="bascule" id="fin-neuf" aria-pressed="false">Bien neuf · VEFA</button>
+      <button type="button" class="bascule" id="fin-primo" role="checkbox" aria-checked="true" aria-pressed="true">Primo-accédant</button>
+      <button type="button" class="bascule" id="fin-neuf" role="checkbox" aria-checked="false" aria-pressed="false">Bien neuf (VEFA)</button>
     </div>
     <button type="button" class="bouton-accent" id="fin-calculer">Calculer mon financement</button>
   </div>
@@ -161,6 +163,7 @@ export function mount(root, { apiBase = '', prefill } = {}) {
   const $$ = (sel) => root.querySelectorAll(sel)
   const DOSSIER_URL = apiBase + '/api/financing/dossier'
   const historique = enregistreurSimulation(apiBase, prefill?.historique_id, 'financement')
+  champsMontants(root, ['revenus', 'apport', 'charges', 'prix', 'loyer'].map((k) => [`fin-${k}`, `fin-o-${k}`]))
 
   $('#fin-illus-heros').innerHTML = heroFinancement()
   $('#fin-illus-dossier').innerHTML = interieur()
@@ -190,7 +193,7 @@ export function mount(root, { apiBase = '', prefill } = {}) {
     $$('input[type=range]').forEach((r) => {
       r.style.setProperty('--p', (100 * (r.value - r.min)) / (r.max - r.min) + '%')
       const out = $('#fin-o-' + r.id.replace('fin-', ''))
-      if (out) out.textContent = euro(r.value)
+      afficherMontant(out, euro(r.value))
     })
   }
 
@@ -376,7 +379,9 @@ export function mount(root, { apiBase = '', prefill } = {}) {
   $$('input[type=range],select').forEach((el) => el.addEventListener('input', planifier))
   ;['fin-primo', 'fin-neuf'].forEach((i) => $('#' + i).addEventListener('click', (e) => {
     const b = e.currentTarget
-    b.setAttribute('aria-pressed', String(b.getAttribute('aria-pressed') !== 'true'))
+    const coche = String(b.getAttribute('aria-pressed') !== 'true')
+    b.setAttribute('aria-pressed', coche)
+    b.setAttribute('aria-checked', coche)
     planifier()
   }))
 
