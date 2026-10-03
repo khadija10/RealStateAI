@@ -270,6 +270,8 @@ class EstimationResponse(BaseModel):
     historique_id: int | None = None       # ligne d'historique, pour y rattacher les simulations
     segments_difficiles: list[dict[str, Any]] | None = None  # erreur mesurée des segments du bien
     immeuble_reference: dict[str, Any] | None = None  # médiane des ventes de l'immeuble, ramenée au secteur
+    # ventes similaires autour du bien (300 m, surface ±20 %), ramenées au secteur
+    comparables_proximite: dict[str, Any] | None = None
     adresse_sans_numero: bool | None = None  # rue seule : l'immeuble n'est pas identifié
     alerte_type: str | None = None   # type saisi jamais vendu à cette adresse, alors que l'autre l'a été
 
@@ -297,6 +299,8 @@ class HealthResponse(BaseModel):
     model_n_test: int | None = None
     # Résultats de la validation officielle (protocole fixé avant mesure)
     model_validation: dict[str, Any] | None = None
+    # Tiers de la demi-largeur des fourchettes, mesurés sur la validation (ml/exporter_largeurs.py)
+    model_largeurs: dict[str, Any] | None = None
     dvf_min_year: int | None = None
     dvf_max_year: int | None = None
     dpe_loaded: bool = False
@@ -333,6 +337,15 @@ def _charger_validation() -> dict | None:
             except Exception:  # noqa: BLE001
                 pass
     return None
+
+
+def _charger_largeurs() -> dict | None:
+    """Largeur des fourchettes sur la période de validation (Backend/models/largeurs_fourchette.json)."""
+    p = BASE_DIR / "models" / "largeurs_fourchette.json"
+    try:
+        return json.loads(p.read_text()) if p.exists() else None
+    except Exception:  # noqa: BLE001
+        return None
 
 
 def _charger_segments() -> dict:
@@ -453,7 +466,9 @@ def _construire_secteurs(df: "pd.DataFrame | None") -> dict:
         n_rec="count", med="median", p10=lambda s: s.quantile(0.10), p90=lambda s: s.quantile(0.90))
     noms = d.groupby(cles)["commune"].agg(lambda s: s.value_counts().index[0])
     par_an = d.groupby(cles + ["annee"])["prix"].median().unstack()
-    stats = tout.join(rec).join(noms).join(par_an)
+    # Nombre de ventes de chaque médiane annuelle : une médiane de 15 ventes est fragile
+    n_an = d.groupby(cles + ["annee"])["prix"].count().unstack().add_prefix("n_")
+    stats = tout.join(rec).join(noms).join(par_an).join(n_an)
     secteurs: dict = {}
     for (code, typ), r in stats.iterrows():
         recent = r["n_rec"] >= 10  # sinon : toute la période
@@ -464,6 +479,7 @@ def _construire_secteurs(df: "pd.DataFrame | None") -> dict:
             "p90": round(float(r["p90"] if recent else r["p90_tout"])),
             "n": int(r["n"]),
             "eco": [round(float(r[a])) if a in r.index and pd.notna(r[a]) else None for a in ANNEES_SECTEUR],
+            "n_an": [int(r[f"n_{a}"]) if f"n_{a}" in r.index and pd.notna(r[f"n_{a}"]) else 0 for a in ANNEES_SECTEUR],
         }
     return secteurs
 
@@ -610,6 +626,7 @@ async def lifespan(app: FastAPI):
     app.state.model_info = _charger_model_info()
     app.state.local_mape = _charger_local_mape()
     app.state.validation = _charger_validation()
+    app.state.largeurs = _charger_largeurs()
     app.state.segments = _charger_segments()
     app.state.secteurs = {}
     app.state.secteurs_par_nom = {}
@@ -726,7 +743,7 @@ Obtenir un token via `POST /api/auth/login` ou `POST /api/auth/register`.
 3. `POST /api/predictions/estimate` — estimer un bien
 4. `GET /api/search-history` — consulter ses estimations
 """,
-    version="1.4.0",
+    version="1.5.1",
     contact={
         "name": "RealEstateAI",
         "url": "https://github.com/kalioudiallo/RealStateAI",
@@ -1138,6 +1155,7 @@ def health(request: Request) -> HealthResponse:
         dpe_coverage_pct=round(dpe_cov * 100, 1) if dpe_cov > 0 else None,
         dpe_n_zones=len(dpe_zones),
         model_validation=getattr(request.app.state, "validation", None),
+        model_largeurs=getattr(request.app.state, "largeurs", None),
     )
 
 
@@ -1330,6 +1348,12 @@ def estimate(
                         (str(ml_result.get("code_commune") or ""), _type_secteur(type_bien)))
                     normalized.immeuble_reference = _ramener_ventes_au_secteur(
                         normalized.comparables_immeuble, normalized.secteur, surface)
+                    prox = ml_result.get("comparables_proximite") or {}
+                    if prox.get("ventes"):
+                        reference = _ramener_ventes_au_secteur(prox["ventes"], normalized.secteur, surface)
+                        normalized.comparables_proximite = {
+                            # une médiane de moins de 3 ventes ne fait pas référence
+                            **prox, "reference": reference if reference and reference["n"] >= 3 else None}
                 if lm.get("mape"):
                     normalized.reliability = round(max(0.30, min(0.95, 1.0 - lm["mape"] / 100)), 2)
                 # Score géocodage BAN
@@ -1555,6 +1579,31 @@ def market_secteurs(
     return sorted(({**s, "loyer": loyers.get(s["code"], {}).get(typ)} for s in secteurs), key=lambda s: -s["med"])
 
 
+def _correction_recente(serie: dict) -> dict | None:
+    """Rythme annuel de la dernière correction des prix, mesuré sur l'indice
+    Notaires-INSEE : du point haut de 2021-2022 au point bas qui le suit.
+
+    Sert de scénario de baisse commun à toutes les pages : « la correction
+    récente se reproduit », chiffrée pour le département et le type de bien."""
+    valeurs, debut = serie.get("valeurs") or [], serie.get("debut", "")
+    try:
+        annee0, trim0 = int(debut[:4]), int(debut[-1])
+    except ValueError:
+        return None
+    def lib(i: int) -> str:
+        return f"{annee0 + (trim0 - 1 + i) // 4}-T{(trim0 - 1 + i) % 4 + 1}"
+    fenetre = [i for i in range(len(valeurs)) if lib(i)[:4] in ("2021", "2022")]
+    if not fenetre:
+        return None
+    pic = max(fenetre, key=lambda i: valeurs[i])
+    bas = min(range(pic, len(valeurs)), key=lambda i: valeurs[i])
+    if bas == pic:
+        return None
+    taux = (valeurs[bas] / valeurs[pic]) ** (4 / (bas - pic)) - 1
+    return {"taux": round(taux, 4), "de": lib(pic), "a": lib(bas),
+            "indice_de": valeurs[pic], "indice_a": valeurs[bas]}
+
+
 @app.get(f"{API_PREFIX}/market/indices", tags=["marché"])
 def market_indices(
     dep: str = Query(..., description="Code département (75, 92…)"),
@@ -1569,7 +1618,8 @@ def market_indices(
         raise HTTPException(404 if ref else 503, "Indice de prix non disponible pour ce département.")
     typ = _type_secteur(property_type)
     reel = typ if typ in series else next(iter(series))
-    return {**series[reel], "dep": dep, "type_reel": reel, "source": ref.get("source")}
+    return {**series[reel], "dep": dep, "type_reel": reel, "source": ref.get("source"),
+            "correction_recente": _correction_recente(series[reel])}
 
 
 @app.get(f"{API_PREFIX}/market/trends", tags=["marché"])

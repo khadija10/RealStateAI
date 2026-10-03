@@ -98,7 +98,7 @@ def construire_plan_budget(
     `charges_logement_previsionnelles` couvre ce que le crédit ne comprend
     pas : charges de copropriété, taxe foncière mensualisée, énergie,
     assurance habitation. C'est le poste que les emprunteurs oublient le plus
-    souvent, et il peut représenter 200 à 400 € par mois.
+    souvent.
     """
     uc = unites_consommation(nb_adultes, nb_enfants_moins_14, nb_enfants_14_et_plus)
     niveau, revenu_par_uc = niveau_de_vie(revenus_mensuels, uc)
@@ -139,9 +139,9 @@ def construire_plan_budget(
         )
     if charges_logement_previsionnelles == 0:
         alertes.append(
-            "Aucune charge de logement n'a été renseignée. Copropriété, taxe "
-            "foncière, énergie et assurance habitation représentent souvent "
-            "200 à 400 € par mois et sont systématiquement sous-estimées."
+            "Aucune charge de logement n'a été renseignée : copropriété, taxe "
+            "foncière, énergie et assurance habitation s'ajoutent à la mensualité. "
+            "Indiquez-les (montants de l'annonce ou des appels de charges du vendeur)."
         )
 
     return {

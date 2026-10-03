@@ -1,9 +1,12 @@
 import { useEffect, useMemo, useState } from 'react'
-import { getSearchHistory, deleteHistoryItem, clearHistory } from '../api/client'
+import { getSearchHistory, deleteHistoryItem, clearHistory, getHealth } from '../api/client'
+import { precisionDe } from '../vanilla/precision.js'
 
 function formatEUR(n) {
   return new Intl.NumberFormat('fr-FR', { style: 'currency', currency: 'EUR', maximumFractionDigits: 0 }).format(n)
 }
+// Prix et fourchettes arrondis au millier, comme sur la page Estimation
+const formatPrix = (n) => formatEUR(Math.round(n / 1000) * 1000)
 
 function formatDate(iso, avecHeure = true) {
   if (!iso) return '—'
@@ -24,12 +27,34 @@ const TYPE_LABELS = {
   other: 'Autre',
 }
 
-// Mêmes libellés que la page Estimation (classe mesurée par le protocole d'évaluation)
-const CLASSES = {
-  fiable: { titre: 'Fiabilité élevée', ton: 'bg-emerald-50 text-emerald-700' },
-  indicative: { titre: 'Fiabilité correcte', ton: 'bg-amber-50 text-amber-800' },
-  a_completer: { titre: 'Fiabilité limitée', ton: 'bg-red-50 text-red-700' },
-  donnees_insuffisantes: { titre: 'Peu de références', ton: 'bg-stone-100 text-ink-muted' },
+// Même étiquette que la page Estimation : la largeur de la fourchette du bien,
+// située parmi les tiers mesurés (largeurs = model_largeurs de /api/health)
+const TONS = { vert: 'bg-emerald-50 text-emerald-700', ambre: 'bg-amber-50 text-amber-800', rouge: 'bg-red-50 text-red-700' }
+function precision(item, largeurs) {
+  const pr = item.resultat?.price_range
+  if (!pr || !item.estimated_price) return null
+  const p = precisionDe({ valeur: item.estimated_price, basse: pr.low, haute: pr.high }, largeurs)
+  if (!p) return null
+  return { titre: `${p.titre || 'Fourchette'} · ± ${Math.round(p.demi)} %`, ton: TONS[p.ton] || 'bg-stone-100 text-ink-muted' }
+}
+
+// Pourquoi le prix d'un même bien a changé entre deux estimations : une autre
+// saisie (DPE, année), une mise à jour du marché, ou une nouvelle version du modèle.
+// Seule la deuxième est une évolution du marché.
+function causeEcart(premiere, derniere) {
+  const a = premiere.resultat || {}, b = derniere.resultat || {}
+  const sa = a.saisie || {}, sb = b.saisie || {}
+  const dpeA = sa.dpe_classe ?? premiere.dpe_classe ?? null, dpeB = sb.dpe_classe ?? derniere.dpe_classe ?? null
+  const anA = sa.annee_construction ?? premiere.annee_construction ?? null, anB = sb.annee_construction ?? derniere.annee_construction ?? null
+  const changes = []
+  if (dpeA !== dpeB) changes.push(`DPE ${dpeB ? `indiqué ${dpeB}` : 'non indiqué'} au lieu de ${dpeA || 'non indiqué'}`)
+  if (anA !== anB) changes.push(`année de construction ${anB || 'non indiquée'} au lieu de ${anA || 'non indiquée'}`)
+  if (changes.length) return { marche: false, texte: `autres caractéristiques saisies (${changes.join(', ')})` }
+  if (a.secteur?.med && b.secteur?.med && (a.secteur.med !== b.secteur.med || a.secteur.annee !== b.secteur.annee)) {
+    return { marche: true, texte: 'mise à jour des ventes du secteur' }
+  }
+  if (a.modele_entraine_le !== b.modele_entraine_le) return { marche: false, texte: 'nouvelle version du modèle' }
+  return { marche: false, texte: 'recalcul avec les mêmes caractéristiques' }
 }
 
 const TRIS = {
@@ -70,7 +95,8 @@ function regrouper(items) {
     const premiere = estimations[estimations.length - 1]
     const evolution = estimations.length > 1 && premiere.estimated_price && derniere.estimated_price
       ? (100 * (derniere.estimated_price / premiere.estimated_price - 1)) : null
-    return { ...g, estimations, derniere, premiere, simulations, evolution }
+    const cause = evolution != null ? causeEcart(premiere, derniere) : null
+    return { ...g, estimations, derniere, premiere, simulations, evolution, cause }
   })
 }
 
@@ -82,11 +108,11 @@ function ResumePlusValue({ sim }) {
   return (
     <p className="text-[13px] text-ink">
       <span className="font-medium">Plus-value</span> · scénario {sim.scenario}, revente en {sim.annee_revente}
-      {' '}: {formatEUR(sim.revente)}, plus-value{' '}
+      {' '}: {formatPrix(sim.revente)}, plus-value{' '}
       <span className={`font-semibold tabular-nums ${sim.plus_value >= 0 ? 'text-emerald-700' : 'text-red-600'}`}>
-        {sim.plus_value >= 0 ? '+' : '−'}{formatEUR(Math.abs(sim.plus_value))}
+        {sim.plus_value >= 0 ? '+' : '−'}{formatPrix(Math.abs(sim.plus_value))}
       </span>
-      , gain net {sim.net < 0 ? '−' : ''}{formatEUR(Math.abs(sim.net))} <span className="text-ink-muted">({sim.usage})</span>
+      , gain net {sim.net < 0 ? '−' : ''}{formatPrix(Math.abs(sim.net))} <span className="text-ink-muted">({sim.usage})</span>
     </p>
   )
 }
@@ -95,22 +121,22 @@ function ResumeFinancement({ sim }) {
   return (
     <p className="text-[13px] text-ink">
       <span className="font-medium">Financement</span> · <span className="font-semibold tabular-nums">{formatEUR(sim.mensualite)}/mois</span>
-      {' '}sur {sim.duree} ans, {formatEUR(sim.montant_emprunte)} empruntés, endettement {formatPct(100 * (sim.taux_endettement || 0))}
+      {' '}sur {sim.duree} ans, {formatPrix(sim.montant_emprunte)} empruntés, endettement {formatPct(100 * (sim.taux_endettement || 0))}
       {' '}· <span className={sim.conforme_hcsf ? 'text-emerald-700' : 'text-red-600'}>{sim.verdict}</span>
       {sim.score ? <span className="text-ink-muted"> · score {sim.score}/100</span> : null}
     </p>
   )
 }
 
-function ComparisonSummary({ a, b, onClear }) {
+function ComparisonSummary({ a, b, onClear, largeurs }) {
   const ppmA = a.area_m2 ? a.estimated_price / a.area_m2 : null
   const ppmB = b.area_m2 ? b.estimated_price / b.area_m2 : null
   const diff = b.estimated_price - a.estimated_price
   const diffPct = formatPct((diff / a.estimated_price) * 100)
   const cheaper = diff < 0 ? 'B' : diff > 0 ? 'A' : null
   const NR = 'non renseigné'
-  const fourchette = (x) => x.resultat?.price_range ? `${formatEUR(x.resultat.price_range.low)} – ${formatEUR(x.resultat.price_range.high)}` : NR
-  const classe = (x) => CLASSES[x.resultat?.classe_fiabilite]?.titre ?? NR
+  const fourchette = (x) => x.resultat?.price_range ? `${formatPrix(x.resultat.price_range.low)} – ${formatPrix(x.resultat.price_range.high)}` : NR
+  const classe = (x) => precision(x, largeurs)?.titre ?? NR
   const dpe = (x) => x.resultat?.dpe_classe || x.dpe_classe || NR
 
   const rows = [
@@ -118,10 +144,10 @@ function ComparisonSummary({ a, b, onClear }) {
     { label: 'Type', a: TYPE_LABELS[a.property_type] ?? NR, b: TYPE_LABELS[b.property_type] ?? NR },
     { label: 'Surface', a: a.area_m2 ? `${a.area_m2} m²` : NR, b: b.area_m2 ? `${b.area_m2} m²` : NR },
     { label: 'DPE', a: dpe(a), b: dpe(b) },
-    { label: 'Prix estimé', a: formatEUR(a.estimated_price), b: formatEUR(b.estimated_price), highlight: true },
+    { label: 'Prix estimé', a: formatPrix(a.estimated_price), b: formatPrix(b.estimated_price), highlight: true },
     { label: 'Fourchette', a: fourchette(a), b: fourchette(b) },
     ...(ppmA && ppmB ? [{ label: 'Prix / m²', a: formatEUR(Math.round(ppmA)), b: formatEUR(Math.round(ppmB)) }] : []),
-    { label: 'Fiabilité', a: classe(a), b: classe(b) },
+    { label: 'Précision', a: classe(a), b: classe(b) },
   ]
 
   return (
@@ -137,7 +163,7 @@ function ComparisonSummary({ a, b, onClear }) {
         <div className="bg-stone-50 rounded-xl p-4">
           <p className="text-[13px] text-ink-muted mb-1">Prix de B par rapport à A</p>
           <p className="text-xl font-semibold tabular-nums text-ink">
-            {diff === 0 ? 'identique' : `${formatEUR(Math.abs(diff))} ${diff < 0 ? 'de moins' : 'de plus'}`}
+            {diff === 0 ? 'identique' : `${formatPrix(Math.abs(diff))} ${diff < 0 ? 'de moins' : 'de plus'}`}
           </p>
           <p className="text-[13px] text-ink-muted mt-0.5">{diff > 0 ? '+' : ''}{diffPct}</p>
         </div>
@@ -202,6 +228,11 @@ export default function History({ onReEstimate, onVoir }) {
   const [confirmClear, setConfirmClear] = useState(false)
   const [search, setSearch] = useState('')
   const [tri, setTri] = useState('recent')
+
+  const [largeurs, setLargeurs] = useState(null)
+  useEffect(() => {
+    getHealth().then((h) => setLargeurs(h?.model_largeurs?.demi_largeur_pct || null)).catch(() => {})
+  }, [])
 
   useEffect(() => {
     getSearchHistory(200)
@@ -379,7 +410,7 @@ export default function History({ onReEstimate, onVoir }) {
           const badge = selIdx === 0 ? 'A' : selIdx === 1 ? 'B' : null
           const ouvert = ouverts.has(g.cle)
           const res = item.resultat
-          const classe = CLASSES[res?.classe_fiabilite]
+          const classe = precision(item, largeurs)
           const dpe = res?.dpe_classe || item.dpe_classe
           const nbSims = Object.keys(g.simulations).length
           const depliable = g.estimations.length > 1 || nbSims > 0
@@ -424,13 +455,13 @@ export default function History({ onReEstimate, onVoir }) {
 
                 <div className="text-right shrink-0">
                   {item.estimated_price ? (
-                    <p className="text-sm font-semibold text-ink tabular-nums">{formatEUR(item.estimated_price)}</p>
+                    <p className="text-sm font-semibold text-ink tabular-nums">{formatPrix(item.estimated_price)}</p>
                   ) : (
                     <p className="text-[13px] text-ink-muted">—</p>
                   )}
                   {res?.price_range ? (
                     <p className="text-[13px] text-ink-muted tabular-nums mt-0.5">
-                      {formatEUR(res.price_range.low)} – {formatEUR(res.price_range.high)}
+                      {formatPrix(res.price_range.low)} – {formatPrix(res.price_range.high)}
                     </p>
                   ) : item.area_m2 && item.estimated_price ? (
                     <p className="text-[13px] text-ink-muted tabular-nums mt-0.5">
@@ -438,10 +469,14 @@ export default function History({ onReEstimate, onVoir }) {
                     </p>
                   ) : null}
                   {g.evolution != null && (
-                    <p className={`text-[13px] tabular-nums mt-0.5 ${Math.abs(g.evolution) < 0.05 ? 'text-ink-muted' : g.evolution > 0 ? 'text-emerald-700' : 'text-red-600'}`}>
+                    // Vert ou rouge seulement pour une évolution du marché : un écart dû à une
+                    // autre saisie ou au modèle n'est ni une hausse ni une baisse du bien.
+                    <p className={`text-[13px] tabular-nums mt-0.5 max-w-[260px] ${Math.abs(g.evolution) < 0.05 || !g.cause?.marche ? 'text-ink-muted' : g.evolution > 0 ? 'text-emerald-700' : 'text-red-600'}`}>
                       {Math.abs(g.evolution) < 0.05
                         ? `prix inchangé depuis le ${formatDate(g.premiere.created_at, false)}`
-                        : `${g.evolution > 0 ? '+' : ''}${formatPct(g.evolution)} depuis le ${formatDate(g.premiere.created_at, false)}`}
+                        : g.cause?.marche
+                          ? `${g.evolution > 0 ? '+' : ''}${formatPct(g.evolution, 0)} depuis le ${formatDate(g.premiere.created_at, false)} : ${g.cause.texte}`
+                          : `Nouvelle estimation, ${g.evolution > 0 ? '+' : ''}${formatPct(g.evolution, 0)} : ${g.cause?.texte}. Ce n'est pas une évolution du marché.`}
                     </p>
                   )}
                 </div>
@@ -505,10 +540,10 @@ export default function History({ onReEstimate, onVoir }) {
                         {g.estimations.map((e) => (
                           <div key={e.id} className="flex items-center gap-3 py-1.5 text-[13px]">
                             <span className="text-ink-muted w-44 shrink-0">{formatDate(e.created_at)}</span>
-                            <span className="font-semibold text-ink tabular-nums">{e.estimated_price ? formatEUR(e.estimated_price) : '—'}</span>
+                            <span className="font-semibold text-ink tabular-nums">{e.estimated_price ? formatPrix(e.estimated_price) : '—'}</span>
                             {e.resultat?.price_range && (
                               <span className="text-ink-muted tabular-nums hidden sm:inline">
-                                {formatEUR(e.resultat.price_range.low)} – {formatEUR(e.resultat.price_range.high)}
+                                {formatPrix(e.resultat.price_range.low)} – {formatPrix(e.resultat.price_range.high)}
                               </span>
                             )}
                             <span className="flex-1" />
@@ -567,7 +602,7 @@ export default function History({ onReEstimate, onVoir }) {
       )}
 
       {canCompare && (
-        <ComparisonSummary a={selA} b={selB} onClear={() => setSelected([])} />
+        <ComparisonSummary a={selA} b={selB} largeurs={largeurs} onClear={() => setSelected([])} />
       )}
 
       <div className="pt-6 border-t border-stone-100 flex justify-end">

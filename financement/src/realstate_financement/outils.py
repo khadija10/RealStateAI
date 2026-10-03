@@ -53,7 +53,8 @@ CHAMPS_PROFIL: dict[str, Any] = {
     "autres_revenus_mensuels": {
         "type": "number",
         "description": "Revenus complémentaires réguliers : loyers perçus, "
-                       "pensions. Les loyers ne sont retenus qu'à 70 %.",
+                       "pensions. Les loyers ne sont retenus qu'à 70 %. "
+                       "Si la personne dit n'en avoir aucun, transmets 0.",
     },
     "situation_professionnelle": {
         "type": "string",
@@ -338,7 +339,10 @@ def outil_verifier_dossier(**args: Any) -> dict:
                                if manquantes else None),
         "dossier_complet": not manquantes,
         "consigne": (
-            "Pose UNE seule question à la fois, en commençant par "
+            "Relis d'abord les messages de la personne : si elle a déjà "
+            "répondu à une information manquante, y compris par « aucun » ou "
+            "« pas de » (valeur 0), rappelle cet outil avec cette valeur. "
+            "Sinon, pose UNE seule question à la fois, en commençant par "
             "'prochaine_question'. N'invente aucune de ces valeurs et ne les "
             "remplis pas par défaut : chacune modifie le résultat."
             if manquantes else
@@ -510,7 +514,8 @@ OUTILS: list[dict] = [
         "qui manquent, avec la question à poser. APPELLE CET OUTIL EN PREMIER, "
         "avant tout calcul, puis à nouveau après chaque réponse, jusqu'à ce "
         "que 'dossier_complet' soit vrai. Ne transmets que les informations "
-        "que la personne t'a réellement données.",
+        "que la personne t'a réellement données ; « aucun », « pas de » ou "
+        "« rien » est une réponse : transmets alors 0.",
         {**CHAMPS_PROFIL, **CHAMPS_BIEN},
         [],
     ),

@@ -199,3 +199,13 @@ body { overflow-x: clip; }
 .titre-page { font-family: var(--font-sans); font-weight: 400; font-size: clamp(34px, 4.3vw, 50px);
   letter-spacing: -0.02em; line-height: 1.05; color: var(--color-ink); white-space: nowrap; }
 .titre-page em { font-family: var(--font-display); font-style: italic; }
+
+/* Auto-remplissage du navigateur : pas de fond jaune, la charte est conservée */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: var(--color-ink);
+  -webkit-box-shadow: 0 0 0 1000px var(--color-surface) inset;
+  transition: background-color 9999s ease-out 0s;
+  caret-color: var(--color-ink);
+}

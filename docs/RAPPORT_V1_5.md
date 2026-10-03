@@ -50,7 +50,7 @@ Toutes les lignes de précision sont mesurées **avec le même protocole**, sur 
 | **Confirmation sur la validation (juil.–sept. 2025)** | — | **14,09 %, 50,9 % à ±10 %, 79,6 % à ±20 %** : les deux périodes racontent la même histoire |
 | **Ventes sur plan (VEFA)** | mélangées partout | **signalées dans l'immeuble, écartées des statistiques de secteur** ; testées dans le modèle, sans gain (section 4.4) |
 | **Carte et référence du marché** | maisons et appartements mélangés ; carte issue d'une ancienne extraction | **séparées par type de bien et par marché (tout, ancien, neuf), calculées sur le dataset servi** |
-| **Avis de valeur PDF** | fiche reprenant le formulaire | **avis de valeur d'une page : prix, fourchette, fiabilité, ventes de l'immeuble, marché, points d'attention, méthode** |
+| **Estimation PDF** | fiche reprenant le formulaire | **estimation d'une page : prix, fourchette, fiabilité, ventes de l'immeuble, marché, points d'attention, méthode** |
 | **Financement** | mensualité, HCSF, frais | **+ point mort acheter ou louer, aides aux primo-accédants signalées, montants saisissables** |
 | **Mémoire du backend au chargement** | — | **pic de 979 Mo** avec les statistiques de marché (2 627 Mo avant la correction de la section 5.2) |
 
@@ -448,7 +448,7 @@ Comparée à l'ancienne interface v1.4, la page d'estimation lui empruntait moin
 2. **Un modèle nettement plus précis.** L'erreur moyenne passe de 16,98 % à 14,91 %. Une estimation sur deux tombe à moins de 10 % du prix réel, comme visé. **Près de huit sur dix** tombent à moins de 20 %, et **plus de huit sur dix** quand l'immeuble a des ventes ou que le DPE est connu.
 3. **Une application qui montre sa preuve et ses limites.** Ventes de l'immeuble, fourchette dont la promesse est tenue (84,7 % pour 85 %), erreur mesurée par commune et par segment, alertes quand la saisie est douteuse.
 4. **Des décisions appuyées sur des mesures.** Exemple : l'indicateur de vente sur plan a été testé sur la validation et écarté faute de gain, mais il a corrigé l'affichage (Bobigny).
-5. **Un parcours complet** : estimation, avis de valeur, financement conforme aux normes HCSF, point mort acheter ou louer, plus-value et fiscalité 2026.
+5. **Un parcours complet** : estimation exportable en PDF, financement conforme aux normes HCSF, point mort acheter ou louer, plus-value et fiscalité 2026.
 
 ### 10.2 Les chiffres à citer
 
@@ -489,10 +489,12 @@ La liste complète, avec les chiffres périmés à ne pas reprendre et les captu
 
 | Question | Réponse courte |
 |---|---|
-| « Un agent peut-il défendre un prix avec 15 % d'erreur ? » | Il défend un avis de valeur, pas un chiffre seul : ventes de l'immeuble ramenées au marché, fourchette tenue à 85 %, erreur mesurée dans son secteur. Avec ces preuves, plus de 80 % des estimations sont à moins de 20 %. |
+| « Un agent peut-il défendre un prix avec 15 % d'erreur ? » | Il défend une estimation argumentée, pas un chiffre seul : ventes de l'immeuble ramenées au marché, fourchette tenue à 85 %, erreur mesurée dans son secteur. Avec ces preuves, plus de 80 % des estimations sont à moins de 20 %. |
 | « Pourquoi ne pas avoir retouché le modèle pour atteindre 80 % ? » | Parce que le test était consommé : régler le modèle en le regardant aurait rendu le chiffre optimiste, ce qui était le défaut de l'ancienne évaluation. La prochaine mesure se fera sur les ventes 2026. |
 | « Pourquoi 39 € et pas 14,99 € ? » | Parce que la valeur pour un agent est le dossier (preuves, financement de l'acheteur), et que ses outils actuels coûtent davantage. C'est une grille cible, à valider par une bêta gratuite. |
 | « Combien d'agents en Île-de-France ? » | Environ 40 000 professionnels de la transaction, dont environ 20 000 mandataires (fichier des CCI au 1ᵉʳ janvier 2026). |
+| « Que veut dire 87 % de fiabilité locale ? » | C'est 100 moins l'écart moyen mesuré dans la commune (13 % à Maurepas, sur 48 ventes). Ce n'est pas une probabilité d'avoir raison : la probabilité, c'est la fourchette, qui contient le prix réel 85 fois sur 100. |
+| « D'où vient le scénario de baisse ? » | De l'indice Notaires-INSEE du département : le rythme de la dernière correction, du point haut de 2021-2022 au point bas suivant (−3,2 %/an dans les Yvelines, −6,4 %/an en Seine-Saint-Denis). |
 | « Et le neuf ? » | Testé : l'indicateur n'apporte rien au modèle (le neuf pèse 1,9 % des ventes de 2025), mais il corrige l'affichage des secteurs. |
 
 ---
@@ -523,3 +525,45 @@ La liste complète, avec les chiffres périmés à ne pas reprendre et les captu
 | `Frontend/src/components/FiltresMarche.jsx` | filtres type de bien et marché (carte, référence) |
 | `docs/marche_professionnels_idf.md`, `docs/tests_utilisateurs.md` | marché adressable ; protocole de tests utilisateurs |
 | `docs/FONCTIONNALITES.md` | liste des fonctionnalités |
+| `ml/exporter_largeurs.py`, `Backend/models/largeurs_fourchette.json` | tiers de largeur des fourchettes sur la validation (étiquette de marge) |
+| `Frontend/src/vanilla/scenarios.js`, `precision.js` | scénarios communs à toutes les pages ; étiquette de marge commune à l'estimation et à l'historique |
+
+---
+
+## 12. VERSION 1.5.1 — SECONDE RELECTURE EXTÉRIEURE (3 OCTOBRE 2026)
+
+Une relecture extérieure (client, designer, professionnel de l'immobilier) a pointé surtout des incohérences entre les modules. Principe retenu pour la corriger : **tout chiffre affiché est mesuré ou servi par le backend, avec sa source ; ce qui est un choix de l'équipe est présenté comme tel.**
+
+### 12.1 Cohérence entre les modules
+
+- **Scénarios communs** (`vanilla/scenarios.js`) à l'Estimation, au Financement et à la Plus-value : baisse au rythme de la dernière correction de l'indice Notaires-INSEE du département et du type de bien, stabilité, reprise de 2 %/an (cible de la BCE). L'ancien scénario bas « tendance du secteur prolongée » pouvait être quasi nul (−0,09 %/an à Maurepas) et le Financement utilisait −2 % fixe. La correction mesurée va de −2,4 % à −6,4 %/an selon le département.
+- **Un seul arrondi** : erreurs et écarts à l'unité, prix et fourchettes au millier, partout (page, historique, PDF).
+- **Frais de revente** : 5 % dans la Plus-value comme dans « Acheter ou louer ».
+
+### 12.2 Fiabilité
+
+- **Marge de prix** : la demi-largeur de la fourchette du bien, en euros, au centre d'un cercle en trois arcs. Son étiquette (réduite, normale, large) la situe parmi les **tiers mesurés** des fourchettes produites sur la période de validation (36 181 ventes : ±21,1 % et ±27,7 %, médiane ±24,2 %), cohérents avec la largeur médiane du test (±25 %). La largeur d'une fourchette ne dépend pas du prix réel : le test n'est ni utilisé ni réglé.
+- **Fiabilité locale** : le score du backend, 100 − l'écart moyen mesuré dans la commune, affiché avec sa base (« écart moyen de 13 %, 48 ventes vérifiées »).
+
+### 12.3 Preuves et données
+
+- **Ventes similaires à proximité** quand l'immeuble a moins de trois reventes (300 m, puis 600 m et 1 km ; surface ±20 % ; 24 mois ; hors ventes sur plan ; médiane à partir de 3 ventes). Ce sont des paramètres de recherche, annoncés comme tels dans la méthodologie.
+- **Nombre de ventes par année** sous la courbe du secteur ; une année de moins de 30 ventes est signalée.
+- **Historique** : un écart entre deux estimations est attribué à une autre saisie, à une nouvelle version du modèle ou à une mise à jour du marché ; seule la dernière est présentée comme une évolution du marché.
+- **DVF 2026** : aucun millésime 2026 publié au 3 octobre 2026 (geo-dvf s'arrête à 2025).
+
+### 12.4 Retiré parce que non sourcé
+
+- Les **ajustements chiffrés** (étage, extérieur, parking, état) et le forfait parking, écrits sans source : remplacés par une liste de points à vérifier lors de la visite.
+- Le « 200 à 400 € » de charges de logement (interface, alerte du moteur, consignes de l'agent).
+- La justification « −2 %/an, de l'ordre de la correction 2022-2024 », fausse au regard de l'indice.
+
+### 12.5 Interface
+
+- Champ unique « Adresse ou commune », un seul bouton « Estimer », carte Fiabilité et colonne de droite à la hauteur de la carte du prix.
+- Textes raccourcis, mot simple puis terme exact (« prix médian de la commune », « €/m² actualisé »).
+- Financement : formulaire court avec un volet « Préciser », taux et assurance saisissables, charges du futur logement, verdict en clair.
+- Carte : paliers plus contrastés, communes sans données hachurées, couverture expliquée.
+- PDF sur une page A4, aligné sur la page.
+- **Mis de côté** (code conservé, HTML commenté) : l'agent conversationnel, fonctionnel avec une clé Groq mais limité par le débit de l'offre gratuite, et la liste des pièces du dossier de prêt, dont les cases n'étaient pas enregistrées.
+

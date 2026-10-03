@@ -34,13 +34,18 @@ const DEP_VIEWS = {
 const PRICE_SCALE = [
   // Échelle d'une seule teinte, du sable au brun : lisible par les daltoniens,
   // et sans le jugement du vert / rouge (Paris n'est pas « mauvais », il est cher).
-  { max: 3000, color: '#F3E3C6' },
-  { max: 5000, color: '#E3C08C' },
-  { max: 7000, color: '#C99A5B' },
-  { max: 9000, color: '#A6733A' },
-  { max: 12000, color: '#7A4F28' },
-  { max: Infinity, color: '#4A2E17' },
+  // Paliers espacés régulièrement en luminosité (OKLab, écart ≥ 13 entre deux
+  // classes voisines, contre 10 auparavant) pour qu'elles se distinguent.
+  { max: 3000, color: '#F8EBD3', label: '< 3 000 €' },
+  { max: 5000, color: '#E2B676', label: '3–5 000 €' },
+  { max: 7000, color: '#C1843D', label: '5–7 000 €' },
+  { max: 9000, color: '#935A22', label: '7–9 000 €' },
+  { max: 12000, color: '#633612', label: '9–12 000 €' },
+  { max: Infinity, color: '#341A06', label: '> 12 000 €' },
 ]
+// Communes sans assez de ventes : hachurées, pour ne pas ressembler à la classe la plus basse
+const HACHURES = 'rsai-sans-donnees'
+const SWATCH_HACHURES = 'repeating-linear-gradient(45deg,#9a948c 0 1.5px,#fff 1.5px 5px)'
 
 function priceColor(prix) {
   return (PRICE_SCALE.find((s) => prix <= s.max) ?? PRICE_SCALE.at(-1)).color
@@ -119,8 +124,10 @@ export default function PriceMap() {
           if (price) {
             matched++
             feature.properties = { ...feature.properties, ...price }
-            features.push(feature)
+          } else {
+            feature.properties = { ...feature.properties, nom_commune: feature.properties.nom, sansDonnees: true }
           }
+          features.push(feature)
         }
       }
       setMatchRate(total > 0 ? Math.round((matched / total) * 100) : null)
@@ -145,11 +152,11 @@ export default function PriceMap() {
       function polyStyle(feature) {
         const prix = feature.properties.prix_m2_median
         return {
-          fillColor: prix ? priceColor(prix) : '#d1d5db',
+          fillColor: prix ? priceColor(prix) : `url(#${HACHURES})`,
           weight: 0.8,
           opacity: 1,
           color: '#ffffff',
-          fillOpacity: 0.78,
+          fillOpacity: prix ? 0.78 : 0.9,
         }
       }
 
@@ -163,7 +170,8 @@ export default function PriceMap() {
               layer.bringToFront()
               setHovered({
                 nom: p.nom_commune,
-                dep: p.code_departement,
+                dep: p.code_departement || p.code?.slice(0, 2),
+                sansDonnees: !!p.sansDonnees,
                 prix: p.prix_m2_median,
                 q1: p.prix_m2_q1,
                 q3: p.prix_m2_q3,
@@ -181,6 +189,16 @@ export default function PriceMap() {
           })
         },
       }).addTo(map)
+
+      // Motif de hachures dans le SVG de Leaflet (fillColor = url(#…))
+      const svg = map.getPanes().overlayPane.querySelector('svg')
+      if (svg && !svg.querySelector(`#${HACHURES}`)) {
+        const ns = 'http://www.w3.org/2000/svg'
+        const defs = document.createElementNS(ns, 'defs')
+        defs.innerHTML = `<pattern id="${HACHURES}" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)">
+          <rect width="6" height="6" fill="#ffffff"/><line x1="0" y1="0" x2="0" y2="6" stroke="#9a948c" stroke-width="1.5"/></pattern>`
+        svg.prepend(defs)
+      }
 
       geoLayerRef.current = geoLayer
       setLoading(false)
@@ -250,7 +268,8 @@ export default function PriceMap() {
       </div>
 
       {/* Carte + tooltip dans un wrapper relatif sans overflow-hidden */}
-      <div className="relative">
+      {/* isolate : les panneaux Leaflet (z-index 400+) ne passent plus au-dessus de l'en-tête */}
+      <div className="relative isolate">
         {/* Tooltip hover — en dehors du overflow-hidden */}
         {hovered && (
           <div className="absolute top-3 right-3 z-[400] bg-white rounded-xl shadow-lg border border-stone-100 px-4 py-3 w-56 pointer-events-none" style={{ zIndex: 1000 }}>
@@ -258,9 +277,13 @@ export default function PriceMap() {
             <p className="text-[11px] text-ink-muted mt-0.5">
               Dept. {hovered.dep}{hovered.n != null ? ` · ${hovered.n.toLocaleString('fr-FR')} ventes` : ''}{hovered.periode ? ` en ${hovered.periode.replace('-', '–')}` : ''}
             </p>
-            <p className="text-2xl font-bold text-ink tabular-nums mt-2 leading-none">
-              {fmt(hovered.prix)} €/m²
-            </p>
+            {hovered.sansDonnees ? (
+              <p className="text-[13px] text-ink-muted mt-2">Moins de 5 ventes de ce type : pas de prix médian fiable.</p>
+            ) : (
+              <p className="text-2xl font-bold text-ink tabular-nums mt-2 leading-none">
+                {fmt(hovered.prix)} €/m²
+              </p>
+            )}
             {hovered.q1 && hovered.q3 && (
               <p className="text-[11px] text-ink-muted mt-1.5">
                 La moitié des ventes entre {fmt(hovered.q1)} et {fmt(hovered.q3)} €/m²
@@ -288,25 +311,23 @@ export default function PriceMap() {
       {/* Légende */}
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 items-center">
         <p className="text-xs text-ink-muted font-medium">Prix/m² :</p>
-        {[
-          { label: '< 3 000 €', color: '#F3E3C6' },
-          { label: '3–5 000 €', color: '#E3C08C' },
-          { label: '5–7 000 €', color: '#C99A5B' },
-          { label: '7–9 000 €', color: '#A6733A' },
-          { label: '9–12 000 €', color: '#7A4F28' },
-          { label: '> 12 000 €', color: '#4A2E17' },
-        ].map((item) => (
+        {PRICE_SCALE.map((item) => (
           <div key={item.label} className="flex items-center gap-1.5">
-            <div className="h-3 w-3 rounded border border-white/80" style={{ backgroundColor: item.color }} />
+            <div className="h-3 w-3 rounded border border-stone-200" style={{ backgroundColor: item.color }} />
             <span className="text-xs text-ink-muted">{item.label}</span>
           </div>
         ))}
-        {matchRate != null && (
-          <p className="text-xs text-ink-muted ml-auto">
-            {matchRate} % des communes avec données · cliquer pour zoomer
-          </p>
-        )}
+        <div className="flex items-center gap-1.5">
+          <div className="h-3 w-3 rounded border border-stone-200" style={{ background: SWATCH_HACHURES }} />
+          <span className="text-xs text-ink-muted">Moins de 5 ventes</span>
+        </div>
       </div>
+      {matchRate != null && (
+        <p className="mt-2 text-xs text-ink-muted">
+          {matchRate} % des communes ont au moins 5 ventes de ce type · cliquer pour zoomer.
+          {typeBien !== 'house' && ' Appartements et maisons étant séparés, beaucoup de petites communes, où se vendent surtout des maisons, ont trop peu de ventes d\'appartements pour un prix médian.'}
+        </p>
+      )}
     </section>
   )
 }

@@ -98,6 +98,28 @@ class TestImmeuble:
         assert r["comparables_immeuble"] == []
 
 
+class TestVentesProximite:
+    def test_hors_immeuble_et_surface_proche(self, gold):
+        r = ctx.ventes_proximite(48.86, 2.37, "2", 30.0, 7000.0, id_parcelle="P1", gold_path=gold)
+        assert [v["prix_m2"] for v in r["ventes"]] == [7000]
+        assert r["ventes"][0]["distance_m"] <= 20
+        assert r["ventes"][0]["prix_m2_aujourdhui"] == 7000
+        # moins de 5 ventes à 300 m : le rayon est élargi
+        assert r["rayon_m"] == 1000
+
+    def test_ventes_sur_plan_et_anciennes_ecartees(self, gold):
+        r = ctx.ventes_proximite(48.86, 2.37, "2", 50.0, 9000.0, gold_path=gold)
+        # fin-30 hors fenêtre, fin-10 sur plan, P2 (30 m²) hors tolérance : reste fin-2
+        assert [v["prix_m2"] for v in r["ventes"]] == [10800]
+        assert r["ventes"][0]["prix_m2_aujourdhui"] == round(1.2 * 9000)
+
+    def test_aucune_vente(self, gold):
+        assert ctx.ventes_proximite(48.86, 2.37, "1", 300.0, 5000.0, gold_path=gold) == {"ventes": [], "rayon_m": None}
+
+    def test_nom_de_voie(self):
+        assert ctx._nom_voie("RUE DE L'ABBE GROULT") == "Rue de l'Abbe Groult"
+
+
 class TestZoneDpe:
     def test_part_de_passoires_du_code_postal(self, gold):
         assert ctx.zone_dpe("75011", gold_path=gold) == pytest.approx(0.12)

@@ -158,3 +158,15 @@ def test_dossier_non_conforme_n_est_jamais_presente_comme_solide():
 def test_capacite_nulle_sans_revenus():
     profil = ProfilEmprunteur(revenus_nets_mensuels=0)
     assert calculer_capacite(profil)["capital_empruntable"] == 0.0
+
+
+def test_taux_et_assurance_saisis_remplacent_le_bareme():
+    """Le courtier fait varier le taux et l'assurance : ils remplacent le barème."""
+    profil = ProfilEmprunteur(revenus_nets_mensuels=5000, apport=40000)
+    projet = Projet(prix_bien=250000, departement="78", duree_souhaitee_annees=25)
+    bareme = analyser_projet(profil, projet)["credit"]
+    saisi = analyser_projet(profil, projet, taux_annuel=0.03, taux_assurance=0.001)["credit"]
+    assert saisi["taux_nominal_retenu"] == 0.03
+    assert saisi["taux_assurance_applique"] == 0.001
+    assert saisi["mensualite_assurance"] < bareme["mensualite_assurance"]
+    assert saisi["mensualite_totale"] < bareme["mensualite_totale"]

@@ -40,7 +40,7 @@ Le mémoire doit utiliser **une seule série de chiffres**, celle du tableau 10.
 | « Le modèle distingue le neuf de l'ancien » | testé (`est_vefa`), non retenu ; seul l'affichage des secteurs écarte le neuf |
 | « Le PTZ est calculé », « l'application vérifie l'éligibilité aux aides » | les aides sont **signalées**, jamais chiffrées |
 | « Score bancaire », « accord de prêt », « conseil en crédit » | l'indice de solidité est indicatif et propre à l'application ; l'assistant donne des informations générales (activité d'IOBSP réglementée) |
-| « Expertise » ou « avis de valeur certifié » | l'avis de valeur est indicatif, automatique, sans valeur contractuelle |
+| « Expertise » ou « avis de valeur » | en France, l'avis de valeur est le document remis par un agent après visite ; ici, c'est une **estimation** indicative, automatique, sans valeur contractuelle |
 | « Version mobile », « mode sombre » comme fonctionnalités abouties | non vérifiés |
 | « Déployé en production » pour la v1.5 | vrai seulement si le redéploiement sur Render est fait avant le 6 octobre ; sinon, Render sert la v1.4.2 |
 | « Fiche à votre logo », « envoi du dossier au client », « paiement intégré » | fonctions de l'offre pro **cible**, non développées |

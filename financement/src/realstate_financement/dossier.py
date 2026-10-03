@@ -141,9 +141,11 @@ def generer_dossier(
     charges_logement_previsionnelles: float = 0.0,
     nb_enfants_moins_14: int | None = None,
     reference_dossier: str | None = None,
+    taux_annuel: float | None = None,
+    taux_assurance: float | None = None,
 ) -> dict[str, Any]:
     """Produit le dossier de prêt complet, sérialisable en JSON."""
-    analyse = analyser_projet(profil, projet)
+    analyse = analyser_projet(profil, projet, taux_annuel=taux_annuel, taux_assurance=taux_assurance)
     acquisition = analyse["detail_frais_acquisition"]
     credit = analyse["credit"]
 

@@ -183,7 +183,10 @@ export default function App() {
         {/* ONGLET PLUS-VALUE — calculateur local (scénarios + fiscalité CGI) */}
         {ouvertes.has('plusvalue') && (
           <div className="w-full pb-8" hidden={activeTab !== 'plusvalue'}>
-            <VanillaPage key={`plusvalue-${pageCle}`} page={plusvaluePage} apiBase={API_BASE} options={{ prefill: plusValuePrefill }} />
+            <VanillaPage key={`plusvalue-${pageCle}`} page={plusvaluePage} apiBase={API_BASE} options={{
+              prefill: plusValuePrefill,
+              onFinancement: (bien) => { setFinancementPrefill(bien); ouvrirOnglet('financement'); window.scrollTo({ top: 0 }) },
+            }} />
           </div>
         )}
 

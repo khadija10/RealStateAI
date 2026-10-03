@@ -14,7 +14,7 @@ Vérifier, sur des utilisateurs réels, trois choses :
 
 1. On peut **estimer un bien sans aide** et **comprendre la fiabilité** du résultat.
 2. On peut **enchaîner sur le financement et la plus-value** du même bien.
-3. Un professionnel **utiliserait l'avis de valeur PDF** face à un client.
+3. Un professionnel **utiliserait l'estimation PDF** face à un client.
 
 ## 2. Participants (3 à 5)
 
@@ -46,7 +46,7 @@ On lit la consigne sans montrer où cliquer. On note le temps, les hésitations 
 | T3 | « Vous l'achetez à ce prix. Combien paierez-vous par mois ? » | une mensualité s'affiche, avec le prix repris de l'estimation | 3 min |
 | T4 | « Combien pourriez-vous gagner en le revendant dans 10 ans ? » | une plus-value s'affiche, pour un horizon de 10 ans | 2 min |
 | T5 | « Retrouvez l'estimation de ce bien sans la refaire. » | il passe par l'historique et « Voir le résultat » | 1 min |
-| T6 | Pros seulement : « Préparez le document que vous remettriez à un vendeur. » | l'avis de valeur PDF est exporté | 1 min |
+| T6 | Pros seulement : « Préparez le document que vous remettriez à un vendeur. » | l'estimation PDF est exportée | 1 min |
 
 ## 5. Après les tâches
 
@@ -72,7 +72,7 @@ On lit la consigne sans montrer où cliquer. On note le temps, les hésitations 
 **Trois questions ouvertes :**
 1. « Qu'est-ce qui vous a le plus servi ? »
 2. « Qu'est-ce qui vous a gêné ou manqué ? »
-3. Pros seulement : « Montreriez-vous cet avis de valeur à un vendeur ? Combien paieriez-vous par mois pour cet outil ? »
+3. Pros seulement : « Montreriez-vous cette estimation à un vendeur ? Combien paieriez-vous par mois pour cet outil ? »
 
 ## 6. Grille d'observation (une par participant)
 
