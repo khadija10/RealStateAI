@@ -274,3 +274,14 @@ def test_endpoints_filtrent_par_type_et_marche():
         assert {"nom_commune", "prix_m2_median", "n_transactions", "periode"} <= set(appart[0])
         t = c.get("/api/market/trends", params={"dep": "78", "type_bien": "house", "marche": "ancien"}).json()
         assert t and all(r["code_departement"] == "78" for r in t)
+
+
+def test_secteurs_calcules_sur_l_ancien():
+    import pandas as pd
+    from main import _construire_secteurs
+    lignes = [{"code_commune": "93008", "commune": "Bobigny", "type_bien_norm": "apartment",
+               "date_mutation": "2025-03-01", "prix_au_m2": 3400 + i, "est_vefa": False} for i in range(12)]
+    lignes += [{"code_commune": "93008", "commune": "Bobigny", "type_bien_norm": "apartment",
+                "date_mutation": "2025-03-01", "prix_au_m2": 7400, "est_vefa": True} for _ in range(20)]
+    s = _construire_secteurs(pd.DataFrame(lignes))[("93008", "apartment")]
+    assert s["n"] == 12 and s["med"] < 3500     # les 20 ventes sur plan sont écartées
