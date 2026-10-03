@@ -69,9 +69,9 @@ export const html = `
     <h2>Un modèle entraîné sur <em>toutes</em> les ventes notariées d'Île-de-France,
       et dont nous publions <em>l'erreur réelle</em>, quartier par quartier.</h2>
     <div class="stats">
-      <div class="stat"><b id="rsai-stat-ventes">—</b><span>Transactions analysées</span></div>
-      <div class="stat"><b id="rsai-stat-variables">—</b><span>Variables du modèle</span></div>
-      <div class="stat"><b id="rsai-stat-mape">—</b><span id="rsai-stat-mape-lib">Erreur moyenne mesurée</span></div>
+      <div class="stat"><b id="rsai-stat-ventes">—</b><span>Ventes notariées analysées</span></div>
+      <div class="stat"><b>4</b><span>Sources publiques croisées : ventes, DPE, quartier, bâtiment</span></div>
+      <div class="stat"><b id="rsai-stat-mape">—</b><span id="rsai-stat-mape-lib">Écart moyen avec le prix de vente réel</span></div>
       <div class="stat"><b id="rsai-stat-20">—</b><span>Estimations à moins de 20 % du prix réel</span></div>
     </div>
   </div>
@@ -92,7 +92,7 @@ export const html = `
       <div class="mesures">
         <div class="mesure"><b id="rsai-m2">—</b><span>€ par m²</span></div>
         <div class="mesure" data-secteur><b id="rsai-med">—</b><span>Médiane du secteur</span></div>
-        <div class="mesure" data-secteur><b id="rsai-ecart">—</b><span>Écart au marché</span></div>
+        <div class="mesure" data-secteur><b id="rsai-ecart">—</b><span id="rsai-ecart-lib">par rapport à la médiane</span></div>
       </div>
     </div>
     <div class="bloc">
@@ -116,19 +116,22 @@ export const html = `
       <div id="rsai-courbe"></div>
     </div>
     <div class="bloc bloc-large" id="rsai-bloc-comparables" hidden>
-      <div class="bloc-tete"><h3>Ventes <em>dans l'immeuble</em></h3><span>DVF · prix ramenés au marché du jour</span></div>
-      <table class="comparables"><thead><tr><th>Date</th><th>Surface</th><th>Pièces</th><th>Prix</th><th>€/m² à la vente</th><th>€/m² aujourd'hui</th></tr></thead>
+      <div class="bloc-tete"><h3>Ventes <em>dans l'immeuble</em></h3><span>ventes notariées · prix ramenés au marché actuel</span></div>
+      <table class="comparables"><thead><tr><th>Date</th><th>Surface</th><th>Pièces</th><th>Prix</th><th>€/m² à la vente</th><th id="rsai-th-actuel">€/m² au marché actuel</th></tr></thead>
         <tbody id="rsai-comparables"></tbody></table>
+      <p class="fiab-txt" id="rsai-immeuble-ref"></p>
     </div>
     <div class="bloc">
-      <div class="bloc-tete"><h3>Détail <em>du calcul</em></h3></div>
-      <div class="detail-grille">
-        <table><tbody id="rsai-detail"></tbody></table>
-        <table><tbody id="rsai-detail-tech"></tbody></table>
-      </div>
+      <details class="methodo">
+        <summary><h3>Méthodologie <em>et détail du calcul</em></h3></summary>
+        <div class="detail-grille">
+          <table><tbody id="rsai-detail"></tbody></table>
+          <table><tbody id="rsai-detail-tech"></tbody></table>
+        </div>
+      </details>
     </div>
     <div class="bloc">
-      <div class="bloc-tete"><h3>Plus-value <em>projetée</em></h3><span>scénario central · 10 ans</span></div>
+      <div class="bloc-tete"><h3>Valeur <em>dans 10 ans</em></h3><span>trois scénarios de marché</span></div>
       <p class="fiab-txt" id="rsai-pv-resume"></p>
       <div class="boutons-action">
         <button type="button" class="bouton-accent" id="rsai-pv-voir">Simuler la plus-value →</button>
@@ -142,7 +145,7 @@ export const html = `
 
 
 <div class="bas">
-  <span>Données : DVF — DGFiP / Etalab · DPE — ADEME · IRIS — INSEE · BDNB — CSTB · Modèle LightGBM<span id="rsai-pied-variables"></span></span>
+  <span>Sources : ventes notariées DVF (DGFiP, Etalab) · DPE (ADEME) · quartiers IRIS (INSEE) · bâtiments BDNB (CSTB)</span>
   <span>Estimation indicative, ne constitue pas une expertise immobilière.</span>
   <span>RealStateAI — v${__APP_VERSION__}</span>
 </div>
@@ -156,11 +159,15 @@ const TYPE_LABEL = { apartment: 'Appartement', house: 'Maison', other: 'Autre' }
 
 // Classes de fiabilité du protocole d'évaluation (docs/protocole_evaluation.md)
 const CLASSES = {
-  fiable: { titre: 'Secteur fiable', texte: "l'estimation peut appuyer un prix.", ton: 'vert' },
-  indicative: { titre: 'Estimation indicative', texte: 'un point de départ, à confirmer.', ton: 'ambre' },
-  a_completer: { titre: 'Secteur difficile', texte: "l'expertise terrain est indispensable.", ton: 'rouge' },
-  donnees_insuffisantes: { titre: 'Peu de ventes de contrôle', texte: 'fiabilité locale non mesurée.', ton: 'gris' },
+  fiable: { titre: 'Fiabilité élevée', texte: 'le prix peut appuyer une négociation.', ton: 'vert' },
+  indicative: { titre: 'Fiabilité correcte', texte: 'un bon point de départ, à confirmer par une visite.', ton: 'ambre' },
+  a_completer: { titre: 'Fiabilité limitée', texte: "secteur difficile : l'avis d'un professionnel est indispensable.", ton: 'rouge' },
+  donnees_insuffisantes: { titre: 'Peu de références', texte: "trop peu de ventes récentes pour mesurer l'écart ici.", ton: 'gris' },
 }
+
+// Montants arrondis au millier : afficher un prix à l'euro près, avec une
+// fourchette de plusieurs dizaines de milliers d'euros, suggère une fausse précision.
+const rond = (x) => Math.round(x / 1000) * 1000
 
 /** Fiche imprimable — même principe que l'ancien frontend (fenêtre + print()). */
 function exporterPDF(bien, modelInfo) {
@@ -246,24 +253,24 @@ function exporterPDF(bien, modelInfo) {
 
 <div class="prix">
   <div class="carte">
-    <div class="valeur">${euro(r.valeur)}</div>
+    <div class="valeur">environ ${euro(rond(r.valeur))}</div>
     <div class="m2">soit <b>${euro(r.prix_m2)} / m²</b>${ecart != null ? ` · ${ecart > 0 ? '+' : ''}${ecart} % par rapport à la médiane du secteur` : ''}</div>
     <div class="barre"><b style="left:${place}%"></b></div>
-    <div class="bornes"><span>${euro(r.basse)}</span><span>${euro(r.haute)}</span></div>
-    <div class="note">${ml && val?.fourchette ? `Fourchette à 85 % : sur ${fr(val.n_test, 0)} ventes de contrôle, le prix réel s'y trouvait ${fr(val.fourchette.couverture)} % du temps.` : 'Fourchette indicative.'}</div>
+    <div class="bornes"><span>${euro(rond(r.basse))}</span><span>${euro(rond(r.haute))}</span></div>
+    <div class="note">${ml && val?.fourchette ? `Le prix de vente réel tombe dans cette fourchette 85 fois sur 100 (vérifié sur ${fr(val.n_test, 0)} ventes récentes : ${fr(val.fourchette.couverture)} %).` : 'Fourchette des ventes comparables de la commune.'}</div>
   </div>
   <div class="carte fiab">
     <b>Fiabilité</b><br>
     ${r.classe ? `<span class="classe ${r.classe}">${CLASSES[r.classe]?.titre || r.classe}</span>` : ''}
-    ${r.mape != null ? `<p>Sur ce secteur, le modèle se trompe en moyenne de <b>${fr(r.mape)} %</b>${r.mape_n ? `, mesuré sur ${fr(r.mape_n, 0)} ventes de contrôle` : ''}.</p>` : ''}
-    ${val ? `<p>Sur l'ensemble de l'Île-de-France : ${fr(val.mape, 2)} % d'erreur moyenne, ${fr(val.dans_20pct)} % des estimations à moins de 20 % du prix réel (${fr(val.n_test, 0)} ventes jamais vues, oct.–déc. 2025).</p>` : ''}
+    ${r.mape != null ? `<p>Dans ce secteur, nos estimations s'écartent en moyenne de <b>${Math.round(r.mape)} %</b> du prix de vente réel${r.mape_n ? ` (vérifié sur ${fr(r.mape_n, 0)} ventes récentes)` : ''}.</p>` : ''}
+    ${val ? `<p>En Île-de-France : écart moyen de ${Math.round(val.mape)} %, et ${Math.round(val.dans_20pct)} % des estimations à moins de 20 % du prix réel.</p>` : ''}
   </div>
 </div>
 
 <h2>Ventes dans l'immeuble</h2>
-${r.comparables?.length ? `<table><tr><th>Date</th><th class="n">Surface</th><th class="n">Pièces</th><th class="n">Prix</th><th class="n">€/m² à la vente</th><th class="n">€/m² au marché du jour</th></tr>
+${r.comparables?.length ? `<table><tr><th>Date</th><th class="n">Surface</th><th class="n">Pièces</th><th class="n">Prix</th><th class="n">€/m² à la vente</th><th class="n">€/m² au marché ${r.immeuble?.annee || 'actuel'}</th></tr>
 ${r.comparables.map((c) => `<tr><td>${moisAn(c.date)}</td><td class="n">${c.surface_m2} m²</td><td class="n">${c.nb_pieces ?? '—'}</td><td class="n">${euro(c.prix)}</td><td class="n">${euro(c.prix_m2)}</td><td class="n"><b>${euro(c.prix_m2_aujourdhui)}</b></td></tr>`).join('')}</table>
-<p class="note">Dernières ventes notariées DVF de la même parcelle ; chaque prix au m² est ramené au marché du jour par l'évolution des prix du secteur depuis la vente.</p>`
+<p class="note">Dernières ventes notariées de la même parcelle, ramenées au marché ${r.immeuble?.annee || 'actuel'} avec l'évolution des prix du secteur.${r.immeuble ? ` Leur médiane (${euro(r.immeuble.prix_m2)}/m²) donnerait environ ${euro(r.immeuble.valeur)} pour cette surface. Une vente isolée peut s'écarter du marché (étage, état, travaux).` : ''}</p>`
   : `<p class="vide">Aucune vente récente enregistrée dans cet immeuble${r.sansNumero ? " (adresse sans numéro : immeuble non identifié)" : ''}.</p>`}
 
 ${avecSecteur ? `<h2>Le marché du secteur · ${esc(s.nom)}</h2>
@@ -271,7 +278,7 @@ ${avecSecteur ? `<h2>Le marché du secteur · ${esc(s.nom)}</h2>
   <div>
     <table>
       <tr><td>Médiane ${s.annee || ''}</td><td class="n"><b>${euro(s.med)} / m²</b></td></tr>
-      ${s.p10 && s.p90 ? `<tr><td>1ᵉʳ – 9ᵉ décile</td><td class="n">${euro(s.p10)} – ${euro(s.p90)} / m²</td></tr>` : ''}
+      ${s.p10 && s.p90 ? `<tr><td>8 ventes sur 10 entre</td><td class="n">${euro(s.p10)} et ${euro(s.p90)} / m²</td></tr>` : ''}
       ${s.n ? `<tr><td>Ventes analysées</td><td class="n">${fr(s.n, 0)}</td></tr>` : ''}
       ${evo != null ? `<tr><td>Évolution ${s.annees?.[0] ?? 2021}–${s.annees?.[s.annees.length - 1] ?? 2025}</td><td class="n">${evo > 0 ? '+' : ''}${fr(evo)} %</td></tr>` : ''}
     </table>
@@ -279,7 +286,7 @@ ${avecSecteur ? `<h2>Le marché du secteur · ${esc(s.nom)}</h2>
   <div>
     ${posDecile != null ? `<b>Position du bien dans le secteur</b>
     <div class="reglette"><b style="left:${posDecile}%"></b></div>
-    <div class="bornes" style="font-weight:400;font-size:11.5px;color:#6b655d"><span>1ᵉʳ décile</span><span>9ᵉ décile</span></div>` : ''}
+    <div class="bornes" style="font-weight:400;font-size:11.5px;color:#6b655d"><span>moins cher</span><span>plus cher</span></div>` : ''}
   </div>
 </div>` : ''}
 
@@ -345,11 +352,10 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
       if (!actif) return
       if (d.model_loaded || d.dvf_loaded) {
         badge.className = 'etat-api direct'
-        const mape = d.model_mape != null ? ` · MAPE ${String(d.model_mape).replace('.', ',')} %` : ''
-        badge.innerHTML = `<i></i><span>Modèle connecté${mape}</span>`
+        badge.innerHTML = `<i></i><span>Service en ligne</span>`
         chargerCommunes()
       } else {
-        badge.innerHTML = `<i></i><span>Modèle indisponible</span>`
+        badge.innerHTML = `<i></i><span>Estimation par adresse indisponible</span>`
       }
       modelInfo = {
         mape: d.model_mape, r2: d.model_r2, nFeatures: d.model_n_features,
@@ -359,7 +365,7 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
       afficherStats()
       if (dernierBien) afficher(dernierBien.r, dernierBien.s, dernierBien.adresse, dernierBien.surface, dernierBien.pieces, dernierBien.type)
     } catch {
-      badge.innerHTML = `<i></i><span>Backend injoignable</span>`
+      badge.innerHTML = `<i></i><span>Service momentanément indisponible</span>`
       selecteur.placeholder = 'Indisponible'
     }
   }
@@ -371,13 +377,9 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
     const mi = modelInfo || {}, v = mi.validation
     const pct = (x) => String(x).replace('.', ',') + ' %'
     if (mi.nVentes) $('#rsai-stat-ventes').textContent = nb(mi.nVentes)
-    if (mi.nFeatures) {
-      $('#rsai-stat-variables').textContent = mi.nFeatures
-      $('#rsai-pied-variables').textContent = `, ${mi.nFeatures} variables`
-    }
     if (v) {
       $('#rsai-stat-mape').textContent = pct(v.mape)
-      $('#rsai-stat-mape-lib').textContent = `Erreur moyenne, test ${periode(v.periode_test)}`
+      $('#rsai-stat-mape-lib').textContent = `Écart moyen avec le prix de vente réel, sur des ventes de ${periode(v.periode_test)}`
       $('#rsai-stat-20').textContent = pct(v.dans_20pct)
     }
   }
@@ -548,6 +550,7 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
       historiqueId: d.historique_id ?? null,
       segments: d.segments_difficiles || [],
       sansNumero: !!d.adresse_sans_numero,
+      immeuble: d.immeuble_reference || null,
       enregistreLe: null,
     }
   }
@@ -566,18 +569,20 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
     $$('[data-secteur]').forEach((el) => { el.hidden = !avecSecteur })
     $('#rsai-pv-resume').hidden = !avecSecteur
     $('#rsai-lib-secteur').textContent = (r.adresse || adresse || s?.nom || '') + ' · ' + surface + ' m² · ' + pieces + (pieces > 1 ? ' pièces' : ' pièce')
-    $('#rsai-valeur').textContent = euro(r.valeur)
-    $('#rsai-fourchette').textContent = `Fourchette ${r.confiance || '85 %'} : ${euro(r.basse)} — ${euro(r.haute)}`
+    $('#rsai-valeur').textContent = 'environ ' + euro(rond(r.valeur))
+    $('#rsai-fourchette').innerHTML = `Entre <b>${euro(rond(r.basse))}</b> et <b>${euro(rond(r.haute))}</b>` +
+      `<small>${r.modele === 'ml' ? `Le prix de vente réel tombe dans cette fourchette ${(r.confiance || '85 %').replace(' %', '')} fois sur 100.` : 'Fourchette des ventes comparables de la commune.'}</small>`
     const place = Math.min(96, Math.max(4, (100 * (r.valeur - r.basse)) / (r.haute - r.basse)))
     $('#rsai-curseur-ci').style.left = place + '%'
-    $('#rsai-ci-bas').textContent = euro(r.basse)
-    $('#rsai-ci-haut').textContent = euro(r.haute)
+    $('#rsai-ci-bas').textContent = euro(rond(r.basse))
+    $('#rsai-ci-haut').textContent = euro(rond(r.haute))
 
     $('#rsai-m2').textContent = nb(r.prix_m2)
     if (avecSecteur) {
       $('#rsai-med').textContent = nb(s.med)
       const e = Math.round(100 * (r.prix_m2 / s.med - 1))
       $('#rsai-ecart').textContent = (e > 0 ? '+' : '') + e + ' %'
+      $('#rsai-ecart-lib').textContent = e > 0 ? 'au-dessus de la médiane du secteur' : e < 0 ? 'en dessous de la médiane du secteur' : 'au niveau de la médiane du secteur'
     }
 
     $('#rsai-anneau').innerHTML = points(r.classe)
@@ -585,15 +590,15 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
     afficherClasse(r)
     afficherDpe(r)
     afficherComparables(r)
-    $('#rsai-src-modele').innerHTML = `<span class="puce">${r.modele === 'ml' ? 'Modèle ML' : 'Médiane DVF communale'}</span>`
+    $('#rsai-src-modele').innerHTML = `<span class="puce">${r.modele === 'ml' ? "Estimation à l'adresse" : 'Médiane de la commune'}</span>`
     const val = modelInfo?.validation
     $('#rsai-fiab-txt').innerHTML =
       (r.mape != null
-        ? `Sur ce secteur, le modèle se trompe en moyenne de <b>${String(r.mape).replace('.', ',')} %</b>${r.mape_n ? `, mesuré sur <b>${nb(r.mape_n)}</b> ventes de contrôle` : ''}.`
+        ? `Dans ce secteur, nos estimations s'écartent en moyenne de <b>${Math.round(r.mape)} %</b> du prix de vente réel${r.mape_n ? `, vérifié sur ${nb(r.mape_n)} ventes récentes` : ''}.`
         : val
-          ? `Erreur moyenne du modèle, mesurée sur ${nb(val.n_test)} ventes jamais vues (${periode(val.periode_test)}) : <b>${String(val.mape).replace('.', ',')} %</b>. ${String(val.dans_10pct).replace('.', ',')} % des estimations tombent à moins de 10 % du prix réel, ${String(val.dans_20pct).replace('.', ',')} % à moins de 20 %.`
+          ? `En Île-de-France, nos estimations s'écartent en moyenne de <b>${Math.round(val.mape)} %</b> du prix de vente réel ; ${Math.round(val.dans_20pct)} % tombent à moins de 20 % du prix.`
           : '') +
-      (r.meta?.n_transactions ? `<br>Secteur documenté par <b>${nb(r.meta.n_transactions)}</b> transactions.` : '')
+      (r.meta?.n_transactions ? `<br>Secteur documenté par <b>${nb(r.meta.n_transactions)}</b> ventes.` : '')
 
     if (avecSecteur) afficherSecteur(r, s)
 
@@ -654,7 +659,7 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
     bloc.hidden = false
     const date = r.dpeDate ? new Date(r.dpeDate).toLocaleDateString('fr-FR') : null
     $('#rsai-dpe-source').textContent = r.dpeSource === 'adresse' ? `retrouvé à l'adresse · ADEME${date ? ` · diagnostic du ${date}` : ''}`
-      : r.dpeSource === 'numero' ? 'retrouvé par son numéro · ADEME' : r.dpeClasse ? 'saisi' : ''
+      : r.dpeSource === 'numero' ? 'retrouvé par son numéro · ADEME' : r.dpeClasse ? 'classe saisie' : ''
     $('#rsai-dpe-contenu').innerHTML =
       (r.dpeClasse ? `<p class="dpe-ligne"><span class="badge-dpe dpe-${r.dpeClasse}">DPE ${r.dpeClasse}</span>${r.annee ? ` construit en ${r.annee}` : ''}</p>` : '') +
       (r.dpeSource === 'adresse' && r.dpeAppariement === 'probable'
@@ -668,14 +673,24 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
     const date = (d) => new Date(d).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })
     $('#rsai-comparables').innerHTML = r.comparables.map((c) => `<tr><td>${date(c.date)}</td><td>${nb(c.surface_m2)} m²</td>
       <td>${c.nb_pieces ? nb(c.nb_pieces) : '—'}</td><td>${euro(c.prix)}</td><td>${nb(c.prix_m2)} €</td><td><b>${nb(c.prix_m2_aujourdhui)} €</b></td></tr>`).join('')
+    const ref = r.immeuble
+    if (ref?.annee) $('#rsai-th-actuel').textContent = `€/m² au marché ${ref.annee}`
+    if (!ref) { $('#rsai-immeuble-ref').innerHTML = ''; return }
+    const ecart = Math.round(100 * (r.valeur / ref.valeur - 1))
+    $('#rsai-immeuble-ref').innerHTML =
+      `Chaque vente est ramenée au marché ${ref.annee} avec l'évolution des prix du secteur (courbe ci-dessus). ` +
+      `Leur médiane, <b>${nb(ref.prix_m2)} €/m²</b>, donnerait environ <b>${euro(ref.valeur)}</b> pour cette surface ; ` +
+      (Math.abs(ecart) <= 5 ? 'notre estimation est au même niveau. '
+        : `notre estimation est ${ecart > 0 ? `${ecart} % au-dessus` : `${-ecart} % en dessous`}, car elle tient compte aussi du secteur, du DPE et de l'année de construction. `) +
+      `Une vente isolée peut s'écarter du marché (étage, état, travaux, vente entre proches) : les données publiques ne le précisent pas.`
   }
 
   function afficherSecteur(r, s) {
     $('#rsai-volume').innerHTML = `<span class="puce claire">${nb(s.n)} ventes</span>`
     const pos = Math.min(100, Math.max(0, (100 * (r.prix_m2 - s.p10)) / (s.p90 - s.p10)))
     $('#rsai-curseur').style.left = pos + '%'
-    $('#rsai-bas').textContent = '1ᵉʳ décile · ' + nb(s.p10) + ' €/m²'
-    $('#rsai-haut-d').textContent = '9ᵉ décile · ' + nb(s.p90) + ' €/m²'
+    $('#rsai-bas').textContent = '10 % des ventes sous ' + nb(s.p10) + ' €/m²'
+    $('#rsai-haut-d').textContent = '10 % au-dessus de ' + nb(s.p90) + ' €/m²'
 
     const dernier = s.eco.length - 1
     const v = 100 * (s.eco[dernier] / s.eco[0] - 1)
@@ -687,11 +702,10 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
     const [bas, central, haut] = scenariosMarche(s.eco, s.annees)
     const revente = (sc) => r.valeur * Math.pow(1 + sc.taux, 10)
     const taux = (sc) => `${sc.taux > 0 ? '+' : sc.taux < 0 ? '−' : ''}${Math.abs(100 * sc.taux).toFixed(1).replace('.', ',')} %/an`
-    const pv10 = revente(central) - r.valeur
     $('#rsai-pv-resume').innerHTML =
-      `Scénario central (${central.nom.toLowerCase()}, <b>${taux(central)}</b>) : ce bien pourrait valoir <b>${euro(revente(central))}</b> dans 10 ans, ` +
-      (Math.abs(pv10) < 500 ? 'soit un prix stable' : `soit ${pv10 >= 0 ? 'une plus-value brute de' : 'une moins-value de'} <b>${euro(Math.abs(pv10))}</b>`) +
-      ` avant fiscalité. Selon le scénario, entre <b>${euro(revente(bas))}</b> (${bas.nom.toLowerCase()}, ${taux(bas)}) et <b>${euro(revente(haut))}</b> (${haut.nom.toLowerCase()}, ${taux(haut)}).`
+      `Dans 10 ans, selon l'évolution du marché, ce bien vaudrait entre <b>${euro(rond(revente(bas)))}</b> et <b>${euro(rond(revente(haut)))}</b>. ` +
+      `Scénario central (${central.nom.toLowerCase()}, ${taux(central)}) : environ <b>${euro(rond(revente(central)))}</b>. ` +
+      `Ces scénarios prolongent des rythmes observés depuis 2021 ; ce ne sont pas des prévisions.`
 
   }
 
@@ -710,8 +724,8 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
       : 'Dispersion des ventes comparables de la commune'])
     if (mi.nFeatures) tech.push(['Variables', String(mi.nFeatures)])
     if (mi.trainedAt) tech.push(['Entraîné le', new Date(mi.trainedAt).toLocaleDateString('fr-FR')])
-    if (mi.nTrain) tech.push(["Données d'entraînement", `${nb(mi.nTrain)} transactions DVF 2021–2025`])
-    if (mi.validation) tech.push(['Données de test', `${nb(mi.validation.n_test)} ventes jamais vues, ${periode(mi.validation.periode_test)}`])
+    if (mi.nTrain) tech.push(["Données d'entraînement", `${nb(mi.nTrain)} ventes retenues sur les ${nb(modelInfo?.nVentes || 0)} analysées (ventes atypiques et incomplètes écartées)`])
+    if (mi.validation) tech.push(["Contrôle de l'erreur", `${nb(mi.validation.n_test)} ventes de ${periode(mi.validation.periode_test)}, non vues par le modèle évalué`])
     if (r.modele !== 'ml' && r.meta?.n_transactions) tech.push(['Transactions comparables', `${nb(r.meta.n_transactions)} ventes`])
     $('#rsai-detail-tech').innerHTML = tech.map(([l, v]) => `<tr><td>${l}</td><td class="n">${v}</td></tr>`).join('')
 

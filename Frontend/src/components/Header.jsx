@@ -1,4 +1,4 @@
-export default function Header({ datasetStatus, dpeInfo, user, onOpenAuth, onLogout, darkMode, onToggleDark }) {
+export default function Header({ datasetStatus, user, onOpenAuth, onLogout, darkMode, onToggleDark }) {
   return (
     <header className="relative border-b border-stone-100 bg-[linear-gradient(100deg,var(--color-stone-50)_0%,var(--color-surface)_45%,var(--color-limestone-light)_100%)]">
       <div className="h-[3px] w-full bg-[linear-gradient(90deg,var(--color-seine)_0%,var(--color-ambre)_50%,var(--color-vert)_100%)]" />
@@ -24,18 +24,11 @@ export default function Header({ datasetStatus, dpeInfo, user, onOpenAuth, onLog
                   }`}
                 />
                 <span className="text-[var(--color-ink-muted)]">
-                  {datasetStatus === 'ready' && 'Données DVF'}
-                  {datasetStatus === 'error' && 'Backend indisponible'}
+                  {datasetStatus === 'ready' && 'Ventes notariées 2021–2025'}
+                  {datasetStatus === 'error' && 'Service indisponible'}
                 </span>
               </div>
-              {dpeInfo && (
-                <div className="flex items-center gap-1.5">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  <span className="text-[var(--color-ink-muted)]">
-                    DPE {dpeInfo.coveragePct != null ? `${dpeInfo.coveragePct.toLocaleString('fr-FR')} %` : ''}
-                  </span>
-                </div>
-              )}
+
             </div>
           )}
 

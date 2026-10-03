@@ -251,7 +251,7 @@ export default function PriceMap() {
             </p>
             {hovered.q1 && hovered.q3 && (
               <p className="text-[11px] text-ink-muted mt-1.5">
-                Q1–Q3 : {fmt(hovered.q1)} – {fmt(hovered.q3)} €/m²
+                La moitié des ventes entre {fmt(hovered.q1)} et {fmt(hovered.q3)} €/m²
               </p>
             )}
           </div>
