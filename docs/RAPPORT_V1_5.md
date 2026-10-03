@@ -1,7 +1,7 @@
 # RAPPORT DE VERSION — RealEstateAI v1.5
 
-**Version v1.5 — 2 octobre 2026**
-**Branches : `eval/protocole-strict` (données, modèle, backend) et `main` (frontend)**
+**Version v1.5 — 3 octobre 2026 (version finale présentée le 6 octobre 2026)**
+**Branche : `main` (données, modèle, backend et frontend fusionnés)**
 **Comparée à : la version déployée sur Render, image `v1.4.2` (commit `de276ba`, 29 septembre 2026)**
 
 ---
@@ -41,6 +41,9 @@ Toutes les lignes de précision sont mesurées **avec le même protocole**, sur 
 | **Comparables de l'immeuble renvoyés par l'API** | non | **oui (6 dernières ventes, prix ramenés au marché du jour)** |
 | **DPE retrouvé par son numéro ADEME** | non | **oui** |
 | **Chiffres du frontend** | écrits en dur, périmés | **servis par le backend** |
+| **Segments difficiles signalés à l'utilisateur** | non | **oui, avec leur erreur mesurée sur le test** |
+| **Historique** | liste d'estimations | **regroupé par bien : résultat complet, évolution du prix, simulations rattachées** |
+| **Mémoire du backend au chargement du dataset** | — | **pic de 892 Mo** (2 627 Mo avant la correction de la section 5.2) |
 
 À noter : avec son ancienne méthode, la v1.4.2 affichait 16,37 % d'erreur. Le même modèle, mesuré proprement, est à 16,98 %. L'ancienne évaluation surestimait donc le modèle d'environ 0,6 point (section 3.1).
 
@@ -176,6 +179,8 @@ Exemple au 54 rue de Malte, 75011, sur 66 m² : avec le DPE retrouvé à l'adres
 | Le formulaire de la nouvelle interface n'a pas de code postal ; `estimer_prix()` l'exigeait : **toutes les estimations par adresse retombaient sur la médiane DVF** | — (nouvelle interface, non déployée) | code postal facultatif, test de signature |
 | La part de passoires du code postal (feature du modèle) restait vide sans code postal saisi | — | code postal retrouvé par le géocodage, part de passoires lue dans le gold |
 | Une commune seule était envoyée au modèle, géocodée au centre de la commune | — | le modèle seulement à partir d'une adresse ; la commune seule passe par le repli DVF |
+| Un délai dépassé sur la BAN faisait basculer l'estimation sur le repli DVF (constaté sur Clichy) | oui | second essai au délai doublé et cache des réponses, pour la BAN, l'API Carto et l'ADEME ([`ml/tests/test_reseau.py`](../ml/tests/test_reseau.py)) |
+| Le backend lisait les 66 colonnes du gold : pic de **2 627 Mo** au chargement, au-delà d'une petite instance | oui | seules les 19 colonnes utiles sont lues : pic de **892 Mo**, chargement de 12,8 s à 7,0 s ; service complet (modèle et cache d'inférence) à **838 Mo** |
 
 **Effet mesuré** (section 6.3) : l'écart médian entre l'application et le modèle hors ligne passe de 5,9 % à **2,2 %**, et la part des ventes à moins de 5 % d'écart de 45 % à **70 %**.
 
@@ -186,11 +191,20 @@ Exemple au 54 rue de Malte, 75011, sur 66 m² : avec le DPE retrouvé à l'adres
 | `POST /api/predictions/estimate` | champs facultatifs `numero_dpe` et `numero_lot` ; réponse avec `comparables_immeuble`, `classe_fiabilite`, `secteur` (médiane, déciles, ventes, évolution 2021-2025), `dpe_source`, `dpe_date`, `dpe_appariement`, `code_postal`, `dpe_zone_fg_pct` |
 | `GET /api/market/secteurs` | **nouveau** : 308 secteurs (appartements, ≥ 200 ventes) classés par prix médian |
 | `GET /api/health` | `model_validation` : résultats officiels du protocole |
+| `POST /api/predictions/estimate` (suite) | `segments_difficiles` : segments du bien où le modèle se trompe plus que sa moyenne, avec l'erreur mesurée sur le test ; `historique_id` : ligne d'historique de l'estimation |
+| `GET /api/search-history` | chaque estimation avec sa **réponse complète** (fourchette, fiabilité, DPE, date d'entraînement du modèle) et ses simulations |
+| `PUT /api/history/{id}/simulation` | **nouveau** : rattache la dernière simulation de plus-value ou de financement au bien |
 
 ### 5.4 Frontend
 
-- **Refonte de Skander fusionnée sur `main`** (merge `2039b5b`) : nouveau design, pages estimation, financement et plus-value.
-- **Fin des chiffres écrits en dur** (commit `0ae36ba`). Les anciennes valeurs (721 675 transactions, 28 variables, R² 0,82, 16,4 %, et le tableau de 27 secteurs) étaient périmées : la page annonçait par exemple Paris 6ᵉ à 14 783 €/m², contre 14 146 €/m² dans le dataset. Elles sont maintenant lues dans l'API. Le tableau d'origine ne sert plus qu'en démonstration, quand le backend est injoignable.
+- **Refonte de Skander fusionnée sur `main`** : nouveau design, pages Estimation, Financement et Plus-value, mise en page à la manière des portails immobiliers (bandeau pleine largeur, contenu en colonne).
+- **Fin des chiffres écrits en dur** : transactions, variables, erreur, secteurs et taux sont lus dans l'API. Les anciennes valeurs étaient périmées : la page annonçait par exemple Paris 6ᵉ à 14 783 €/m², contre 14 146 €/m² dans le dataset.
+- **Plus aucun calcul par défaut** : les pages n'affichent plus d'estimation ni de simulation de démonstration ; chaque résultat part d'un clic.
+- **DPE retrouvé automatiquement** à l'adresse ; le numéro de DPE et le numéro de lot, inconnus des utilisateurs, ne sont plus demandés.
+- **Résultats conservés entre les onglets**, comme en v1.4 : la pastille verte de l'onglet Estimation retrouve le formulaire et le résultat, et les simulations de plus-value et de financement restent affichées.
+- **Même scénario central de plus-value** sur la page Estimation et dans le simulateur (module commun `vanilla/scenarios.js`).
+- **Segments difficiles signalés** sous la fourchette, avec leur erreur mesurée (section 7).
+- **Historique regroupé par bien** : dernier prix, fourchette, fiabilité, DPE, évolution du prix entre les estimations, « Voir le résultat » sans recalcul, « Ré-estimer », dernières simulations, tri et comparaison de deux biens.
 - La fourchette n'est plus présentée comme « calibrée » quand l'estimation vient du repli DVF.
 
 ---
@@ -227,9 +241,13 @@ Scripts `test_scenarios.py`, `test_adresses.py` et `test_coherence_full.py`, lan
 | Rues d'un même arrondissement (Paris 8ᵉ, avenue Montaigne vs rue du Rocher) | −25,7 % | ✅ sensible à la rue |
 | Paris 18ᵉ, place du Tertre vs boulevard Barbès | −23,7 % | ✅ |
 | Comparaison avec les prix médians Notaires-INSEE T1 2025 (10 zones) | écart moyen **10,0 %** (13,3 % avant les correctifs), 9 zones sur 10 à moins de 20 % ; Évry −33 % | ✅ / ⚠️ Évry |
-| Surface de 30 m² à 120 m² (même adresse) | prix au m² **croissant** : 9 135 → 10 070 €/m² | ⚠️ contraire au marché parisien, où le m² des petites surfaces est plus cher |
-| Nombre de pièces à 65 m² (de 1 à 5) | prix au m² croissant (+6,8 % à 5 pièces) | ⚠️ décote attendue |
-| Maison de 100 m² à Paris 11ᵉ | 13 855 €/m² | ⚠️ peu crédible, segment quasi absent des données |
+| Surface de 25 m² à 130 m² (même adresse) | hors Paris, prix au m² **décroissant** (Maurepas 4 479 → 2 873 €/m², Montreuil 7 248 → 5 614 €/m²) ; à Paris, **stable à légèrement croissant** (rue de Malte 9 861 → 10 229 €/m²) | ✅ conforme aux ventes (ci-dessous) |
+| Nombre de pièces à 65 m² (de 1 à 5) | prix au m² en légère hausse : +4 % à +11 % de 1 à 5 pièces | ⚠️ hors Paris, les ventes d'un même immeuble montrent un effet plat ou légèrement négatif |
+| Maison de 100 m² à Paris 11ᵉ | 13 855 €/m² | ⚠️ peu crédible, segment quasi absent des données ; signalé comme segment difficile |
+
+**Correction d'une conclusion de la version précédente du rapport.** L'effet de la surface avait été jugé « contraire au marché parisien ». Les ventes de 2024-2025 disent l'inverse : rapporté au prix de référence de la commune, le m² parisien vaut 0,996 sous 30 m² et 1,091 au-delà de 120 m² (prime des grands appartements anciens). Hors Paris, il baisse nettement : de 1,22 à 0,87 en grande couronne. Le modèle reproduit les deux comportements. Une contrainte de monotonie, envisagée, aurait donc **dégradé** Paris : elle n'a pas été appliquée.
+
+Pour les pièces, à surface égale (60 à 70 m²), dans le même immeuble et hors logement social, le m² varie peu : de −3 % à +3 % selon le nombre de pièces, en baisse hors Paris et en hausse à Paris. L'effet du modèle (+4 % de 3 à 5 pièces) reste faible devant l'erreur moyenne. Il n'est pas corrigé, car le protocole interdit de régler le modèle sur le test, et une contrainte globale irait contre Paris.
 
 Les chiffres Notaires-INSEE sont repris tels quels du script `test_coherence_full.py`. Leur source exacte reste à vérifier avant de les citer.
 
@@ -250,16 +268,19 @@ Les écarts restants s'expliquent :
 
 ## 7. LIMITES ET SUITES
 
-| Limite | Ce que nous en faisons |
-|---|---|
-| Objectif ±20 % manqué de 2 points (78,0 % pour 80 % visés) | atteint quand l'immeuble a un historique ou que le DPE est connu (section 6.1) ; à reconfirmer sur les ventes du 1ᵉʳ semestre 2026 dès leur publication DVF |
-| Fourchette large (50 % du prix en médiane) | elle est honnête (84,7 % de couverture) ; elle se resserre avec le DPE retrouvé à l'adresse et l'historique de l'immeuble |
-| Effet surface et pièces inversé (section 6.2) | à corriger : contrainte de monotonie ou feature de prime aux petites surfaces, réglée sur la validation uniquement |
-| Paris, maisons, petites surfaces | segments les plus difficiles, à afficher comme tels via la classe de fiabilité de la commune |
-| Dépendance aux API externes (BAN, API Carto, ADEME) | un délai dépassé sur la BAN fait basculer sur le repli DVF (constaté une fois pendant les scénarios, sur Clichy) ; à rendre plus robuste |
-| DPE retrouvé à l'adresse parfois ambigu (plusieurs logements de surface proche dans l'immeuble) | signalé à l'utilisateur, qui peut corriger la classe |
-| Démarrage du backend : 2,5 Go de pic mémoire (dataset chargé en entier) | à réduire avant le déploiement (Render) |
-| v1.5 pas encore déployée | branches à fusionner, image Docker à reconstruire (elle embarque désormais la BDNB agrégée, 27 Mo) |
+État au 3 octobre 2026, version finale.
+
+| Limite | État | Ce qui a été fait, ou ce qui reste |
+|---|---|---|
+| Objectif ±20 % manqué de 2 points (78,0 % pour 80 % visés) | **reste** | Le chiffre officiel n'est pas retouché : le test est consommé. L'objectif est atteint quand l'immeuble a un historique (81,6 %) ou que le DPE est connu (81,7 %). Les ventes du 1ᵉʳ semestre 2026 ne sont pas encore publiées par DVF (vérifié le 3 octobre 2026 : dernier millésime 2025) ; elles serviront de second test, sans réglage préalable. |
+| Fourchette large (50 % du prix en médiane) | **assumée** | Elle est honnête : 84,7 % de couverture pour 85 % annoncés. Elle se resserre avec le DPE retrouvé à l'adresse et l'historique de l'immeuble. |
+| Effet de la surface jugé inversé | **levée** | Analyse des ventes (section 6.2) : le modèle reproduit le marché, en baisse hors Paris et stable à Paris. |
+| Effet du nombre de pièces | **reste, faible** | +4 % de 3 à 5 pièces à surface égale, contre −3 % à +3 % dans les ventes ; non corrigé (section 6.2). |
+| Paris, maisons, petites surfaces, biens sans DPE | **corrigée** | L'application signale chaque segment difficile du bien avec son erreur mesurée sur le test (par exemple : DPE introuvable 18,7 %, moins de 30 m² 17,4 %, Paris 16,5 %, contre 14,91 % sur l'ensemble). |
+| Dépendance aux API externes (BAN, API Carto, ADEME) | **corrigée** | Second essai au délai doublé et cache des réponses ; un délai dépassé isolé ne fait plus basculer sur le repli DVF. Une panne durable de la BAN reste un cas de repli. |
+| DPE retrouvé à l'adresse parfois ambigu | **traitée** | Signalé à l'utilisateur, qui peut corriger la classe dans « Affiner l'estimation ». |
+| Démarrage du backend : 2,6 Go de pic mémoire | **corrigée** | 892 Mo au chargement, 838 Mo pour le service complet (section 5.2). |
+| v1.5 pas encore déployée | **reste** | Tout est fusionné sur `main`. Il reste à pousser sur GitHub, reconstruire l'image Docker (elle embarque la BDNB agrégée, 27 Mo) et redéployer sur Render. |
 
 ---
 
@@ -276,4 +297,9 @@ Les écarts restants s'expliquent :
 | `ml/evaluer_protocole.py` | évaluation selon le protocole |
 | `ml/contexte.py`, `ml/predict.py`, `ml/estimator.py`, `ml/geocoding.py` | inférence |
 | `Backend/main.py` | API : secteurs, validation, nouveaux champs |
-| `Frontend/src/vanilla/estimation.js` | page d'estimation, chiffres servis par l'API |
+| `Frontend/src/vanilla/estimation.js` | page d'estimation, chiffres servis par l'API, segments difficiles |
+| `Frontend/src/vanilla/scenarios.js`, `historique.js` | scénarios de plus-value communs, enregistrement des simulations |
+| `Frontend/src/components/History.jsx` | historique regroupé par bien |
+| `Backend/database.py` | historique : résultat complet et simulations (colonnes `resultat`, `simulations`) |
+| `ml/exporter_segments.py`, `Backend/models/segments_performance.json` | erreur mesurée par segment, servie à l'application |
+| `Backend/utils/dvf_search.py` | chargement du dataset limité aux colonnes utiles |

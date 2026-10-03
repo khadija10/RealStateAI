@@ -1,6 +1,6 @@
 # Fonctionnalités de RealStateAI
 
-**État au 2 octobre 2026, branche `feat/interface-v1.5`.**
+**État au 3 octobre 2026, branche `main` (version finale).**
 Cette version n'est pas encore déployée : Render sert la v1.4.2. Les évolutions depuis cette version sont détaillées dans [`RAPPORT_V1_5.md`](RAPPORT_V1_5.md).
 
 RealStateAI estime le prix des logements en Île-de-France (Paris et les 7 départements de la région), simule le financement et la plus-value, et publie l'erreur réelle de son modèle, quartier par quartier.
@@ -28,6 +28,7 @@ RealStateAI estime le prix des logements en Île-de-France (Paris et les 7 dépa
 - **Ventes dans l'immeuble** : les 6 dernières ventes de la même parcelle, avec leur date, surface, pièces et prix, et le prix au m² ramené au marché du jour. C'est la preuve que l'agent peut montrer à un vendeur.
 - **Performance énergétique** : badge DPE, année de construction, origine du DPE (retrouvé à l'adresse avec sa date, ou saisi), avertissement quand plusieurs logements de surface proche ont un DPE à cette adresse, et part de passoires thermiques F et G dans le code postal.
 - **Alertes** : adresse mal localisée, passoire thermique (décote et interdiction de location), notes du repli DVF, et invitation à saisir l'adresse quand l'estimation ne repose que sur la commune.
+- **Segments difficiles** : quand le bien relève d'un segment où le modèle se trompe plus que sa moyenne (DPE introuvable, moins de 30 m², aucune vente dans l'immeuble, maison, Paris, 100 m² et plus), l'erreur mesurée sur le test est affichée pour chacun.
 - **Secteur** : médiane du prix au m², écart du bien au marché, position du bien entre le 1ᵉʳ et le 9ᵉ décile, nombre de ventes, courbe d'évolution 2021–2025.
 - **Plus-value projetée à 10 ans**, au rythme observé sur le secteur.
 - **Détail du calcul** : méthode, adresse normalisée, erreur locale et erreur validée, nature de la fourchette, nombre de variables, date d'entraînement, volumes d'entraînement et de test.
