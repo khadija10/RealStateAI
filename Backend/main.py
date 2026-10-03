@@ -267,6 +267,7 @@ class EstimationResponse(BaseModel):
     code_postal: str | None = None
     historique_id: int | None = None       # ligne d'historique, pour y rattacher les simulations
     segments_difficiles: list[dict[str, Any]] | None = None  # erreur mesurée des segments du bien
+    adresse_sans_numero: bool | None = None  # rue seule : l'immeuble n'est pas identifié
 
 
 class SimulationRequest(BaseModel):
@@ -351,7 +352,8 @@ _LIBELLES_SEGMENT = {
 
 
 def _segments_difficiles(segments: dict, *, departement: str | None, type_bien: str | None,
-                         surface: float, dpe_connu: bool, ventes_immeuble: int) -> list[dict]:
+                         surface: float, dpe_connu: bool, ventes_immeuble: int,
+                         sans_numero: bool = False) -> list[dict]:
     """Segments du bien où le modèle se trompe plus que sa moyenne, mesurés sur le
     test officiel : l'utilisateur sait que l'estimation y est moins sûre."""
     ensemble = segments.get("ensemble", {}).get("mape")
@@ -363,7 +365,10 @@ def _segments_difficiles(segments: dict, *, departement: str | None, type_bien: 
         "paris": departement == "75",
         "grande_surface": surface >= 100,
     }
-    res = [{"segment": k, "libelle": _LIBELLES_SEGMENT[k], **segments[k]}
+    libelles = {**_LIBELLES_SEGMENT, **({"sans_vente_immeuble": "adresse sans numéro, immeuble non identifié",
+                                           "dpe_inconnu": "DPE introuvable (adresse sans numéro)"}
+                                          if sans_numero else {})}
+    res = [{"segment": k, "libelle": libelles[k], **segments[k]}
            for k, oui in concernes.items() if oui and k in segments
            and (ensemble is None or segments[k]["mape"] > ensemble)]
     return sorted(res, key=lambda s: -s["mape"])
@@ -784,7 +789,8 @@ def me(request: Request) -> dict[str, Any]:
     payload = decode_token(token)
     if not payload:
         raise HTTPException(401, "Token invalide.")
-    return {"id": user_id, "email": payload.get("email", "")}
+    compte = service.get_user_by_email(payload.get("email", "")) or {}
+    return {"id": user_id, "email": payload.get("email", ""), "created_at": compte.get("created_at")}
 
 
 @app.post(f"{API_PREFIX}/auth/forgot-password", tags=["auth"], summary="Demander un reset de mot de passe")
@@ -1230,7 +1236,10 @@ def estimate(
                     departement=str((ml_result.get("code_commune") if isinstance(ml_result, dict) else "") or "")[:2] or None,
                     type_bien=req.property_type, surface=surface,
                     dpe_connu=bool(getattr(normalized, "dpe_classe", None)),
-                    ventes_immeuble=len(normalized.comparables_immeuble or []))
+                    ventes_immeuble=len(normalized.comparables_immeuble or []),
+                    sans_numero=bool(isinstance(ml_result, dict) and ml_result.get("adresse_sans_numero")))
+                if isinstance(ml_result, dict):
+                    normalized.adresse_sans_numero = bool(ml_result.get("adresse_sans_numero"))
                 _inscrire_historique(request, req, surface, normalized, adresse_normalisee=(
                     ml_result.get("adresse_normalisee") if isinstance(ml_result, dict) else None))
                 return normalized

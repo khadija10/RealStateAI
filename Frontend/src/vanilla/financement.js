@@ -300,7 +300,9 @@ export function mount(root, { apiBase = '', prefill } = {}) {
     // La décision n'est affichée que si elle précise le verdict (sinon elle le répète)
     const decision = d.synthese?.decision_indicative || ''
     const verdict = $('#fin-verdict').textContent.toLowerCase()
-    $('#fin-decision').textContent = decision && !verdict.includes(decision.toLowerCase()) ? decision : ''
+    // Hors normes, le verdict à trois niveaux (dérogation / non finançable) dit déjà la décision :
+    // la décision binaire du moteur (« dérogation nécessaire ») le contredirait.
+    $('#fin-decision').textContent = conforme && decision && !verdict.includes(decision.toLowerCase()) ? decision : ''
 
     historique.planifier({
       prix: p.prix, apport: p.apport, revenus: p.revenus, duree: credit.duree_annees || p.duree,

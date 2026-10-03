@@ -147,17 +147,9 @@
 .rsai-vanilla .bloc-resume .mesure{background:var(--fond);border:1px solid var(--ligne);backdrop-filter:none}
 .rsai-vanilla .bloc-resume .mesure span{color:var(--gris)}
 
-/* Carte claire du résultat : 2 colonnes seulement quand la carte a
-   elle-même assez de place pour que le texte respire (requête de
-   conteneur, pas de viewport — sinon le texte se tasse dès que la page
-   est partagée en deux colonnes plus étroites que prévu). En dessous,
-   une seule colonne, plus confortable à lire. */
-@container (min-width:680px){
-  .rsai-vanilla .clair-grid{display:grid;grid-template-columns:1fr 1fr;column-gap:28px}
-  .rsai-vanilla .clair-grid .bloc-resume{grid-column:1/-1}
-  .rsai-vanilla .clair-grid .bloc:nth-child(3){border-top:none;margin-top:0;padding-top:0}
-  .rsai-vanilla .clair-grid .bloc:last-child{grid-column:1/-1}
-}
+/* Carte claire du résultat : une colonne, blocs séparés par un filet. (La grille
+   à deux colonnes interrogeait le conteneur depuis lui-même : elle ne s'appliquait
+   jamais, sauf la règle qui retirait le filet au-dessus du bloc DPE.) */
 
 .rsai-vanilla .bloc-tete{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin-bottom:14px}
 .rsai-vanilla .bloc-tete h3{margin:0;font-weight:400;font-size:23px;letter-spacing:-.01em}
@@ -247,6 +239,8 @@
 .rsai-vanilla .legende-donut div{display:flex;align-items:center;gap:8px}
 .rsai-vanilla .legende-donut i{width:10px;height:10px;border-radius:3px;flex:none}
 .rsai-vanilla .legende-donut span{margin-left:auto;font-variant-numeric:tabular-nums}
+/* L'encart sous la légende est un paragraphe, pas une ligne de légende */
+.rsai-vanilla .legende-donut div.encart{display:block}
 .rsai-vanilla .encart{margin-top:16px;padding:12px 14px;border-radius:14px;background:var(--fond);font-size:13px;color:var(--gris)}
 .rsai-vanilla .encart b{color:var(--encre);font-weight:600}
 .rsai-vanilla .exonere{padding:26px;border-radius:18px;background:var(--fond);text-align:center}

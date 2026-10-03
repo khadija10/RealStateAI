@@ -63,6 +63,8 @@ export default function App() {
 
   function handleAuthSuccess(_token, userData) {
     setUser(userData)
+    // date d'inscription (affichée dans le profil) : servie par /api/auth/me
+    getMe().then((u) => setUser(u)).catch(() => {})
     setShowAuthModal(false)
     const action = actionApresConnexion.current
     actionApresConnexion.current = null
