@@ -1,6 +1,6 @@
 # RAPPORT DE VERSION — RealEstateAI v1.5
 
-**Version v1.5 — 3 octobre 2026 (version finale présentée le 6 octobre 2026)**
+**Version v1.5 — 3 octobre 2026, mise à jour en fin de journée (version finale présentée le 6 octobre 2026)**
 **Branche : `main` (données, modèle, backend et frontend fusionnés)**
 **Comparée à : la version déployée sur Render, image `v1.4.2` (commit `de276ba`, 29 septembre 2026)**
 
@@ -19,6 +19,10 @@ Trois axes de travail :
 1. **une évaluation incontestable** : un protocole fixé avant la mesure et daté par commit ;
 2. **un modèle plus précis** : ventes du même immeuble, caractéristiques des bâtiments (BDNB), IRIS, proxy de l'état du bien ;
 3. **une application qui calcule exactement ce que le modèle a appris**, et qui montre sa preuve : comparables de l'immeuble, fourchette calibrée, fiabilité par commune.
+
+Le 3 octobre 2026, la v1.5 a ensuite été relue par **trois regards extérieurs** : un client non spécialiste, un designer UX/UI et un professionnel de l'immobilier et du crédit. Leurs remarques, ce qui en a été retenu et ce qui a été corrigé sont détaillés en section 7.
+
+Les autres retours du jury (prix, marché adressable, tests utilisateurs) sont traités en section 8. La section 10 rassemble les éléments à reprendre dans le mémoire.
 
 ---
 
@@ -43,7 +47,12 @@ Toutes les lignes de précision sont mesurées **avec le même protocole**, sur 
 | **Chiffres du frontend** | écrits en dur, périmés | **servis par le backend** |
 | **Segments difficiles signalés à l'utilisateur** | non | **oui, avec leur erreur mesurée sur le test** |
 | **Historique** | liste d'estimations | **regroupé par bien : résultat complet, évolution du prix, simulations rattachées** |
-| **Mémoire du backend au chargement du dataset** | — | **pic de 892 Mo** (2 627 Mo avant la correction de la section 5.2) |
+| **Confirmation sur la validation (juil.–sept. 2025)** | — | **14,09 %, 50,9 % à ±10 %, 79,6 % à ±20 %** : les deux périodes racontent la même histoire |
+| **Ventes sur plan (VEFA)** | mélangées partout | **signalées dans l'immeuble, écartées des statistiques de secteur** ; testées dans le modèle, sans gain (section 4.4) |
+| **Carte et référence du marché** | maisons et appartements mélangés ; carte issue d'une ancienne extraction | **séparées par type de bien et par marché (tout, ancien, neuf), calculées sur le dataset servi** |
+| **Avis de valeur PDF** | fiche reprenant le formulaire | **avis de valeur d'une page : prix, fourchette, fiabilité, ventes de l'immeuble, marché, points d'attention, méthode** |
+| **Financement** | mensualité, HCSF, frais | **+ point mort acheter ou louer, aides aux primo-accédants signalées, montants saisissables** |
+| **Mémoire du backend au chargement** | — | **pic de 979 Mo** avec les statistiques de marché (2 627 Mo avant la correction de la section 5.2) |
 
 À noter : avec son ancienne méthode, la v1.4.2 affichait 16,37 % d'erreur. Le même modèle, mesuré proprement, est à 16,98 %. L'ancienne évaluation surestimait donc le modèle d'environ 0,6 point (section 3.1).
 
@@ -104,6 +113,13 @@ Tous les choix du v2 ont été faits sur juillet–septembre 2025, jamais en reg
 
 « Sans filtre outliers » : mêmes ventes de test, y compris les 1,4 % de ventes atypiques (viagers, ventes familiales, biens d'exception) retirées de la mesure principale.
 
+**Lecture des résultats, critère par critère :**
+- **±10 % : 50,2 %, objectif atteint** (≥ 50 %).
+- **±20 % : 78,0 % au global, pour 80 % visés.** Ce taux est **dépassé dans les cas où l'application dispose d'une preuve** : 81,6 % quand l'immeuble a des ventes, 81,7 % quand le DPE est connu (section 6.1).
+- **Confirmation sur la validation** (juillet–septembre 2025, 36 181 ventes, section 4.4) : 14,09 %, 50,9 % à ±10 %, 79,6 % à ±20 %.
+
+**La règle n'a pas été déplacée après la mesure.** Les fichiers de résultats générés au moment de la mesure ([`resultats_protocole_v2_…`](resultats_protocole_v2_2025-10_2025-12.md)) conservent leur verdict d'origine : ils constituent la trace horodatée du protocole et ne sont jamais modifiés.
+
 **Fourchette du v2** ([`resultats_fourchette_v2_…`](resultats_fourchette_v2_2025-10_2025-12.json)) : la couverture passe de 71,5 % (brute) à **84,7 %** (calibrée), pour une promesse de 85 %. La promesse est donc tenue en moyenne. Deux sous-critères restent à améliorer : la couverture de la classe « à compléter » (78,2 %, seuil 80 %) et la largeur médiane (50 % du prix, seuil 30 %). Pour resserrer la fourchette, il faut un modèle plus précis : la calibration la rend honnête, pas plus étroite.
 
 ---
@@ -148,6 +164,26 @@ Toutes les nouvelles features sont **sans fuite temporelle** : seuls les mois st
 - **Fourchette calibrée par CQR** (conformal quantile regression), classe de communes par classe de communes ([`calibration.json`](../Backend/models/calibration.json)).
 - **Erreur locale par commune** selon la définition du protocole ([`local_mape.json`](../Backend/models/local_mape.json)).
 
+### 4.4 Expérience du 3 octobre : l'indicateur de vente sur plan (`est_vefa`)
+
+Un professionnel a fait remarquer que les ventes sur plan (VEFA) portent une « prime au neuf », qui disparaît à la première revente. Le gold contient l'indicateur `est_vefa`, mais le modèle ne l'utilisait pas.
+
+**Méthode, conforme au protocole :** la décision se prend sur la **validation** (juillet–septembre 2025), jamais sur le test. Les deux modèles sont mesurés avec le même code, l'un après l'autre ([`ml/experiences/`](../ml/experiences/)). La production n'est pas touchée : l'expérience utilise une copie de la configuration.
+
+| Validation juil.–sept. 2025 (36 181 ventes) | v2 (production) | v2 + `est_vefa` |
+|---|---:|---:|
+| Erreur moyenne (MAPE) | 14,09 % | 14,07 % |
+| Estimations à ±10 % | 50,9 % | 51,2 % |
+| Estimations à ±20 % | 79,6 % | 79,5 % |
+| Sans filtre des ventes atypiques | 15,20 % | 15,17 % |
+| Communes « fiables » | 41 | 38 |
+
+**Décision : non retenu.** Les écarts sont de l'ordre du centième de point, dans les deux sens. La raison est dans les données : les ventes sur plan sont passées de 8,2 % des ventes en 2021 à **1,9 % en 2025**, et seulement 424 des 31 696 ventes du test (1,3 %), sur lesquelles le modèle se trompe déjà peu (8,1 %).
+
+**En revanche, la VEFA change l'affichage.** Elle faussait les statistiques de secteur : voir la section 5.2 (Bobigny).
+
+*Note technique :* le script d'évaluation ne lit plus que les colonnes utiles du gold (au lieu de 66), car le chargement complet dépassait la mémoire de la machine de développement. Les lignes et les valeurs lues sont identiques.
+
 ---
 
 ## 5. APPLICATION — INFÉRENCE, PREUVE ET DONNÉES SERVIES
@@ -180,7 +216,16 @@ Exemple au 54 rue de Malte, 75011, sur 66 m² : avec le DPE retrouvé à l'adres
 | La part de passoires du code postal (feature du modèle) restait vide sans code postal saisi | — | code postal retrouvé par le géocodage, part de passoires lue dans le gold |
 | Une commune seule était envoyée au modèle, géocodée au centre de la commune | — | le modèle seulement à partir d'une adresse ; la commune seule passe par le repli DVF |
 | Un délai dépassé sur la BAN faisait basculer l'estimation sur le repli DVF (constaté sur Clichy) | oui | second essai au délai doublé et cache des réponses, pour la BAN, l'API Carto et l'ADEME ([`ml/tests/test_reseau.py`](../ml/tests/test_reseau.py)) |
-| Le backend lisait les 66 colonnes du gold : pic de **2 627 Mo** au chargement, au-delà d'une petite instance | oui | seules les 19 colonnes utiles sont lues : pic de **892 Mo**, chargement de 12,8 s à 7,0 s ; service complet (modèle et cache d'inférence) à **838 Mo** |
+| Le backend lisait les 66 colonnes du gold : pic de **2 627 Mo** au chargement, au-delà d'une petite instance | oui | seules les colonnes utiles sont lues : pic de **892 Mo**, chargement de 12,8 s à 7,0 s ; **979 Mo** avec le calcul des statistiques de marché |
+| Les ventes de l'immeuble étaient ramenées au « marché du jour » avec l'indice de la commune sur 12 mois, alors que la page affiche l'évolution annuelle du secteur : une vente de 2021 « montait » quand le secteur baissait | — | ramenées avec la série du secteur affichée (Maurepas : vente d'août 2021 de 3 883 à 3 480 €/m², −10,4 % comme le secteur) ; médiane de l'immeuble appliquée à la surface et écart avec l'estimation expliqué |
+| Une vente sur plan (VEFA) comptait comme une revente dans les ventes de l'immeuble | — | signalée « neuf, sur plan » et écartée de la médiane (Maurepas : médiane des reventes 3 624 €/m², soit environ 236 000 € pour 65 m²) |
+| Les statistiques de secteur (médiane, position, courbe, scénarios, résilience) mélangeaient neuf et ancien | — | calculées sur l'ancien seul. **Bobigny, appartements :** 7 453 €/m² en 2021 avec 65 % de neuf, soit une baisse affichée de 54 % jusqu'en 2025 ; **dans l'ancien : de 3 333 à 3 404 €/m², +2 %** |
+| La carte des prix et la référence du marché mélangeaient maisons et appartements ; la carte venait d'une ancienne extraction (Versailles : 3 835 ventes contre 5 040 dans le gold) | oui | calculées au démarrage sur le dataset servi, par type de bien et par marché |
+| Une maison estimée à l'adresse d'un immeuble (23 rue Lecourbe, où les 3 ventes sont des appartements) donnait un prix sans signification, sans avertissement | — | **alerte** quand le type saisi ne s'est jamais vendu à l'adresse alors que l'autre l'a été au moins 3 fois |
+| Une adresse sans numéro (« Rue Proudhon ») laissait croire qu'il n'y avait « aucune vente dans l'immeuble » | — | « Adresse sans numéro : l'immeuble n'a pas pu être identifié » |
+| L'interface d'origine lançait une estimation de démonstration à chaque ouverture de page, enregistrée en double (double montage React) : 32 lignes « Paris 11ᵉ » identiques dans un historique | — | plus aucun calcul automatique ; historiques de test nettoyés |
+| Les résultats disparaissaient en changeant d'onglet, alors que la pastille verte annonçait une estimation disponible | — (régression de la nouvelle interface) | pages conservées en mémoire, comme en v1.4 |
+| Projection de plus-value à 10 ans : médianes annuelles prolongées sans limite (Bobigny : entre 30 000 et 205 000 €) | — | secteurs calculés sur l'ancien (le saut de Bobigny venait du neuf), rythmes limités à ±4 %/an par sécurité ; scénarios revus (section 7.3) |
 
 **Effet mesuré** (section 6.3) : l'écart médian entre l'application et le modèle hors ligne passe de 5,9 % à **2,2 %**, et la part des ventes à moins de 5 % d'écart de 45 % à **70 %**.
 
@@ -194,6 +239,9 @@ Exemple au 54 rue de Malte, 75011, sur 66 m² : avec le DPE retrouvé à l'adres
 | `POST /api/predictions/estimate` (suite) | `segments_difficiles` : segments du bien où le modèle se trompe plus que sa moyenne, avec l'erreur mesurée sur le test ; `historique_id` : ligne d'historique de l'estimation |
 | `GET /api/search-history` | chaque estimation avec sa **réponse complète** (fourchette, fiabilité, DPE, date d'entraînement du modèle) et ses simulations |
 | `PUT /api/history/{id}/simulation` | **nouveau** : rattache la dernière simulation de plus-value ou de financement au bien |
+| `POST /api/predictions/estimate` (suite) | `immeuble_reference` (médiane des reventes de l'immeuble ramenée au secteur, nombre de ventes sur plan écartées), `alerte_type`, `adresse_sans_numero` ; chaque comparable porte `vefa` |
+| `GET /api/market/map`, `GET /api/market/trends` | paramètres `type_bien` (`apartment`, `house`) et `marche` (`tous`, `ancien`, `neuf`) ; calculés sur le dataset servi, fichiers statiques en repli |
+| `GET /api/auth/me` | date d'inscription, affichée dans le profil |
 
 ### 5.4 Frontend
 
@@ -203,9 +251,18 @@ Exemple au 54 rue de Malte, 75011, sur 66 m² : avec le DPE retrouvé à l'adres
 - **DPE retrouvé automatiquement** à l'adresse ; le numéro de DPE et le numéro de lot, inconnus des utilisateurs, ne sont plus demandés.
 - **Résultats conservés entre les onglets**, comme en v1.4 : la pastille verte de l'onglet Estimation retrouve le formulaire et le résultat, et les simulations de plus-value et de financement restent affichées.
 - **Même scénario central de plus-value** sur la page Estimation et dans le simulateur (module commun `vanilla/scenarios.js`).
-- **Segments difficiles signalés** sous la fourchette, avec leur erreur mesurée (section 7).
+- **Segments difficiles signalés** sous la fourchette, avec leur erreur mesurée (sections 6.1 et 9).
 - **Historique regroupé par bien** : dernier prix, fourchette, fiabilité, DPE, évolution du prix entre les estimations, « Voir le résultat » sans recalcul, « Ré-estimer », dernières simulations, tri et comparaison de deux biens.
 - La fourchette n'est plus présentée comme « calibrée » quand l'estimation vient du repli DVF.
+- **Avis de valeur PDF d'une page** : référence, prix arrondi et fourchette avec sa couverture mesurée, fiabilité locale et régionale, ventes de l'immeuble ramenées au marché (VEFA signalée), marché du secteur et position du bien, points d'attention, méthode et mentions. L'export est fidèle à l'écran (fonds imprimés, sans en-têtes du navigateur).
+- **Langage clair** : plus de « MAPE », « modèle ML », « variables » ou « déciles » à l'écran (« 10 % des ventes sous… »). Le détail technique est replié dans une section « Méthodologie » en trois cartes : le calcul, le modèle, la mesure de l'erreur.
+- **Prix arrondis au millier**, fourchette juste en dessous (« Entre 173 000 € et 266 000 €. Le prix de vente réel tombe dans cette fourchette 85 fois sur 100. »), et mention « Marché observé jusqu'à fin 2025 ».
+- **Fiabilité cohérente** : l'anneau prend la couleur de la classe, et les libellés sont « Fiabilité élevée », « correcte », « limitée », « Peu de références ».
+- **Financement** : section **« Acheter ou louer ? »** (point mort sur le vrai prêt et le loyer saisi), **aides à vérifier** (PTZ, prêt Action Logement, droits de mutation), « indice de solidité · indicatif » au lieu de « score », mention réglementaire de l'assistant (IOBSP), montants saisissables à côté des sliders.
+- **Plus-value** : scénarios « tendance prolongée / stabilité / reprise modérée » ; courbe des abattements masquée en résidence principale ; résilience comparée aux secteurs du même département.
+- **Carte et référence du marché** : filtres « Appartements | Maisons » et « Tout le marché | Ancien | Neuf (sur plan) » ; échelle de couleur d'une seule teinte (sable → brun), lisible par les daltoniens ; moyenne glissante sur 3 mois.
+- **Système de design** : titres de page uniformes, une seule largeur de colonne, badges à trois sens fixes (information, statut, alerte), cases à cocher pour les options indépendantes et boutons radio pour les choix exclusifs, focus clavier visible, contrastes contrôlés (textes secondaires ≥ 6:1, bouton d'action 4,66:1 pour un seuil de 4,5:1).
+- **Navigation** : Historique et Profil dans l'espace du compte, en haut à droite ; résultat de l'estimation placé avant le bloc de présentation ; suggestions d'adresse limitées à l'Île-de-France.
 
 ---
 
@@ -264,9 +321,84 @@ Les écarts restants s'expliquent :
 - l'application estime au marché du jour, alors que le gold utilise le marché du mois de la vente ;
 - pour une grande résidence de Verneuil-sur-Seine, DVF géolocalise la vente à 500 m du point BAN.
 
+### 6.4 Maisons et appartements
+
+Comparaison entre l'effet du type de bien dans le modèle (même adresse, 90 m², 4 pièces) et l'écart des médianes de 2025 dans l'ancien :
+
+| Commune | Modèle : maison / appartement | Marché 2025, ancien : maison / appartement |
+|---|---:|---:|
+| Maurepas | +12 % | +13 % |
+| Versailles | +11 % à +27 % selon l'adresse | +38 % |
+| Vincennes | +9 % | +27 % |
+| Paris 15ᵉ | +14 % | +30 % (44 maisons en 5 ans) |
+| Montreuil | +19 % | +2 % |
+| Saint-Denis | 0 % | −19 % |
+
+**Lecture.** Le sens de l'écart est juste : une maison vaut en général plus cher au m². Mais le modèle applique un écart presque constant (environ +10 %), alors que le marché varie de −19 % à +38 % selon la commune. Les médianes du marché comparent des biens qui ne sont ni dans les mêmes quartiers, ni de la même taille : elles ne sont pas directement comparables à l'effet du modèle, mais elles montrent que celui-ci n'a pas appris finement l'effet par commune. Le segment « maisons » est d'ailleurs moins précis (16,8 % d'erreur contre 14,1 % pour les appartements) et signalé comme tel à l'utilisateur.
+
 ---
 
-## 7. LIMITES ET SUITES
+## 7. RELECTURES DU 3 OCTOBRE 2026
+
+### 7.1 Un client non spécialiste
+
+*« Beau, sérieux et haut de gamme, mais pas écrit pour moi, et les chiffres ne collent pas entre eux. »*
+
+| Remarque | Vérification | Suite donnée |
+|---|---|---|
+| Une vente de l'immeuble à 184 000 € contredit l'estimation de 219 528 € | vrai : rien ne l'expliquait | médiane de l'immeuble et explication affichées ; la vente à 184 000 € est la plus basse des quatre |
+| Le prix « aujourd'hui » des ventes monte alors que le secteur baisse | vrai : deux indices différents | ventes ramenées avec la série affichée |
+| Le marché baisse ou remonte ? | les « +0,9 % » concernaient d'autres départements que celui du bien | scénario de reprise ajouté ; scénarios revus (7.3) |
+| Le reste à vivre est contradictoire | deux notions justes mais mal formulées | « 2 936 € par mois, soit 1 336 € de plus que le minimum d'usage (1 600 €) » |
+| Fausse précision (prix à l'euro près) | vrai | prix et projections arrondis au millier |
+| Jargon (MAPE, LightGBM, déciles, backend) | vrai | langage clair, méthodologie repliée |
+| 721 674 contre 700 270 + 31 696 | les ventes de contrôle font partie des 700 270 | libellé corrigé : « 700 270 ventes retenues sur les 721 674 analysées » |
+
+### 7.2 Un designer UX/UI
+
+*« La direction artistique est forte ; les problèmes viennent du système. »*
+
+Corrigé : contrôles Primo-accédant / VEFA (cases indépendantes), montants saisissables, listes avec chevron, suppressions protégées et éloignées, résultat remonté, navigation compte, titres uniformes, badges à sens fixe, graphiques sur une même grammaire (grille, axe gradué), carte monochrome, sélection « Comparer » explicite dans l'historique, focus clavier, contrastes vérifiés.
+
+Déjà réglé avant la relecture : largeurs de conteneur, couleurs de la comparaison, historique regroupé par bien.
+
+**Non retenu :** les chiffres en italique à empattement, conservés par choix d'identité visuelle ; le champ unique « adresse ou commune », jugé trop risqué avant la soutenance.
+
+**Non vérifié :** la version mobile et le mode sombre. La démonstration se fait sur ordinateur.
+
+### 7.3 Un professionnel de l'immobilier et du crédit
+
+*« Financement et fiscalité de niveau professionnel ; estimation et projection de niveau grand public. »*
+
+| Remarque | Vérification | Suite donnée |
+|---|---|---|
+| La vente d'août 2021 de l'immeuble est probablement une VEFA | **vrai** (`est_vefa`) | VEFA signalée et écartée (5.2) ; testée dans le modèle (4.4) |
+| Projeter −2,7 %/an sur 10 ans prolonge une correction conjoncturelle | juste sur le fond | scénarios : **tendance du secteur prolongée** (bornée à ±4 %/an, borne basse), **stabilité** (centrale), **reprise modérée à +2 %/an** (inflation visée par la BCE) |
+| Il manque la comparaison acheter / louer | vrai | point mort calculé sur le vrai prêt : sur le bien de Maurepas (environ 210 000 €, loyer de 1 100 €), **9 ans à prix stables**, 16 ans avec −2 %/an, 5 ans avec +2 %/an ; hypothèses affichées |
+| Droits de mutation à 5,807 % | **faux** : c'est le taux réduit des primo-accédants ; 6,32 % sinon dans les départements qui ont voté la hausse | rien à corriger, rappelé dans le bloc « aides » |
+| Surtaxe au-delà de 50 000 € manquante | **faux** : déjà calculée (2 à 6 %) | — |
+| Vérifier la loi de finances 2026 | vérifié : aucun changement pour les plus-values des particuliers (loi du 19 février 2026) | — |
+| Aides aux primo-accédants absentes | vrai | PTZ, prêt Action Logement (30 000 € à 1 %), droits de mutation signalés, non chiffrés (conditions inconnues de la simulation) |
+| Le « score 77/100 » peut passer pour une pré-acceptation | vrai | « Indice de solidité · indicatif », infobulle « ce n'est pas un accord de prêt » |
+| L'assistant conversationnel frôle l'activité d'IOBSP | vrai | mention : « informations générales, pas un conseil en crédit » |
+| Séparer maisons et appartements, neuf et ancien | vrai pour la carte et la référence | corrigé (5.2) ; l'estimation séparait déjà les types (6.4) |
+| Critères qualitatifs (étage, extérieur, parking, état) | vrai, absents des données ouvertes | limite déclarée (section 9) |
+| Données arrêtées fin 2025 | vrai | affiché sous la fourchette |
+
+---
+
+## 8. MARCHÉ, PRIX ET VALIDATION UTILISATEUR
+
+| Retour du jury | Réponse | Document |
+|---|---|---|
+| « Votre SAM est compté en ventes ; il faut chiffrer les agents et mandataires » | **environ 40 000 professionnels de la transaction en Île-de-France** (33 000 à 52 000) : fichier des CCI au 1ᵉʳ janvier 2026 (41 471 cartes transaction, 84 470 agents commerciaux, 58 541 salariés habilités), part francilienne encadrée par la population (≈ 18 %) et le répertoire SIRENE (28,1 % des agences, comptage du 3 octobre 2026) | [`marche_professionnels_idf.md`](marche_professionnels_idf.md) |
+| « 14,99 € par mois, c'est trop bas » | grille cible : 39 à 49 € HT par mois et par agent, 33 à 42 € HT par utilisateur en agence ; **modèle économique cible, sans paiement dans l'application** | mémoire |
+| « 3 à 5 tests utilisateurs » | protocole prêt : 6 tâches, questionnaire SUS, grille de synthèse ; **à mener avant le 6 octobre** | [`tests_utilisateurs.md`](tests_utilisateurs.md) |
+| « Élargir l'enquête (20 entretiens, 150 répondants) » | hors du périmètre du code | mémoire |
+
+---
+
+## 9. LIMITES ET SUITES
 
 État au 3 octobre 2026, version finale.
 
@@ -280,17 +412,76 @@ Les écarts restants s'expliquent :
 | Dépendance aux API externes (BAN, API Carto, ADEME) | **corrigée** | Second essai au délai doublé et cache des réponses ; un délai dépassé isolé ne fait plus basculer sur le repli DVF. Une panne durable de la BAN reste un cas de repli. |
 | DPE retrouvé à l'adresse parfois ambigu | **traitée** | Signalé à l'utilisateur, qui peut corriger la classe dans « Affiner l'estimation ». |
 | Démarrage du backend : 2,6 Go de pic mémoire | **corrigée** | 892 Mo au chargement, 838 Mo pour le service complet (section 5.2). |
-| Ventes sur plan (VEFA) mélangées aux reventes | **en partie traitée** | Dans les ventes de l'immeuble, la VEFA est signalée (« neuf, sur plan ») et exclue de la médiane affichée : sa prime au neuf disparaît à la revente. Les statistiques de secteur de l'estimation (médiane, position, évolution, scénarios, résilience) sont calculées sur l'ancien seul : à Bobigny, la courbe des appartements passait de −54 % (65 % de neuf en 2021) à +2 % dans l'ancien. Le modèle, lui, n'utilise pas encore l'indicateur `est_vefa` du gold. L'ajouter est un changement de modèle, à mesurer sur une nouvelle période de test (ventes 2026), pas sur le test déjà consommé. |
+| Ventes sur plan (VEFA) mélangées aux reventes | **en partie traitée** | Dans les ventes de l'immeuble, la VEFA est signalée (« neuf, sur plan ») et exclue de la médiane affichée : sa prime au neuf disparaît à la revente. Les statistiques de secteur de l'estimation (médiane, position, évolution, scénarios, résilience) sont calculées sur l'ancien seul : à Bobigny, la courbe des appartements passait de −54 % (65 % de neuf en 2021) à +2 % dans l'ancien. L'indicateur dans le modèle a été testé sur la validation, sans gain (ligne suivante). |
+| Effet maison / appartement presque constant dans le modèle (environ +10 %) | **reste** | Le marché varie de −19 % à +38 % selon la commune (section 6.4). Piste : interaction type × commune, à évaluer sur la validation. |
+| Courbes de Paris en maisons très irrégulières | **assumée** | Quelques ventes par mois seulement : c'est la réalité des données. |
+| Version mobile et mode sombre | **non vérifiés** | La démonstration se fait sur ordinateur. |
 | Indicateur de vente sur plan (`est_vefa`) dans le modèle | **testé, non retenu** | Mesuré sur la validation (juil.–sept. 2025, 36 181 ventes, même code) : MAPE 14,07 % contre 14,09 % pour le v2, 51,2 % contre 50,9 % à ±10 %, 79,5 % contre 79,6 % à ±20 %, 38 communes fiables contre 41. Gain nul : le neuf ne pèse plus que 1,9 % des ventes de 2025. La production reste sur le v2 ([`ml/experiences/`](../ml/experiences/), [`resultats_protocole_validation_*`](resultats_protocole_validation_vefa_2025-07_2025-09.md)). |
 | Critères qualitatifs absents (étage, ascenseur, extérieur, parking, état, exposition) | **reste** | Ils ne figurent pas dans les ventes notariées : la fourchette (±20 % environ) les reflète. L'application le dit dans la méthodologie et invite à confirmer par une visite. Piste : un ajustement optionnel saisi par l'agent, documenté comme tel. |
 | Carte et référence du marché mélangeant maisons et appartements, carte calculée sur une ancienne extraction | **corrigée** | Calculées au démarrage sur le dataset servi, séparément pour les appartements et les maisons, et pour tout le marché, l'ancien ou le neuf (VEFA). |
 | Données arrêtées à fin 2025 | **affichée** | « Marché observé jusqu'à fin 2025 (dernière publication des ventes notariées) » sous la fourchette. |
 | Projection de plus-value | **revue** | Trois scénarios : tendance du secteur prolongée (bornée à ±4 %/an), stabilité (centrale), reprise modérée à 2 %/an. La correction de 2022-2024 sert de borne basse, pas de tendance de fond. |
 | v1.5 pas encore déployée | **reste** | Tout est fusionné sur `main`. Il reste à pousser sur GitHub, reconstruire l'image Docker (elle embarque la BDNB agrégée, 27 Mo) et redéployer sur Render. |
+| Prochaine mesure officielle | **prévue** | Un protocole v2, fixé et daté avant la mesure, sur les ventes 2026 dès leur publication par DVF. Aucune autre période ne peut servir de test : 2021 à mi-2025 ont servi à l'entraînement, juillet–septembre 2025 aux choix du modèle, octobre–décembre 2025 à la mesure officielle, et le modèle de production a été réentraîné sur l'ensemble. |
 
 ---
 
-## 8. FICHIERS PRINCIPAUX
+## 10. POUR LA RÉDACTION DU MÉMOIRE
+
+### 10.1 Les messages à retenir
+
+1. **Une évaluation incontestable.** L'objectif a été fixé et daté **avant** la mesure, sur des ventes que le modèle n'avait jamais vues, et il n'a pas été déplacé. L'ancienne méthode surestimait le modèle de 0,6 point.
+2. **Un modèle nettement plus précis.** L'erreur moyenne passe de 16,98 % à 14,91 %. Une estimation sur deux tombe à moins de 10 % du prix réel, comme visé. **Près de huit sur dix** tombent à moins de 20 %, et **plus de huit sur dix** quand l'immeuble a des ventes ou que le DPE est connu.
+3. **Une application qui montre sa preuve et ses limites.** Ventes de l'immeuble, fourchette dont la promesse est tenue (84,7 % pour 85 %), erreur mesurée par commune et par segment, alertes quand la saisie est douteuse.
+4. **Des décisions appuyées sur des mesures.** Exemple : l'indicateur de vente sur plan a été testé sur la validation et écarté faute de gain, mais il a corrigé l'affichage (Bobigny).
+5. **Un parcours complet** : estimation, avis de valeur, financement conforme aux normes HCSF, point mort acheter ou louer, plus-value et fiscalité 2026.
+
+### 10.2 Les chiffres à citer
+
+| Chiffre | Valeur | Source |
+|---|---|---|
+| Ventes analysées | 721 674 (2021–2025) | dataset gold |
+| Ventes du test officiel | 31 696 (oct.–déc. 2025) | protocole |
+| Erreur moyenne | 14,91 % (contre 16,98 % pour Render mesuré pareil) | `resultats_protocole_v2_…` |
+| À ±10 % / ±20 % | 50,2 % / 78,0 % | idem |
+| ±20 % quand l'immeuble a des ventes / DPE connu | 81,6 % / 81,7 % | `scenarios_performance.md` |
+| Confirmation sur la validation | 14,09 %, 50,9 %, 79,6 % | section 4.4 |
+| Couverture de la fourchette à 85 % | 84,7 % | `resultats_fourchette_v2_…` |
+| Communes « fiables » | 15 (3,3 % des ventes) | protocole |
+| Sources croisées | 4 : DVF, DPE (ADEME), IRIS (INSEE), BDNB (CSTB) | section 4.2 |
+| Variables du modèle | 45 | `config.yaml` |
+| Professionnels de la transaction en Île-de-France | ≈ 40 000 (33 000 à 52 000) | `marche_professionnels_idf.md` |
+| Écart application / modèle hors ligne | 2,2 % en médiane (contre 5,9 %) | section 6.3 |
+
+### 10.3 Formulations recommandées
+
+- **Pour l'objectif** : « ±10 % : 50,2 %, objectif atteint. ±20 % : 78,0 % au global pour 80 % visés, et plus de 80 % quand l'application dispose d'une preuve (81,6 % avec les ventes de l'immeuble, 81,7 % avec le DPE). »
+- **À l'oral, en réponse à « avez-vous atteint votre objectif ? »** : « Le premier oui. Le second à deux points près au global, et il est dépassé là où l'agent a besoin de défendre un prix. Nous n'avons pas déplacé la barre après coup : c'est ce qui rend ces chiffres crédibles. »
+- **Pour un public non spécialiste** : « une estimation sur deux à moins de 10 % du vrai prix ; près de huit sur dix à moins de 20 % ».
+- **Sur l'étage et l'état du bien** : « L'étage n'existe dans aucune donnée ouverte. Pour l'état, nous utilisons deux indicateurs techniques : les déperditions thermiques du DPE et les caractéristiques du bâtiment (BDNB). »
+- **Sur la fourchette** : « Elle est large, mais honnête : le prix réel y tombe 85 fois sur 100. Un agent la resserre après visite. »
+
+### 10.4 À éviter
+
+- Écrire « objectif atteint » sans préciser le critère, ou arrondir 78 % à « 8 sur 10 » sans « près de ».
+- Citer les écarts avec les prix Notaires-INSEE (section 6.2) : leur source exacte n'est pas vérifiée.
+- Présenter la grille tarifaire comme un prix pratiqué : c'est un modèle économique cible.
+- Présenter la validation (79,6 %) comme le résultat officiel : c'est une confirmation, le résultat officiel reste 78,0 %.
+- Modifier les fichiers de résultats du protocole : ils font foi.
+
+### 10.5 Questions probables du jury
+
+| Question | Réponse courte |
+|---|---|
+| « Un agent peut-il défendre un prix avec 15 % d'erreur ? » | Il défend un avis de valeur, pas un chiffre seul : ventes de l'immeuble ramenées au marché, fourchette tenue à 85 %, erreur mesurée dans son secteur. Avec ces preuves, plus de 80 % des estimations sont à moins de 20 %. |
+| « Pourquoi ne pas avoir retouché le modèle pour atteindre 80 % ? » | Parce que le test était consommé : régler le modèle en le regardant aurait rendu le chiffre optimiste, ce qui était le défaut de l'ancienne évaluation. La prochaine mesure se fera sur les ventes 2026. |
+| « Pourquoi 39 € et pas 14,99 € ? » | Parce que la valeur pour un agent est le dossier (preuves, financement de l'acheteur), et que ses outils actuels coûtent davantage. C'est une grille cible, à valider par une bêta gratuite. |
+| « Combien d'agents en Île-de-France ? » | Environ 40 000 professionnels de la transaction, dont environ 20 000 mandataires (fichier des CCI au 1ᵉʳ janvier 2026). |
+| « Et le neuf ? » | Testé : l'indicateur n'apporte rien au modèle (le neuf pèse 1,9 % des ventes de 2025), mais il corrige l'affichage des secteurs. |
+
+---
+
+## 11. FICHIERS PRINCIPAUX
 
 | Fichier | Rôle |
 |---|---|
@@ -309,3 +500,8 @@ Les écarts restants s'expliquent :
 | `Backend/database.py` | historique : résultat complet et simulations (colonnes `resultat`, `simulations`) |
 | `ml/exporter_segments.py`, `Backend/models/segments_performance.json` | erreur mesurée par segment, servie à l'application |
 | `Backend/utils/dvf_search.py` | chargement du dataset limité aux colonnes utiles |
+| `ml/experiences/config_v2_vefa.yaml`, `validation_vefa.log`, `docs/resultats_protocole_validation_*` | expérience `est_vefa` sur la validation |
+| `Frontend/src/vanilla/acheterlouer.js`, `montants.js` | point mort acheter ou louer ; montants saisissables |
+| `Frontend/src/components/FiltresMarche.jsx` | filtres type de bien et marché (carte, référence) |
+| `docs/marche_professionnels_idf.md`, `docs/tests_utilisateurs.md` | marché adressable ; protocole de tests utilisateurs |
+| `docs/FONCTIONNALITES.md` | liste des fonctionnalités |
