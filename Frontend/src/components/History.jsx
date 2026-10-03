@@ -348,13 +348,6 @@ export default function History({ onReEstimate, onVoir }) {
         >
           {Object.entries(TRIS).map(([k, t]) => <option key={k} value={k}>{t.label}</option>)}
         </select>
-        <button
-          onClick={() => setConfirmClear(true)}
-          disabled={clearing}
-          className="text-[13px] text-ink-muted hover:text-red-500 transition-colors shrink-0"
-        >
-          {clearing ? 'Effacement…' : 'Vider tout'}
-        </button>
       </div>
 
       <div className="flex items-center justify-between">
@@ -362,14 +355,13 @@ export default function History({ onReEstimate, onVoir }) {
           {filtered.length} bien{filtered.length > 1 ? 's' : ''} · {nbEstimations} estimation{nbEstimations > 1 ? 's' : ''}
           {totalPages > 1 ? ` · page ${page + 1}/${totalPages}` : ''}
         </p>
-        {filtered.length >= 2 && selected.length === 0 && (
-          <p className="text-[13px] text-ink-muted">Sélectionnez 2 biens pour les comparer</p>
-        )}
-        {selected.length === 1 && <p className="text-[13px] text-seine">Sélectionnez un second bien</p>}
-        {selected.length === 2 && (
-          <button onClick={() => setSelected([])} className="text-[13px] text-ink-muted hover:text-ink transition-colors">
-            Tout désélectionner
-          </button>
+        {filtered.length >= 2 && (
+          <p className="text-[13px] text-ink-muted">
+            Comparaison : <b className="text-ink">{selected.length}/2</b> biens cochés
+            {selected.length === 2 && (
+              <button onClick={() => setSelected([])} className="ml-3 underline hover:text-ink transition-colors">tout décocher</button>
+            )}
+          </p>
         )}
       </div>
 
@@ -394,24 +386,22 @@ export default function History({ onReEstimate, onVoir }) {
 
           return (
             <div key={g.cle} data-testid="history-item" className={badge ? 'bg-stone-50' : ''}>
-              <div
-                className={`flex items-start gap-4 px-5 py-4 ${item.estimated_price ? 'cursor-pointer' : ''}`}
-                onClick={() => item.estimated_price && toggleSelect(g.cle)}
-              >
-                <button
-                  onClick={(e) => { e.stopPropagation(); if (item.estimated_price) toggleSelect(g.cle) }}
-                  className="shrink-0 w-6 h-6 mt-0.5 flex items-center justify-center"
-                  aria-label={badge ? `Bien ${badge} sélectionné pour la comparaison` : 'Sélectionner pour comparer'}
-                  aria-pressed={!!badge}
+              <div className="flex items-start gap-4 px-5 py-4">
+                <label
+                  onClick={(e) => e.stopPropagation()}
+                  className="shrink-0 mt-0.5 flex flex-col items-center gap-1 cursor-pointer select-none"
+                  title="Cochez deux biens pour les comparer"
                 >
-                  {badge ? (
-                    <span className={`h-6 w-6 rounded-full text-white text-[13px] font-semibold flex items-center justify-center ${badge === 'A' ? 'bg-seine' : 'bg-limestone'}`}>
-                      {badge}
-                    </span>
-                  ) : (
-                    <span className="h-4 w-4 rounded-full border-2 border-stone-300 hover:border-seine transition-colors" />
-                  )}
-                </button>
+                  <input
+                    type="checkbox"
+                    checked={!!badge}
+                    disabled={!item.estimated_price}
+                    onChange={() => toggleSelect(g.cle)}
+                    className="h-[18px] w-[18px] accent-[var(--color-seine)] cursor-pointer"
+                    aria-label={badge ? `Bien ${badge} : retirer de la comparaison` : 'Ajouter à la comparaison'}
+                  />
+                  <span className="text-[12px] text-ink-muted">{badge ? `Bien ${badge}` : 'Comparer'}</span>
+                </label>
 
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-ink truncate">{titre(item)}</p>
@@ -492,7 +482,7 @@ export default function History({ onReEstimate, onVoir }) {
                   <button
                     onClick={() => setConfirmDelete(g.cle)}
                     title="Supprimer"
-                    className="text-[13px] text-ink-muted hover:text-red-500 transition-colors"
+                    className="text-[13px] text-red-600 hover:text-red-700 hover:underline transition-colors"
                     aria-label="Supprimer ce bien de l'historique"
                   >
                     Supprimer
@@ -579,6 +569,16 @@ export default function History({ onReEstimate, onVoir }) {
       {canCompare && (
         <ComparisonSummary a={selA} b={selB} onClear={() => setSelected([])} />
       )}
+
+      <div className="pt-6 border-t border-stone-100 flex justify-end">
+        <button
+          onClick={() => setConfirmClear(true)}
+          disabled={clearing}
+          className="text-[13px] font-medium text-red-600 border border-red-200 rounded-full px-4 py-2 hover:bg-red-50 transition-colors"
+        >
+          {clearing ? 'Effacement…' : "Vider tout l'historique"}
+        </button>
+      </div>
     </div>
     </>
   )

@@ -425,3 +425,30 @@
 .rsai-vanilla .methodo-carte dt{font-size:13px;color:var(--gris)}
 .rsai-vanilla .methodo-carte dd{margin:0;font-size:14px;font-weight:600;color:var(--encre);text-align:right;font-variant-numeric:tabular-nums}
 .rsai-vanilla .methodo-carte p{margin:10px 0 0;font-size:13px;color:var(--gris);line-height:1.5}
+
+/* ==========================================================================
+   Système (retour UX) : contrôles, badges, focus
+   ========================================================================== */
+/* Montant saisissable à côté du slider, et bornes sous le slider */
+.rsai-vanilla .reglage input.montant{width:9.5em;text-align:right;border:1px solid transparent;border-radius:10px;background:transparent;
+  padding:2px 6px;font-family:var(--serif);font-style:italic;font-size:24px;line-height:1.1;color:var(--encre);font-variant-numeric:tabular-nums}
+.rsai-vanilla .reglage input.montant:hover{border-color:var(--ligne)}
+.rsai-vanilla .reglage input.montant:focus{border-color:var(--action);background:var(--blanc);outline:none}
+.rsai-vanilla .bornes-reglage{display:flex;justify-content:space-between;margin-top:6px;font-size:13px;color:var(--gris);font-variant-numeric:tabular-nums}
+/* Listes de choix : chevron visible */
+.rsai-vanilla select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%235E5952' stroke-width='2.5' stroke-linecap='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 12px center;padding-right:34px;cursor:pointer}
+/* Cases indépendantes (primo-accédant, VEFA) : une case à cocher, pas un choix exclusif */
+.rsai-vanilla .bascule{display:flex;align-items:center;gap:10px;justify-content:flex-start;border-radius:12px;padding:12px 14px;color:var(--encre);background:var(--blanc)}
+.rsai-vanilla .bascule::before{content:"";flex:none;width:18px;height:18px;border-radius:5px;border:1.5px solid var(--gris);background:var(--blanc) center/12px no-repeat}
+.rsai-vanilla .bascule[aria-pressed=true]{background:var(--blanc);color:var(--encre);border-color:var(--action)}
+.rsai-vanilla .bascule[aria-pressed=true]::before{background-color:var(--action);border-color:var(--action);
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12l5 5 9-10'/%3E%3C/svg%3E")}
+.rsai-vanilla .champ-lib{font-size:13px;color:var(--gris);margin:4px 0 8px}
+/* Focus clavier visible partout */
+.rsai-vanilla :is(button,a,input,select,summary,[tabindex]):focus-visible{outline:2px solid var(--action);outline-offset:2px}
+/* Panneaux sombres illustrés : voile plus dense derrière le texte du haut et du bas */
+.rsai-vanilla .sombre::after{background:linear-gradient(180deg,rgba(40,28,20,.78) 0%,rgba(40,28,20,.5) 42%,rgba(40,28,20,.88) 78%)}
+/* Choix exclusif (résidence principale / investissement) : aspect de bouton radio */
+.rsai-vanilla .bascule[data-u]::before{border-radius:50%;background-image:none}
+.rsai-vanilla .bascule[data-u][aria-pressed=true]::before{background:var(--blanc);border:5px solid var(--action)}

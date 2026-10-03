@@ -27,12 +27,14 @@ const DEP_VIEWS = {
 }
 
 const PRICE_SCALE = [
-  { max: 3000, color: '#4ade80' },
-  { max: 5000, color: '#a3e635' },
-  { max: 7000, color: '#facc15' },
-  { max: 9000, color: '#fb923c' },
-  { max: 12000, color: '#f87171' },
-  { max: Infinity, color: '#dc2626' },
+  // Échelle d'une seule teinte, du sable au brun : lisible par les daltoniens,
+  // et sans le jugement du vert / rouge (Paris n'est pas « mauvais », il est cher).
+  { max: 3000, color: '#F3E3C6' },
+  { max: 5000, color: '#E3C08C' },
+  { max: 7000, color: '#C99A5B' },
+  { max: 9000, color: '#A6733A' },
+  { max: 12000, color: '#7A4F28' },
+  { max: Infinity, color: '#4A2E17' },
 ]
 
 function priceColor(prix) {
@@ -277,12 +279,12 @@ export default function PriceMap() {
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 items-center">
         <p className="text-xs text-ink-muted font-medium">Prix/m² :</p>
         {[
-          { label: '< 3 000 €', color: '#4ade80' },
-          { label: '3–5 000 €', color: '#a3e635' },
-          { label: '5–7 000 €', color: '#facc15' },
-          { label: '7–9 000 €', color: '#fb923c' },
-          { label: '9–12 000 €', color: '#f87171' },
-          { label: '> 12 000 €', color: '#dc2626' },
+          { label: '< 3 000 €', color: '#F3E3C6' },
+          { label: '3–5 000 €', color: '#E3C08C' },
+          { label: '5–7 000 €', color: '#C99A5B' },
+          { label: '7–9 000 €', color: '#A6733A' },
+          { label: '9–12 000 €', color: '#7A4F28' },
+          { label: '> 12 000 €', color: '#4A2E17' },
         ].map((item) => (
           <div key={item.label} className="flex items-center gap-1.5">
             <div className="h-3 w-3 rounded border border-white/80" style={{ backgroundColor: item.color }} />

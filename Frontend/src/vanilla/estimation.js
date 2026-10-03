@@ -64,19 +64,6 @@ export const html = `
   <button type="button" class="estimer" id="rsai-estimer-affine">Estimer avec ces précisions</button>
 </details>
 
-<section class="manifeste">
-  <div class="etiq">Notre approche</div>
-  <div>
-    <h2>Un modèle entraîné sur <em>toutes</em> les ventes notariées d'Île-de-France,
-      et dont nous publions <em>l'erreur réelle</em>, quartier par quartier.</h2>
-    <div class="stats">
-      <div class="stat"><b id="rsai-stat-ventes">—</b><span>Ventes notariées analysées</span></div>
-      <div class="stat"><b>4</b><span>Sources publiques croisées : ventes, DPE, quartier, bâtiment</span></div>
-      <div class="stat"><b id="rsai-stat-mape">—</b><span id="rsai-stat-mape-lib">Écart moyen avec le prix de vente réel</span></div>
-      <div class="stat"><b id="rsai-stat-20">—</b><span>Estimations à moins de 20 % du prix réel</span></div>
-    </div>
-  </div>
-</section>
 
 <h2 class="titre-section" id="rsai-resultat">Votre <em>estimation</em></h2>
 <p class="sous" id="rsai-attente">Renseignez l'adresse du bien (ou son secteur), sa surface et son nombre
@@ -137,6 +124,20 @@ export const html = `
         <button type="button" class="bouton-neutre" id="rsai-pdf">Exporter PDF</button>
         <button type="button" class="bouton-neutre" id="rsai-partager">Partager</button>
       </div>
+    </div>
+  </div>
+</section>
+
+<section class="manifeste">
+  <div class="etiq">Notre approche</div>
+  <div>
+    <h2>Un modèle entraîné sur <em>toutes</em> les ventes notariées d'Île-de-France,
+      et dont nous publions <em>l'erreur réelle</em>, quartier par quartier.</h2>
+    <div class="stats">
+      <div class="stat"><b id="rsai-stat-ventes">—</b><span>Ventes notariées analysées</span></div>
+      <div class="stat"><b>4</b><span>Sources publiques croisées : ventes, DPE, quartier, bâtiment</span></div>
+      <div class="stat"><b id="rsai-stat-mape">—</b><span id="rsai-stat-mape-lib">Écart moyen avec le prix de vente réel</span></div>
+      <div class="stat"><b id="rsai-stat-20">—</b><span>Estimations à moins de 20 % du prix réel</span></div>
     </div>
   </div>
 </section>
@@ -591,7 +592,7 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
     afficherClasse(r)
     afficherDpe(r)
     afficherComparables(r)
-    $('#rsai-src-modele').innerHTML = `<span class="puce">${r.modele === 'ml' ? "Estimation à l'adresse" : 'Médiane de la commune'}</span>`
+    $('#rsai-src-modele').innerHTML = `<span class="puce claire">${r.modele === 'ml' ? "Estimation à l'adresse" : 'Médiane de la commune'}</span>`
     const val = modelInfo?.validation
     $('#rsai-fiab-txt').innerHTML =
       (r.mape != null
@@ -695,7 +696,7 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
 
     const dernier = s.eco.length - 1
     const v = 100 * (s.eco[dernier] / s.eco[0] - 1)
-    $('#rsai-tendance').innerHTML = `<span class="puce">${v > 0 ? '+' : ''}${v.toFixed(1).replace('.', ',')} %</span>`
+    $('#rsai-tendance').innerHTML = `<span class="puce claire">${v > 0 ? '+' : ''}${v.toFixed(1).replace('.', ',')} %</span>`
     $('#rsai-courbe').innerHTML = courbe(s.eco, s.annees)
 
     // Projection de plus-value à 10 ans : mêmes trois scénarios et même scénario
@@ -754,20 +755,27 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
       <text x="55" y="73" text-anchor="middle" font-size="9" font-family="Inter,sans-serif" fill="var(--gris)">FIABILITÉ</text></svg>`
   }
 
+  // Évolution du prix au m² : même grammaire que les autres graphiques (grille,
+  // axe gradué, libellés en sans-serif). L'échelle couvre au moins ±15 % autour
+  // de la moyenne : une baisse de 10 % ne doit pas ressembler à un effondrement.
   function courbe(val, annees) {
-    const L = 560, H = 160, mx = 16, my = 30
-    const min = Math.min(...val) * 0.985, max = Math.max(...val) * 1.02
-    const x = (i) => mx + (i * (L - 2 * mx)) / (val.length - 1)
-    const y = (v) => my + (H - 2 * my - 16) * (1 - (v - min) / (max - min))
+    const L = 900, H = 260, mg = 60, md = 24, mh = 30, mb = 34
+    const centre = (Math.min(...val) + Math.max(...val)) / 2
+    const demi = Math.max(((Math.max(...val) - Math.min(...val)) / 2) * 1.2, centre * 0.15)
+    const min = centre - demi, max = centre + demi
+    const x = (i) => mg + (i * (L - mg - md)) / (val.length - 1)
+    const y = (v) => mh + (H - mh - mb) * (1 - (v - min) / (max - min))
+    const k = (v) => (v / 1000).toFixed(1).replace('.', ',') + 'k'
+    const grilles = [0, 1, 2, 3, 4].map((i) => min + ((max - min) * i) / 4)
     const ligne = val.map((v, i) => (i ? 'L' : 'M') + x(i).toFixed(1) + ' ' + y(v).toFixed(1)).join(' ')
-    const gid = 'rsai-grad-' + Math.random().toString(36).slice(2, 8)
-    return `<svg viewBox="0 0 ${L} ${H}" style="width:100%;height:auto;overflow:visible" role="img" aria-label="Évolution du prix au m²">
-      <defs><linearGradient id="${gid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="var(--taupe)" stop-opacity=".45"/><stop offset="1" stop-color="var(--taupe)" stop-opacity="0"/></linearGradient></defs>
-      <path d="${ligne} L${x(val.length - 1)} ${H - 18} L${x(0)} ${H - 18} Z" fill="url(#${gid})"/>
-      <path d="${ligne}" fill="none" stroke="var(--encre)" stroke-width="2" stroke-linejoin="round"/>
+    const resume = `Prix médian au m² : ${val.map((v, i) => `${annees[i]} ${nb(v)} €`).join(', ')}`
+    return `<svg viewBox="0 0 ${L} ${H}" style="width:100%;height:auto" role="img" aria-label="${resume}">
+      ${grilles.map((g) => `<line x1="${mg}" x2="${L - md}" y1="${y(g)}" y2="${y(g)}" stroke="var(--ligne)"/>
+        <text x="${mg - 8}" y="${y(g) + 4}" text-anchor="end" font-size="13" font-family="Inter,sans-serif" fill="var(--gris)">${k(g)}</text>`).join('')}
+      <path d="${ligne}" fill="none" stroke="var(--encre)" stroke-width="2.5" stroke-linejoin="round"/>
       ${val.map((v, i) => `<circle cx="${x(i)}" cy="${y(v)}" r="4.5" fill="var(--blanc)" stroke="var(--encre)" stroke-width="2"/>
-        <text x="${x(i)}" y="${y(v) - 13}" text-anchor="middle" font-size="17" font-style="italic" font-family="Instrument Serif,serif" fill="var(--encre)">${(v / 1000).toFixed(1).replace('.', ',')}k</text>
-        <text x="${x(i)}" y="${H - 2}" text-anchor="middle" font-size="10.5" font-family="Inter,sans-serif" fill="var(--gris)">${annees[i]}</text>`).join('')}</svg>`
+        <text x="${x(i) + (i === 0 ? 8 : i === val.length - 1 ? -8 : 0)}" y="${y(v) - 12}" text-anchor="${i === 0 ? 'start' : i === val.length - 1 ? 'end' : 'middle'}" font-size="13" font-weight="600" font-family="Inter,sans-serif" fill="var(--encre)">${nb(v)} €</text>
+        <text x="${x(i)}" y="${H - 10}" text-anchor="middle" font-size="13" font-family="Inter,sans-serif" fill="var(--gris)">${annees[i]}</text>`).join('')}</svg>`
   }
 
   $('#rsai-pv-voir').addEventListener('click', () => {

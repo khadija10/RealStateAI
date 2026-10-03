@@ -1,4 +1,4 @@
-export default function Header({ datasetStatus, user, onOpenAuth, onLogout, darkMode, onToggleDark }) {
+export default function Header({ datasetStatus, user, activeTab, onNavigate, onOpenAuth, onLogout, darkMode, onToggleDark }) {
   return (
     <header className="relative border-b border-stone-100 bg-[linear-gradient(100deg,var(--color-stone-50)_0%,var(--color-surface)_45%,var(--color-limestone-light)_100%)]">
       <div className="h-[3px] w-full bg-[linear-gradient(90deg,var(--color-seine)_0%,var(--color-ambre)_50%,var(--color-vert)_100%)]" />
@@ -53,7 +53,19 @@ export default function Header({ datasetStatus, user, onOpenAuth, onLogout, dark
 
           {user ? (
             <div className="flex items-center gap-2">
-              <span className="text-xs text-ink-muted hidden sm:block max-w-[140px] truncate">{user.email}</span>
+              {/* Espace du compte : l'historique et le profil appartiennent à l'utilisateur,
+                  pas aux outils ; ils quittent la barre d'onglets. */}
+              {[['historique', 'Mon historique'], ['profil', 'Mon profil']].map(([id, libelle]) => (
+                <button
+                  key={id}
+                  onClick={() => onNavigate?.(id)}
+                  aria-current={activeTab === id ? 'page' : undefined}
+                  className={`text-xs rounded-full px-3 py-1.5 transition-colors ${activeTab === id ? 'bg-[var(--color-seine)] text-white' : 'text-ink hover:bg-stone-100'}`}
+                >
+                  {libelle}
+                </button>
+              ))}
+              <span className="text-xs text-ink-muted hidden lg:block max-w-[140px] truncate" title={user.email}>{user.email}</span>
               <button
                 onClick={onLogout}
                 className="text-xs text-ink-muted border border-stone-200 rounded-full px-3.5 py-1.5 hover:border-stone-400 hover:text-ink transition-colors"

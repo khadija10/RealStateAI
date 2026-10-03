@@ -20,9 +20,9 @@ const TABS = [
   { id: 'plusvalue', label: 'Plus-value' },
   { id: 'carte', label: 'Carte des prix' },
   { id: 'marche', label: 'Référence du marché' },
-  { id: 'historique', label: 'Historique', protected: true },
-  { id: 'profil', label: 'Profil', protected: true },
 ]
+// Historique et Profil : accessibles depuis l'espace du compte, dans l'en-tête
+const ONGLETS_COMPTE = ['historique', 'profil']
 
 export default function App() {
   const [backendStatus, setBackendStatus] = useState('loading')
@@ -42,7 +42,6 @@ export default function App() {
   const [ouvertes, setOuvertes] = useState(() => new Set(['estimation']))
   // Action mise en attente de connexion (estimation lancée sans être connecté)
   const actionApresConnexion = useRef(null)
-  const [dpeInfo, setDpeInfo] = useState(null)
   // Incrémentée à la déconnexion : remonte les pages pour effacer les résultats
   const [pageCle, setPageCle] = useState(0)
   const [darkMode, setDarkMode] = useState(() => {
@@ -86,7 +85,7 @@ export default function App() {
     setFinancementPrefill(null)
     setPlusValuePrefill(null)
     setPageCle((k) => k + 1)
-    setActiveTab((t) => (TABS.find((tab) => tab.id === t)?.protected ? 'estimation' : t))
+    setActiveTab((t) => (TABS.find((tab) => tab.id === t)?.protected || ONGLETS_COMPTE.includes(t) ? 'estimation' : t))
   }
 
   useEffect(() => {
@@ -99,9 +98,6 @@ export default function App() {
           maxYear: h.dvf_max_year ?? null,
           nRows: h.n_rows ?? null,
         })
-        if (h.dpe_loaded) {
-          setDpeInfo({ coveragePct: h.dpe_coverage_pct, nZones: h.dpe_n_zones })
-        }
       })
       .catch(() => setBackendStatus('error'))
   }, [])
@@ -110,7 +106,12 @@ export default function App() {
     <div className="min-h-screen flex flex-col">
       <Header
         datasetStatus={backendStatus}
-        dpeInfo={dpeInfo}
+        activeTab={activeTab}
+        onNavigate={(id) => {
+          if (!user) { setShowAuthModal(true); return }
+          ouvrirOnglet(id)
+          if (id === 'historique') setHistoryKey((k) => k + 1)
+        }}
         user={user}
         onOpenAuth={() => setShowAuthModal(true)}
         onLogout={handleLogout}
@@ -141,7 +142,7 @@ export default function App() {
               >
                 {tab.label}
                 {tab.id === 'estimation' && estimationFaite && (
-                  <span className="ml-2 h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block align-middle" aria-label="estimation disponible" />
+                  <span className="ml-2 h-1.5 w-1.5 rounded-full bg-emerald-500 inline-block align-middle" role="img" aria-label="votre dernière estimation est disponible" title="Votre dernière estimation est disponible" />
                 )}
               </button>
             ))}
@@ -189,8 +190,8 @@ export default function App() {
         {activeTab === 'carte' && (
           <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-10">
             <div className="max-w-xl mb-8">
-              <h1 className="font-display text-4xl sm:text-5xl text-ink leading-[1.05] whitespace-nowrap">
-                Carte des prix par commune
+              <h1 className="titre-page">
+                Carte <em>des prix</em>
               </h1>
               <p className="text-sm text-ink-muted mt-3 whitespace-nowrap">
                 Prix médian au m² — {datasetInfo?.nCommunes?.toLocaleString('fr-FR') ?? '—'} communes d&apos;Île-de-France{datasetInfo?.minYear && datasetInfo?.maxYear ? ` · transactions ${datasetInfo.minYear}–${datasetInfo.maxYear}` : ''}
@@ -204,8 +205,8 @@ export default function App() {
         {activeTab === 'marche' && (
           <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-10">
             <div className="max-w-xl mb-8">
-              <h1 className="font-display text-4xl sm:text-5xl text-ink leading-[1.05] whitespace-nowrap">
-                Référence du marché
+              <h1 className="titre-page">
+                Référence <em>du marché</em>
               </h1>
               <p className="text-sm text-ink-muted mt-3 whitespace-nowrap">
                 Évolution mensuelle du prix médian au m² par département{datasetInfo?.minYear && datasetInfo?.maxYear ? `, ${datasetInfo.minYear}–${datasetInfo.maxYear}` : ''}.
@@ -219,14 +220,14 @@ export default function App() {
         {activeTab === 'historique' && (
           <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-10">
             <div className="max-w-xl mb-8">
-              <h1 className="font-display text-4xl sm:text-5xl text-ink leading-[1.05] whitespace-nowrap">
-                Historique
+              <h1 className="titre-page">
+                Votre <em>historique</em>
               </h1>
               <p className="text-sm text-ink-muted mt-3 whitespace-nowrap">
                 Vos biens estimés, avec leur évolution et leurs simulations.
               </p>
             </div>
-            <div className="max-w-4xl">
+            <div>
               <History
                 key={historyKey}
                 onReEstimate={(item) => { setRelance({ ...item, _demande: Date.now() }); ouvrirOnglet('estimation') }}
@@ -240,8 +241,8 @@ export default function App() {
         {activeTab === 'profil' && (
           <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-10">
             <div className="max-w-xl mb-8">
-              <h1 className="font-display text-4xl sm:text-5xl text-ink leading-[1.05] whitespace-nowrap">
-                Mon profil
+              <h1 className="titre-page">
+                Votre <em>profil</em>
               </h1>
               <p className="text-sm text-ink-muted mt-3 whitespace-nowrap">
                 Paramètres de votre compte.

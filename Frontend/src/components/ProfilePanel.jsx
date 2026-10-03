@@ -97,7 +97,7 @@ export default function ProfilePanel({ user, onLogout }) {
   const initiale = user?.email?.[0]?.toUpperCase() ?? '?'
 
   return (
-    <div className="max-w-4xl grid gap-6 lg:grid-cols-2 items-start">
+    <div className="grid gap-6 lg:grid-cols-2 items-start">
       {/* Infos compte */}
       <div className="lg:col-span-2 bg-white rounded-2xl border border-stone-100 shadow-[var(--shadow-card)] p-6 overflow-hidden relative">
         <div className="h-1 w-full absolute inset-x-0 top-0 bg-[linear-gradient(90deg,var(--color-seine),var(--color-ambre),var(--color-vert))]" />
