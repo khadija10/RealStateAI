@@ -5,7 +5,10 @@
 // délai maximal, annulation (AbortSignal) et messages d'erreur sont gérés
 // ici, une seule fois.
 
-export const API_BASE = import.meta.env.VITE_API_URL || 'http://localhost:8000'
+// En développement (`npm run dev`), les appels passent par le proxy Vite
+// (voir vite.config.js) : URL relative, pas de CORS. Le build de production
+// appelle directement VITE_API_URL.
+export const API_BASE = import.meta.env.DEV ? '' : import.meta.env.VITE_API_URL || 'http://localhost:8000'
 
 const TOKEN_KEY = 'reai_token'
 const DEFAULT_TIMEOUT_MS = 15000
@@ -103,7 +106,9 @@ function messageParDefaut(status) {
 
 // ── Système ──────────────────────────────────────────────────────────────
 
-export const getHealth = (opts) => request('/api/health', { timeout: 8000, ...opts })
+// Délai long : un backend hébergé en offre gratuite (Render) peut mettre
+// jusqu'à une minute à sortir de veille au premier appel.
+export const getHealth = (opts) => request('/api/health', { timeout: 60000, ...opts })
 
 export const getCommunes = (q, opts) =>
   request(q ? `/api/metadata/communes?q=${encodeURIComponent(q)}` : '/api/metadata/communes', opts)

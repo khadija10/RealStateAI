@@ -46,6 +46,16 @@
   --color-info: #4E6C8C;
   --color-info-soft: #E5ECF3;
 
+  /* ── Palette des graphiques (catégorielle, ordre fixe) ─────────────────── */
+  --color-chart-1: #2A1F17;
+  --color-chart-2: #C2893A;
+  --color-chart-3: #4E6C8C;
+  --color-chart-4: #3E7A5B;
+  --color-chart-5: #A38C77;
+  --color-chart-6: #B5533F;
+  --color-chart-7: #7D6A8A;
+  --color-chart-8: #6B7C73;
+
   /* ── Couleurs historiques (anciens composants, à retirer après migration) */
   --color-stone-50: #F3F1EC;
   --color-stone-100: #E3DED6;
@@ -124,6 +134,15 @@
   --color-danger-soft: rgba(224, 138, 118, 0.14);
   --color-info: #8FAACB;
   --color-info-soft: rgba(143, 170, 203, 0.14);
+
+  --color-chart-1: #EDE4D6;
+  --color-chart-2: #D39B4C;
+  --color-chart-3: #8FAACB;
+  --color-chart-4: #6FB08C;
+  --color-chart-5: #C2A68C;
+  --color-chart-6: #E08A76;
+  --color-chart-7: #B4A2C4;
+  --color-chart-8: #9DB0A6;
 
   --shadow-xs: 0 1px 2px rgba(0, 0, 0, 0.3);
   --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.3), 0 6px 18px -8px rgba(0, 0, 0, 0.5);
