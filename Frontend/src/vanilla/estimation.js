@@ -163,47 +163,133 @@ const CLASSES = {
 }
 
 /** Fiche imprimable — même principe que l'ancien frontend (fenêtre + print()). */
-function exporterPDF(bien) {
+function exporterPDF(bien, modelInfo) {
   if (!bien) return
   const { r, s, adresse, surface, pieces, type } = bien
-  const date = new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long', timeStyle: 'short' }).format(new Date())
-  const lieu = adresse || r.adresse || s?.nom || ''
+  const esc = (x) => String(x ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c])
+  const fr = (x, d = 1) => Number(x).toLocaleString('fr-FR', { minimumFractionDigits: d, maximumFractionDigits: d })
+  const maintenant = new Date()
+  const date = new Intl.DateTimeFormat('fr-FR', { dateStyle: 'long', timeStyle: 'short' }).format(maintenant)
+  const moisAn = (iso) => { const d = new Date(iso); return isNaN(d) ? esc(iso) : d.toLocaleDateString('fr-FR', { month: 'long', year: 'numeric' }) }
+  const lieu = esc(r.adresse || adresse || s?.nom || '')
+  const ref = `RSAI-${maintenant.getFullYear()}-${String(r.historiqueId || Math.floor(maintenant / 1000) % 100000).padStart(5, '0')}`
+  const val = modelInfo?.validation
+  const ml = r.modele === 'ml'
+  const place = Math.min(96, Math.max(4, (100 * (r.valeur - r.basse)) / (r.haute - r.basse)))
+
+  // Marché du secteur : médiane, position du bien entre 1er et 9e décile, évolution
+  const avecSecteur = !!(s && s.med)
+  const ecart = avecSecteur ? Math.round(100 * (r.prix_m2 / s.med - 1)) : null
+  const posDecile = avecSecteur && s.p10 && s.p90 ? Math.min(98, Math.max(2, (100 * (r.prix_m2 - s.p10)) / (s.p90 - s.p10))) : null
+  const evo = avecSecteur && s.eco?.length >= 2 ? 100 * (s.eco[s.eco.length - 1] / s.eco[0] - 1) : null
+
+  // Points d'attention : les mêmes que sur la page
+  const attention = []
+  if (r.sansNumero && ml) attention.push("Adresse sans numéro : l'immeuble n'est pas identifié, ses ventes et son DPE ne sont pas pris en compte.")
+  if (r.alerteGeo) attention.push(esc(r.alerteGeo))
+  if (r.segments?.length && ml) attention.push('Segment plus difficile pour le modèle : ' + r.segments.map((x) => `${esc(x.libelle)} (erreur moyenne mesurée ${fr(x.mape)} %)`).join(' ; ') + '.')
+  if (['F', 'G'].includes(r.dpeClasse)) attention.push(`Passoire thermique (classe ${r.dpeClasse}) : décote à la vente et location ${r.dpeClasse === 'G' ? 'interdite depuis 2025' : 'interdite à partir de 2028'}.`)
+  if (!ml) attention.push("Estimation sans adresse précise : médiane des ventes comparables de la commune, sans le modèle.")
+
+  const dpe = r.dpeClasse
+    ? `${r.dpeClasse}${r.dpeSource === 'adresse' ? ` · retrouvé à l'adresse (ADEME${r.dpeDate ? `, diagnostic du ${new Date(r.dpeDate).toLocaleDateString('fr-FR')}` : ''})` : r.dpeSource === 'saisi' || !r.dpeSource ? ' · déclaré' : ''}`
+    : 'non trouvé'
+
   const html = `<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8">
-<title>Estimation RealStateAI</title>
+<title>Avis de valeur ${ref}</title>
 <style>
-  body{font-family:Georgia,serif;max-width:680px;margin:40px auto;color:#141311;padding:0 20px}
-  h1{font-size:2rem;margin-bottom:4px}
-  .sub{color:#77716A;font-size:.9rem;margin-bottom:32px}
-  .price{font-size:3rem;font-weight:600;margin:16px 0 4px}
-  .per-m2{color:#77716A;font-size:.95rem;margin-bottom:24px}
-  table{width:100%;border-collapse:collapse;margin-top:24px}
-  td{padding:10px 0;border-bottom:1px solid #E3DED6;font-size:.9rem}
-  td:last-child{text-align:right;font-weight:500}
-  .range{display:flex;gap:24px;margin:16px 0}
-  .range-item{flex:1;background:#F3F1EC;padding:12px 16px;border-radius:8px}
-  .range-label{font-size:.75rem;color:#77716A;text-transform:uppercase;letter-spacing:.08em}
-  .range-val{font-size:1.1rem;font-weight:600;margin-top:4px}
-  .footer{margin-top:40px;padding-top:16px;border-top:1px solid #E3DED6;font-size:.75rem;color:#A38C77}
+  @page{size:A4;margin:14mm 14mm 16mm}
+  *{box-sizing:border-box}
+  body{font:13px/1.45 "Helvetica Neue",Arial,sans-serif;color:#1b1916;margin:0 auto;max-width:760px;padding:28px 24px}
+  .tete{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #1b1916;padding-bottom:10px}
+  .marque{font-size:20px;font-weight:700;letter-spacing:-.02em}.marque i{color:#9C6A26;font-weight:400}
+  .tete small{display:block;color:#6b655d;font-size:11px;letter-spacing:.08em;text-transform:uppercase}
+  .tete .ref{text-align:right;font-size:11.5px;color:#6b655d}
+  h1{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:#6b655d;margin:22px 0 2px;font-weight:600}
+  .lieu{font-size:19px;font-weight:600;margin:0}
+  .desc{color:#4a453f;margin:2px 0 0}
+  .prix{display:grid;grid-template-columns:1.25fr 1fr;gap:18px;margin-top:16px;align-items:stretch}
+  .carte{border:1px solid #e3ded6;border-radius:10px;padding:14px 16px}
+  .valeur{font-size:38px;font-weight:700;letter-spacing:-.03em;font-variant-numeric:tabular-nums;line-height:1.05}
+  .m2{color:#4a453f;margin-top:2px}
+  .barre{position:relative;height:6px;border-radius:3px;background:linear-gradient(90deg,#e8e1d6,#9C6A26,#e8e1d6);margin:16px 0 4px}
+  .barre b{position:absolute;top:-5px;width:3px;height:16px;background:#1b1916;border-radius:2px}
+  .bornes{display:flex;justify-content:space-between;font-variant-numeric:tabular-nums;font-weight:600}
+  .note{font-size:11.5px;color:#6b655d;margin-top:6px}
+  .fiab .classe{display:inline-block;padding:2px 10px;border-radius:999px;font-weight:600;font-size:12px;background:#f3ead9;color:#7a5113}
+  .fiab .classe.fiable{background:#e3f2e6;color:#1f6b35}.fiab .classe.a_completer{background:#f8e3df;color:#9a3a26}
+  .fiab p{margin:8px 0 0}
+  h2{font-size:14px;margin:22px 0 8px;padding-bottom:5px;border-bottom:1px solid #e3ded6}
+  table{width:100%;border-collapse:collapse;font-variant-numeric:tabular-nums}
+  td,th{padding:6px 0;border-bottom:1px solid #efeae3;text-align:left;vertical-align:top}
+  th{font-size:11px;color:#6b655d;font-weight:600;text-transform:uppercase;letter-spacing:.05em}
+  td.n,th.n{text-align:right}
+  .deux{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+  .reglette{position:relative;height:6px;border-radius:3px;background:linear-gradient(90deg,#e8e1d6,#5b4b3c);margin:12px 0 4px}
+  .reglette b{position:absolute;top:-5px;width:14px;height:14px;margin-left:-7px;border-radius:50%;background:#fff;border:3px solid #1b1916}
+  .att{background:#faf3e7;border-left:3px solid #c2893a;padding:8px 12px;margin:0 0 6px;border-radius:0 6px 6px 0}
+  .vide{color:#6b655d;font-style:italic}
+  .pied{margin-top:22px;padding-top:10px;border-top:1px solid #e3ded6;font-size:10.5px;color:#6b655d}
+  .imprimer{position:fixed;top:14px;right:14px;padding:8px 16px;border:0;border-radius:999px;background:#9C6A26;color:#fff;font:600 13px Arial;cursor:pointer}
+  @media print{.imprimer{display:none}body{padding:0}}
 </style></head><body>
-<h1>Fiche d'estimation</h1>
-<p class="sub">RealStateAI · ${date}</p>
-<table>
-  <tr><td>Bien</td><td>${lieu}</td></tr>
-  <tr><td>Type</td><td>${TYPE_LABEL[type] || '—'}</td></tr>
-  <tr><td>Surface</td><td>${surface} m²</td></tr>
-  <tr><td>Pièces</td><td>${pieces}</td></tr>
-  ${r.dpeClasse ? `<tr><td>Classe DPE</td><td>${r.dpeClasse}</td></tr>` : ''}
-  ${r.annee ? `<tr><td>Année de construction</td><td>${r.annee}</td></tr>` : ''}
-  ${r.classe ? `<tr><td>Fiabilité du secteur</td><td>${CLASSES[r.classe]?.titre || r.classe}</td></tr>` : ''}
-  <tr><td>Méthode</td><td>${r.modele === 'ml' ? 'Modèle ML (LightGBM)' : 'Médiane DVF communale'}</td></tr>
-</table>
-<p class="price">${euro(r.valeur)}</p>
-<p class="per-m2">soit ${euro(r.prix_m2)} / m²</p>
-<div class="range">
-  <div class="range-item"><p class="range-label">Fourchette basse</p><p class="range-val">${euro(r.basse)}</p></div>
-  <div class="range-item"><p class="range-label">Fourchette haute</p><p class="range-val">${euro(r.haute)}</p></div>
+<button class="imprimer" onclick="window.print()">Enregistrer en PDF</button>
+<div class="tete">
+  <div><div class="marque">RealState<i>AI</i></div><small>Estimation immobilière · Île-de-France</small></div>
+  <div class="ref">Avis de valeur indicatif<br>Réf. ${ref}<br>${date}</div>
 </div>
-<p class="footer">Estimation fournie à titre indicatif, sans valeur contractuelle. Modèle entraîné sur les ventes notariées DVF d'Île-de-France 2021–2025.${r.mape != null ? ` Erreur locale mesurée sur ce secteur : ${String(r.mape).replace('.', ',')} %.` : ''}</p>
+
+<h1>Le bien</h1>
+<p class="lieu">${lieu}</p>
+<p class="desc">${TYPE_LABEL[type] || 'Bien'} · ${surface} m² · ${pieces} pièce${pieces > 1 ? 's' : ''}${r.annee ? ` · construit en ${r.annee}` : ''} · DPE ${dpe}</p>
+
+<div class="prix">
+  <div class="carte">
+    <div class="valeur">${euro(r.valeur)}</div>
+    <div class="m2">soit <b>${euro(r.prix_m2)} / m²</b>${ecart != null ? ` · ${ecart > 0 ? '+' : ''}${ecart} % par rapport à la médiane du secteur` : ''}</div>
+    <div class="barre"><b style="left:${place}%"></b></div>
+    <div class="bornes"><span>${euro(r.basse)}</span><span>${euro(r.haute)}</span></div>
+    <div class="note">${ml && val?.fourchette ? `Fourchette à 85 % : sur ${fr(val.n_test, 0)} ventes de contrôle, le prix réel s'y trouvait ${fr(val.fourchette.couverture)} % du temps.` : 'Fourchette indicative.'}</div>
+  </div>
+  <div class="carte fiab">
+    <b>Fiabilité</b><br>
+    ${r.classe ? `<span class="classe ${r.classe}">${CLASSES[r.classe]?.titre || r.classe}</span>` : ''}
+    ${r.mape != null ? `<p>Sur ce secteur, le modèle se trompe en moyenne de <b>${fr(r.mape)} %</b>${r.mape_n ? `, mesuré sur ${fr(r.mape_n, 0)} ventes de contrôle` : ''}.</p>` : ''}
+    ${val ? `<p>Sur l'ensemble de l'Île-de-France : ${fr(val.mape, 2)} % d'erreur moyenne, ${fr(val.dans_20pct)} % des estimations à moins de 20 % du prix réel (${fr(val.n_test, 0)} ventes jamais vues, oct.–déc. 2025).</p>` : ''}
+  </div>
+</div>
+
+<h2>Ventes dans l'immeuble</h2>
+${r.comparables?.length ? `<table><tr><th>Date</th><th class="n">Surface</th><th class="n">Pièces</th><th class="n">Prix</th><th class="n">€/m² à la vente</th><th class="n">€/m² au marché du jour</th></tr>
+${r.comparables.map((c) => `<tr><td>${moisAn(c.date)}</td><td class="n">${c.surface_m2} m²</td><td class="n">${c.nb_pieces ?? '—'}</td><td class="n">${euro(c.prix)}</td><td class="n">${euro(c.prix_m2)}</td><td class="n"><b>${euro(c.prix_m2_aujourdhui)}</b></td></tr>`).join('')}</table>
+<p class="note">Dernières ventes notariées DVF de la même parcelle ; chaque prix au m² est ramené au marché du jour par l'évolution des prix du secteur depuis la vente.</p>`
+  : `<p class="vide">Aucune vente récente enregistrée dans cet immeuble${r.sansNumero ? " (adresse sans numéro : immeuble non identifié)" : ''}.</p>`}
+
+${avecSecteur ? `<h2>Le marché du secteur · ${esc(s.nom)}</h2>
+<div class="deux">
+  <div>
+    <table>
+      <tr><td>Médiane ${s.annee || ''}</td><td class="n"><b>${euro(s.med)} / m²</b></td></tr>
+      ${s.p10 && s.p90 ? `<tr><td>1ᵉʳ – 9ᵉ décile</td><td class="n">${euro(s.p10)} – ${euro(s.p90)} / m²</td></tr>` : ''}
+      ${s.n ? `<tr><td>Ventes analysées</td><td class="n">${fr(s.n, 0)}</td></tr>` : ''}
+      ${evo != null ? `<tr><td>Évolution ${s.annees?.[0] ?? 2021}–${s.annees?.[s.annees.length - 1] ?? 2025}</td><td class="n">${evo > 0 ? '+' : ''}${fr(evo)} %</td></tr>` : ''}
+    </table>
+  </div>
+  <div>
+    ${posDecile != null ? `<b>Position du bien dans le secteur</b>
+    <div class="reglette"><b style="left:${posDecile}%"></b></div>
+    <div class="bornes" style="font-weight:400;font-size:11.5px;color:#6b655d"><span>1ᵉʳ décile</span><span>9ᵉ décile</span></div>` : ''}
+  </div>
+</div>` : ''}
+
+${attention.length ? `<h2>Points d'attention</h2>${attention.map((x) => `<p class="att">${x}</p>`).join('')}` : ''}
+
+<h2>Méthode</h2>
+<p style="margin:0">${ml
+    ? `Modèle LightGBM${modelInfo?.nFeatures ? ` à ${modelInfo.nFeatures} variables` : ''}, entraîné sur les ventes notariées DVF d'Île-de-France 2021–2025${modelInfo?.trainedAt ? ` (entraînement du ${new Date(modelInfo.trainedAt).toLocaleDateString('fr-FR')})` : ''} : caractéristiques du bien, ventes de l'immeuble, DPE (ADEME), revenus du quartier (INSEE) et bâtiment (BDNB). Erreur mesurée selon un protocole fixé avant le test, sur des ventes postérieures à l'entraînement.`
+    : 'Médiane des ventes notariées DVF comparables de la commune (type, surface et pièces proches).'}</p>
+
+<p class="pied">Avis de valeur indicatif, établi automatiquement à partir de données publiques : il ne remplace pas une expertise ni un avis de valeur signé par un professionnel, et n'a pas de valeur contractuelle. Sources : DVF (DGFiP, Etalab), DPE (ADEME), IRIS (INSEE), BDNB (CSTB).</p>
 </body></html>`
   const w = window.open('', '_blank')
   if (!w) return
@@ -675,7 +761,7 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
   $('#rsai-fin-voir').addEventListener('click', () => {
     if (dernierBien && onFinancement) onFinancement(dernierBien)
   })
-  $('#rsai-pdf').addEventListener('click', () => exporterPDF(dernierBien))
+  $('#rsai-pdf').addEventListener('click', () => exporterPDF(dernierBien, modelInfo))
   $('#rsai-partager').addEventListener('click', () => {
     if (!dernierBien) return
     const bouton = $('#rsai-partager')
