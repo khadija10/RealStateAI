@@ -22,10 +22,14 @@ function cached(key, loader) {
 /** Le serveur sépare le marché par type de bien : appartements ou maisons. */
 const typeMarche = (t) => (t === 'house' ? 'house' : 'apartment')
 
-/** Statistiques par commune (GET /api/market/map) + index de recherche, pour un type de bien. */
-export function useCommuneStats(typeBien) {
+/** Segment de marché : tout, ancien, neuf (VEFA). */
+const segment = (m) => (['ancien', 'neuf'].includes(m) ? m : 'tous')
+
+/** Statistiques par commune (GET /api/market/map) + index de recherche, pour un type de bien et un marché. */
+export function useCommuneStats(typeBien, marche = 'tous') {
   const t = typeMarche(typeBien)
-  const res = useApi(() => cached(`map:${t}`, () => getMarketMap(t)), [t])
+  const m = segment(marche)
+  const res = useApi(() => cached(`map:${t}:${m}`, () => getMarketMap(t, m)), [t, m])
   const index = useMemo(() => (Array.isArray(res.data) ? indexCommuneStats(res.data) : null), [res.data])
   return { ...res, rows: Array.isArray(res.data) ? res.data : [], index }
 }
@@ -64,9 +68,10 @@ export function useCommuneSuggestions() {
  * Tendances mensuelles de tous les départements (GET /api/market/trends),
  * regroupées par code département et triées chronologiquement.
  */
-export function useAllTrends(typeBien) {
+export function useAllTrends(typeBien, marche = 'tous') {
   const t = typeMarche(typeBien)
-  const res = useApi(() => cached(`trends:all:${t}`, () => getMarketTrends(undefined, t)), [t])
+  const m = segment(marche)
+  const res = useApi(() => cached(`trends:all:${t}:${m}`, () => getMarketTrends(undefined, t, m)), [t, m])
   const parDep = useMemo(() => {
     const m = {}
     for (const r of Array.isArray(res.data) ? res.data : []) (m[r.code_departement] ??= []).push(r)

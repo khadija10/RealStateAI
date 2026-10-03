@@ -236,7 +236,7 @@ export function DepartmentTrendCard({ dep, typeBien, secteur = null }) {
         title={nom ?? 'Département'}
         description="Prix médian au m², toutes ventes DVF, par mois"
         action={
-          <Button as={Link} to="/marche/tendances" variant="ghost" size="sm" iconRight={<IconArrowRight size={15} />}>
+          <Button as={Link} to={dep ? `/marche/tendances?dep=${dep}` : '/marche/tendances'} variant="ghost" size="sm" iconRight={<IconArrowRight size={15} />}>
             <span className="hidden sm:inline">Comparer</span>
           </Button>
         }

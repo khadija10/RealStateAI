@@ -331,3 +331,31 @@ input:-webkit-autofill:focus {
   transition: background-color 9999s ease-out 0s;
   caret-color: var(--color-ink);
 }
+
+/* ── Carte des prix (Leaflet) ─────────────────────────────────────────── */
+.leaflet-container { font-family: var(--font-sans); background: var(--color-surface-2); }
+.rsai-carte-bulle {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  border: 1px solid var(--color-line);
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  padding: 7px 11px;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+.rsai-carte-bulle::before { display: none; }
+.rsai-carte-prix { font-weight: 700; font-variant-numeric: tabular-nums; }
+.rsai-carte-muet { color: var(--color-ink-muted); }
+/* Mode sombre : fond OpenStreetMap inversé (rues claires sur fond sombre) */
+:root[data-theme="dark"] .leaflet-tile-pane { filter: invert(1) hue-rotate(180deg) brightness(0.9) contrast(0.9); }
+:root[data-theme="dark"] .leaflet-bar a {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  border-color: var(--color-line);
+}
+:root[data-theme="dark"] .leaflet-control-attribution {
+  background: rgba(28, 26, 24, 0.8);
+  color: var(--color-ink-muted);
+}
+:root[data-theme="dark"] .leaflet-control-attribution a { color: var(--color-ink-soft); }

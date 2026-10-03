@@ -110,6 +110,52 @@ export function heroPlusValue() {
     <circle cx="864" cy="322" r="42" fill="#FFF3DA" opacity=".95"/>${plans}</svg>`
 }
 
+/**
+ * La Seine au crépuscule : ciel, silhouettes d'immeubles basses, pont à
+ * arches et reflets — fond du bandeau "Marché", composé pour un format large
+ * et bas (le titre se lit sur le ciel).
+ */
+export function heroMarche() {
+  const c = id('c'), s = id('s'), e = id('e')
+  let plans = ''
+  ;[
+    [196, '#8C93AE', 0.3, 34, 70, 7],
+    [206, '#5D6582', 0.42, 40, 92, 17],
+    [214, '#3A3F55', 0.55, 30, 104, 29],
+  ].forEach(([base, coul, op, hmin, hmax, g]) => {
+    const rr = seeded(g)
+    for (let x = -20; x < 1240; ) {
+      const l = 40 + rr() * 64, h = hmin + rr() * (hmax - hmin), y = base - h
+      plans += `<path d="M${x} 222 L${x} ${y + 9} L${x + 8} ${y} L${x + l - 8} ${y} L${x + l} ${y + 9} L${x + l} 222 Z" fill="${coul}"/>`
+      for (let j = 0; j < Math.floor(h / 20); j++)
+        for (let i = 0; i < Math.floor(l / 16); i++)
+          if (rr() > 0.78) plans += `<rect x="${x + 8 + i * 14}" y="${y + 14 + j * 18}" width="4" height="6" fill="#FFE2B0" opacity="${op}"/>`
+      x += l + 2
+    }
+  })
+  // Pont : tablier et arches au-dessus de l'eau
+  let pont = `<rect x="0" y="216" width="1200" height="10" fill="#2A2C38"/>`
+  for (let k = 0; k < 9; k++) {
+    const x = -20 + k * 140
+    pont += `<path d="M${x} 226 Q${x + 70} 222 ${x + 140} 226 L${x + 140} 244 L${x} 244 Z" fill="#2A2C38"/>`
+    pont += `<path d="M${x + 12} 246 Q${x + 70} 214 ${x + 128} 246 Z" fill="url(#${e})"/>`
+  }
+  // Reflets sur l'eau
+  const rr = seeded(43)
+  let reflets = ''
+  for (let i = 0; i < 46; i++) {
+    const x = rr() * 1200, y = 252 + rr() * 44, l = 18 + rr() * 64
+    reflets += `<rect x="${x}" y="${y}" width="${l}" height="2" rx="1" fill="#FFE2B0" opacity="${(0.16 + rr() * 0.34).toFixed(2)}"/>`
+  }
+  return `<svg viewBox="0 0 1200 300" preserveAspectRatio="xMidYMid slice"><defs>
+    <linearGradient id="${c}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#46597C"/><stop offset=".45" stop-color="#8E93AE"/><stop offset=".72" stop-color="#E2B996"/><stop offset="1" stop-color="#F3D2A8"/></linearGradient>
+    <radialGradient id="${s}" cx=".8" cy=".62" r=".3"><stop offset="0" stop-color="#FFF1D6"/><stop offset=".3" stop-color="#FFDDA4" stop-opacity=".85"/><stop offset="1" stop-color="#FFDDA4" stop-opacity="0"/></radialGradient>
+    <linearGradient id="${e}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#5B6A85"/><stop offset="1" stop-color="#262B3C"/></linearGradient></defs>
+    <rect width="1200" height="300" fill="url(#${c})"/><rect width="1200" height="300" fill="url(#${s})"/>
+    <circle cx="960" cy="168" r="26" fill="#FFF3DA" opacity=".92"/>${plans}
+    <rect y="222" width="1200" height="78" fill="url(#${e})"/>${pont}${reflets}</svg>`
+}
+
 // ── Vignettes (format portrait 400 × 480) ─────────────────────────────────
 // Reprises de l'artefact « Estimation » : cartes de services et grille du
 // marché. Purement décoratives (aria-hidden côté composant).
