@@ -109,6 +109,16 @@ def _gold(gold_path: Path) -> duckdb.DuckDBPyConnection:
     return _CACHE[cle].cursor()
 
 
+def ventes_par_type(id_parcelle: str | None, gold_path: Path = GOLD_PATH) -> dict:
+    """Nombre de ventes de la parcelle par type de bien (« 1 » maison, « 2 » appartement) :
+    sert à signaler une saisie incohérente, comme une maison à l'adresse d'un immeuble."""
+    if not id_parcelle or not Path(gold_path).exists():
+        return {}
+    lignes = _gold(gold_path).execute(
+        "SELECT CAST(code_type_local AS VARCHAR), count(*) FROM g WHERE id_parcelle = ? GROUP BY 1", [id_parcelle]).fetchall()
+    return {str(t): int(n) for t, n in lignes}
+
+
 def _comparables(ventes: list, prix_m2_reference: float, n: int = 6) -> list[dict]:
     """Dernières ventes de l'immeuble, avec leur prix ramené au marché du jour."""
     return [{"date": str(v[0])[:10], "surface_m2": v[1], "nb_pieces": v[2],

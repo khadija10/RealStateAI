@@ -270,6 +270,7 @@ class EstimationResponse(BaseModel):
     segments_difficiles: list[dict[str, Any]] | None = None  # erreur mesurée des segments du bien
     immeuble_reference: dict[str, Any] | None = None  # médiane des ventes de l'immeuble, ramenée au secteur
     adresse_sans_numero: bool | None = None  # rue seule : l'immeuble n'est pas identifié
+    alerte_type: str | None = None   # type saisi jamais vendu à cette adresse, alors que l'autre l'a été
 
 
 class SimulationRequest(BaseModel):
@@ -351,6 +352,18 @@ _LIBELLES_SEGMENT = {
     "paris": "Paris",
     "grande_surface": "surface de 100 m² ou plus",
 }
+
+
+def _alerte_type(type_bien: str | None, ventes: dict) -> str | None:
+    """Type de bien jamais vendu à cette adresse alors que l'autre l'a été au moins
+    3 fois : la saisie est probablement erronée (une maison à l'adresse d'un immeuble)."""
+    demande, autre = ("1", "2") if type_bien == "house" else ("2", "1")
+    if ventes.get(demande, 0) == 0 and ventes.get(autre, 0) >= 3:
+        vu = "appartements" if autre == "2" else "maisons"
+        saisi = "une maison" if type_bien == "house" else "un appartement"
+        return (f"À cette adresse, les {ventes[autre]} ventes enregistrées sont des {vu}, aucune n'est {saisi} : "
+                "vérifiez le type de bien. L'estimation suppose le type saisi.")
+    return None
 
 
 def _segments_difficiles(segments: dict, *, departement: str | None, type_bien: str | None,
@@ -1344,6 +1357,7 @@ def estimate(
                     sans_numero=bool(isinstance(ml_result, dict) and ml_result.get("adresse_sans_numero")))
                 if isinstance(ml_result, dict):
                     normalized.adresse_sans_numero = bool(ml_result.get("adresse_sans_numero"))
+                    normalized.alerte_type = _alerte_type(req.property_type, ml_result.get("ventes_par_type") or {})
                 _inscrire_historique(request, req, surface, normalized, adresse_normalisee=(
                     ml_result.get("adresse_normalisee") if isinstance(ml_result, dict) else None))
                 return normalized

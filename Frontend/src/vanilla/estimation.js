@@ -552,6 +552,7 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
       historiqueId: d.historique_id ?? null,
       segments: d.segments_difficiles || [],
       sansNumero: !!d.adresse_sans_numero,
+      alerteType: d.alerte_type || null,
       immeuble: d.immeuble_reference || null,
       enregistreLe: null,
     }
@@ -630,6 +631,7 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
   function afficherAlertes(r) {
     const a = []
     if (r.alerteGeo) a.push(['ambre', r.alerteGeo])
+    if (r.alerteType) a.push(['rouge', `<b>Type de bien à vérifier.</b> ${r.alerteType}`])
     if (r.modele === 'ml' && r.sansNumero) a.push(['ambre', "<b>Adresse sans numéro.</b> L'immeuble n'a pas pu être identifié : ni ses ventes, ni son DPE, ni ses caractéristiques ne sont pris en compte. Indiquez le numéro pour une estimation plus précise."])
     if (r.modele !== 'ml') r.notes.filter((n) => !/estimation fournie/i.test(n)).forEach((n) => a.push(['gris', n]))
     if (r.modele !== 'ml' && r.modele) a.push(['gris', "Sans adresse précise, l'estimation repose sur la médiane des ventes comparables de la commune ; indiquez l'adresse pour activer le modèle."])
