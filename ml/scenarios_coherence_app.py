@@ -52,6 +52,9 @@ def main() -> None:
     parseur = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parseur.add_argument("--n-par-dep", type=int, default=5)
     parseur.add_argument("--sortie", default="docs/scenarios_coherence_app.md")
+    parseur.add_argument("--avec-dpe", action="store_true",
+                         help="garder le DPE des deux côtés : celui du gold hors ligne, celui retrouvé à "
+                              "l'adresse par l'application (depuis que l'application le retrouve seule)")
     args = parseur.parse_args()
 
     config = charger_config("ml/config.yaml")
@@ -68,10 +71,11 @@ def main() -> None:
     categories = json.loads(Path("Backend/models/categories.json").read_text())
     dtypes = {c: pd.CategoricalDtype(v) for c, v in categories.items()}
     X, _ = preparer_features(ventes, config, dtypes)
-    X[[c for c in DPE_INDIVIDUEL if c in X.columns]] = np.nan
-    for c in DPE_INDIVIDUEL:
-        if c in dtypes:
-            X[c] = X[c].astype(dtypes[c])
+    if not args.avec_dpe:
+        X[[c for c in DPE_INDIVIDUEL if c in X.columns]] = np.nan
+        for c in DPE_INDIVIDUEL:
+            if c in dtypes:
+                X[c] = X[c].astype(dtypes[c])
     hors_ligne = np.exp(modele.predict(X[modele.feature_name_])) \
         if config.get("target_transform") == "log" else modele.predict(X[modele.feature_name_])
 
@@ -91,7 +95,9 @@ def main() -> None:
         "",
         "Généré par `ml/scenarios_coherence_app.py`. Ventes réelles d'octobre à décembre 2025, "
         f"{args.n_par_dep} par département, estimées à partir de l'adresse seule par l'application, "
-        "comparées à la prédiction hors ligne du même modèle (DPE individuel retiré des deux côtés).",
+        "comparées à la prédiction hors ligne du même modèle "
+        + ("(DPE du gold hors ligne, DPE retrouvé à l'adresse par l'application)." if args.avec_dpe
+           else "(DPE individuel retiré hors ligne ; l'application ne recevait alors aucun DPE)."),
         "",
         "**Ce n'est pas une mesure de précision** : le modèle de production a appris sur ces ventes. "
         "On vérifie que l'inférence recalcule les mêmes features qu'à l'entraînement.",

@@ -290,16 +290,17 @@ Même test que le protocole (31 696 ventes), modèles figés : on découpe la me
 
 ### 6.2 Cohérence métier via l'API
 
-Scripts `test_scenarios.py`, `test_adresses.py` et `test_coherence_full.py`, lancés sur l'API locale après les correctifs :
+Scripts `test_scenarios.py`, `test_adresses.py` et `test_coherence_full.py`, relancés sur l'API locale le 3 octobre 2026 en fin de journée (version finale) :
 
 | Scénario | Résultat | Verdict |
 |---|---|---|
-| Classe DPE, de A à G (65 m², Paris 11ᵉ) | B −2,0 %, C −5,1 %, D −6,2 %, F −12,0 %, G −12,9 % | ✅ décroissance régulière |
-| Rues d'un même arrondissement (Paris 8ᵉ, avenue Montaigne vs rue du Rocher) | −25,7 % | ✅ sensible à la rue |
+| Classe DPE, de A à G (65 m², Paris 11ᵉ) | B −2,0 %, C −5,1 %, D −6,2 %, F −9,5 %, G −12,9 % | ✅ décroissance régulière. Un vrai DPE F (août 2023) existe à cette adresse : l'application utilise ses données techniques (−12,0 % le 2 octobre, avant la recherche automatique du DPE) |
+| Rues d'un même arrondissement (Paris 8ᵉ, avenue Montaigne vs rue du Rocher / rue de la Bienfaisance) | −23,7 % / −26,8 % | ✅ sensible à la rue |
 | Paris 18ᵉ, place du Tertre vs boulevard Barbès | −23,7 % | ✅ |
-| Comparaison avec les prix médians Notaires-INSEE T1 2025 (10 zones) | écart moyen **10,0 %** (13,3 % avant les correctifs), 9 zones sur 10 à moins de 20 % ; Évry −33 % | ✅ / ⚠️ Évry |
+| Comparaison avec les prix médians Notaires-INSEE T1 2025 (10 zones) | écart moyen **8,9 %** (10,0 % le 2 octobre, 13,3 % avant les correctifs), 9 zones sur 10 à moins de 20 % ; Évry −33 % | ✅ / ⚠️ Évry : l'adresse testée (rue des Aunettes, quartier prioritaire) est 13 % sous la médiane de la commune dans l'ancien, mais entre le 1ᵉʳ et le 9ᵉ décile ; la commune est classée « fiable » (7,8 %) |
 | Surface de 25 m² à 130 m² (même adresse) | hors Paris, prix au m² **décroissant** (Maurepas 4 479 → 2 873 €/m², Montreuil 7 248 → 5 614 €/m²) ; à Paris, **stable à légèrement croissant** (rue de Malte 9 861 → 10 229 €/m²) | ✅ conforme aux ventes (ci-dessous) |
-| Nombre de pièces à 65 m² (de 1 à 5) | prix au m² en légère hausse : +4 % à +11 % de 1 à 5 pièces | ⚠️ hors Paris, les ventes d'un même immeuble montrent un effet plat ou légèrement négatif |
+| Nombre de pièces à 65 m² (de 1 à 5) | Paris 11ᵉ : +2,1 % ; hors Paris : +4 % à +11 % | ⚠️ hors Paris, les ventes d'un même immeuble montrent un effet plat ou légèrement négatif |
+| Contrôle de vraisemblance sur 29 ventes parisiennes de 2025 (tirage fixe) | écart moyen 10,8 % ; 17 ventes à ±10 %, 25 à ±20 % ; écart maximal +55,9 % (rue de la Gaîté) | ✅ ce n'est **pas** une mesure de précision : le modèle de production a appris ces ventes |
 | Maison de 100 m² à Paris 11ᵉ | 13 855 €/m² | ⚠️ peu crédible, segment quasi absent des données ; signalé comme segment difficile |
 
 **Correction d'une conclusion de la version précédente du rapport.** L'effet de la surface avait été jugé « contraire au marché parisien ». Les ventes de 2024-2025 disent l'inverse : rapporté au prix de référence de la commune, le m² parisien vaut 0,996 sous 30 m² et 1,091 au-delà de 120 m² (prime des grands appartements anciens). Hors Paris, il baisse nettement : de 1,22 à 0,87 en grande couronne. Le modèle reproduit les deux comportements. Une contrainte de monotonie, envisagée, aurait donc **dégradé** Paris : elle n'a pas été appliquée.
@@ -308,6 +309,8 @@ Pour les pièces, à surface égale (60 à 70 m²), dans le même immeuble et ho
 
 Les chiffres Notaires-INSEE sont repris tels quels du script `test_coherence_full.py`. Leur source exacte reste à vérifier avant de les citer.
 
+**Corrections des scripts de test le 3 octobre** (aucune ne touche à l'application) : le code postal de l'avenue Victor Hugo (75116 et non 75016 : la BAN ne trouvait pas l'adresse, et l'application le signalait correctement ; 12 155 €/m² avec le bon code) ; le contrôle sur les ventes de 2025, qui tirait 10 lignes avant d'appliquer ses filtres et n'en estimait qu'une, cherchait une colonne inexistante et affichait toujours un écart positif.
+
 ### 6.3 Cohérence application / modèle — [`scenarios_coherence_app.md`](scenarios_coherence_app.md)
 
 Sur 40 ventes réelles (5 par département), l'estimation de l'application, faite à partir de l'adresse seule, est comparée à la prédiction hors ligne du même modèle. Ce n'est **pas** une mesure de précision : on vérifie que l'inférence calcule les mêmes features qu'à l'entraînement.
@@ -315,7 +318,10 @@ Sur 40 ventes réelles (5 par département), l'estimation de l'application, fait
 | | Écart médian | Ventes à moins de 5 % d'écart |
 |---|---:|---:|
 | Avant les correctifs | 5,9 % | 45 % |
-| **Après les correctifs (section 5.2)** | **2,2 %** | **70 %** |
+| Après les correctifs (section 5.2), 2 octobre | 2,2 % | 70 % |
+| **Version finale, 3 octobre (DPE des deux côtés)** | **2,1 %** | **75 %** |
+
+Le scénario d'origine retirait le DPE côté hors ligne ; depuis que l'application retrouve le DPE à l'adresse, il ne comparait plus la même chose (3,5 % et 68 % en le relançant tel quel). L'option `--avec-dpe` garde le DPE des deux côtés : celui du gold hors ligne, celui retrouvé à l'adresse par l'application. Le résultat vérifie donc aussi que les deux appariements retrouvent le même diagnostic.
 
 Les écarts restants s'expliquent :
 - l'application estime au marché du jour, alors que le gold utilise le marché du mois de la vente ;
@@ -451,7 +457,7 @@ Déjà réglé avant la relecture : largeurs de conteneur, couleurs de la compar
 | Sources croisées | 4 : DVF, DPE (ADEME), IRIS (INSEE), BDNB (CSTB) | section 4.2 |
 | Variables du modèle | 45 | `config.yaml` |
 | Professionnels de la transaction en Île-de-France | ≈ 40 000 (33 000 à 52 000) | `marche_professionnels_idf.md` |
-| Écart application / modèle hors ligne | 2,2 % en médiane (contre 5,9 %) | section 6.3 |
+| Écart application / modèle hors ligne | 2,1 % en médiane, 75 % à moins de 5 % (contre 5,9 % et 45 % avant les correctifs) | section 6.3 |
 
 ### 10.3 Formulations recommandées
 
