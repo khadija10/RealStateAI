@@ -658,3 +658,13 @@ def test_segments_difficiles_signales_et_ordonnes():
     assert [s["segment"] for s in res] == ["dpe_inconnu", "petite_surface", "paris"]
     assert _segments_difficiles(segments, departement="78", type_bien="apartment", surface=60,
                                 dpe_connu=True, ventes_immeuble=2) == []
+
+
+def test_mediane_immeuble_hors_ventes_sur_plan():
+    from main import _ramener_ventes_au_secteur
+    secteur = {"eco": [3000, 3000, 3000, 3000, 3000]}
+    ventes = [{"date": "2025-04-01", "prix_m2": 2800, "vefa": False},
+              {"date": "2024-12-01", "prix_m2": 3000, "vefa": False},
+              {"date": "2021-08-01", "prix_m2": 3900, "vefa": True}]
+    ref = _ramener_ventes_au_secteur(ventes, secteur, 50)
+    assert ref["prix_m2"] == 2900 and ref["n"] == 2 and ref["n_vefa"] == 1

@@ -95,9 +95,15 @@ export default function MarketTrends() {
 
   // Construire un tableau de points par département sélectionné
   const byDep = activeDeps.map((code) => {
-    const rows = allData
+    const bruts = allData
       .filter((r) => String(r.code_departement) === code)
       .sort((a, b) => a.mois_index - b.mois_index)
+    // Moyenne glissante sur 3 mois : la médiane d'un seul mois dépend de ce qui
+    // s'est vendu ce mois-là ; lissée, elle suit mieux le marché.
+    const rows = bruts.slice(2).map((r, i) => ({
+      ...r,
+      prix_m2_median: Math.round((bruts[i].prix_m2_median + bruts[i + 1].prix_m2_median + r.prix_m2_median) / 3),
+    }))
     return { code, label: DEPS.find((d) => d.code === code)?.label ?? code, rows, color: DEP_COLORS[code] }
   })
 
@@ -111,7 +117,10 @@ export default function MarketTrends() {
   return (
     <section className="mb-16">
       {/* Prix actuels */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+      {/* Autant de colonnes que de départements affichés (4 au plus) : les cartes
+          couvrent toute la largeur du graphique en dessous */}
+      <div className="grid grid-cols-2 sm:[grid-template-columns:repeat(var(--n),minmax(0,1fr))] gap-3 mb-6"
+        style={{ '--n': Math.min(4, Math.max(1, currentPrices.length)) }}>
         {currentPrices.map(({ code, label, current, prev, color }) => {
           const delta = prev ? ((current - prev) / prev) * 100 : null
           return (

@@ -189,11 +189,11 @@ export default function App() {
         {/* ONGLET CARTE */}
         {activeTab === 'carte' && (
           <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-10">
-            <div className="max-w-xl mb-8">
+            <div className="max-w-3xl mb-8">
               <h1 className="titre-page">
                 Carte <em>des prix</em>
               </h1>
-              <p className="text-sm text-ink-muted mt-3 whitespace-nowrap">
+              <p className="text-sm text-ink-muted mt-3">
                 Prix médian au m² — {datasetInfo?.nCommunes?.toLocaleString('fr-FR') ?? '—'} communes d&apos;Île-de-France{datasetInfo?.minYear && datasetInfo?.maxYear ? ` · transactions ${datasetInfo.minYear}–${datasetInfo.maxYear}` : ''}
               </p>
             </div>
@@ -204,12 +204,12 @@ export default function App() {
         {/* ONGLET RÉFÉRENCE */}
         {activeTab === 'marche' && (
           <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-10">
-            <div className="max-w-xl mb-8">
+            <div className="max-w-3xl mb-8">
               <h1 className="titre-page">
                 Référence <em>du marché</em>
               </h1>
-              <p className="text-sm text-ink-muted mt-3 whitespace-nowrap">
-                Évolution mensuelle du prix médian au m² par département{datasetInfo?.minYear && datasetInfo?.maxYear ? `, ${datasetInfo.minYear}–${datasetInfo.maxYear}` : ''}.
+              <p className="text-sm text-ink-muted mt-3">
+                Prix médian au m² par département, en moyenne glissante sur 3 mois{datasetInfo?.minYear && datasetInfo?.maxYear ? `, ${datasetInfo.minYear}–${datasetInfo.maxYear}` : ''}. Toutes ventes confondues (appartements et maisons, neuf et ancien).
               </p>
             </div>
             <MarketTrends />
@@ -219,11 +219,11 @@ export default function App() {
         {/* ONGLET HISTORIQUE */}
         {activeTab === 'historique' && (
           <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-10">
-            <div className="max-w-xl mb-8">
+            <div className="max-w-3xl mb-8">
               <h1 className="titre-page">
                 Votre <em>historique</em>
               </h1>
-              <p className="text-sm text-ink-muted mt-3 whitespace-nowrap">
+              <p className="text-sm text-ink-muted mt-3">
                 Vos biens estimés, avec leur évolution et leurs simulations.
               </p>
             </div>
@@ -240,11 +240,11 @@ export default function App() {
         {/* ONGLET PROFIL */}
         {activeTab === 'profil' && (
           <div className="w-full max-w-[1280px] mx-auto px-4 sm:px-6 lg:px-10 py-10">
-            <div className="max-w-xl mb-8">
+            <div className="max-w-3xl mb-8">
               <h1 className="titre-page">
                 Votre <em>profil</em>
               </h1>
-              <p className="text-sm text-ink-muted mt-3 whitespace-nowrap">
+              <p className="text-sm text-ink-muted mt-3">
                 Paramètres de votre compte.
               </p>
             </div>

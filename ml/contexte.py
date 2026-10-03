@@ -101,7 +101,8 @@ def _gold(gold_path: Path) -> duckdb.DuckDBPyConnection:
                    latitude, longitude, adresse_numero,
                    date_mutation, mois_index, surface_bati, nb_pieces, valeur_fonciere,
                    prix_m2, prix_m2_reference_12m, lot1_numero, code_iris,
-                   revenu_median_iris, part_logements_collectifs_iris, part_proprietaires_iris
+                   revenu_median_iris, part_logements_collectifs_iris, part_proprietaires_iris,
+                   est_vefa
             FROM read_parquet('{gold_path}/**/*.parquet', hive_partitioning=true, union_by_name=true)
         """)
         _CACHE[cle] = con
@@ -112,7 +113,10 @@ def _comparables(ventes: list, prix_m2_reference: float, n: int = 6) -> list[dic
     """Dernières ventes de l'immeuble, avec leur prix ramené au marché du jour."""
     return [{"date": str(v[0])[:10], "surface_m2": v[1], "nb_pieces": v[2],
              "prix": round(v[3]), "prix_m2": round(v[4]),
-             "prix_m2_aujourdhui": round(v[5] * prix_m2_reference)}
+             "prix_m2_aujourdhui": round(v[5] * prix_m2_reference),
+             # Vente sur plan (VEFA) : prix du neuf, TVA et « prime au neuf » comprises,
+             # qui disparaît à la première revente. Signalée et exclue de la médiane affichée.
+             "vefa": bool(v[8]) if len(v) > 8 and v[8] is not None else False}
             for v in ventes[:n]]
 
 
@@ -130,7 +134,7 @@ def features_immeuble(id_parcelle: str | None, code_type_local: str, mois_index:
     con = _gold(gold_path)
     ventes = con.execute("""
         SELECT date_mutation, surface_bati, nb_pieces, valeur_fonciere, prix_m2,
-               prix_m2 / prix_m2_reference_12m AS ratio, mois_index, lot1_numero
+               prix_m2 / prix_m2_reference_12m AS ratio, mois_index, lot1_numero, est_vefa
         FROM g
         WHERE id_parcelle = ? AND code_type_local = ? AND prix_m2_reference_12m > 0
         ORDER BY mois_index DESC, date_mutation DESC
