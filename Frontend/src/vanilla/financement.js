@@ -5,6 +5,7 @@
 import { heroFinancement } from '../illustrations.js'
 import { enregistreurSimulation } from './historique.js'
 import { champsMontants, afficherMontant } from './montants.js'
+import { pointMort, HYPOTHESES } from './acheterlouer.js'
 
 export const html = `
 <section class="heros heros-simple">
@@ -73,7 +74,7 @@ export const html = `
     <div class="mesures" data-resultat hidden>
       <div class="mesure"><b id="fin-emprunt">—</b><span>Montant emprunté</span></div>
       <div class="mesure"><b id="fin-endett">—</b><span>Taux d'endettement</span></div>
-      <div class="mesure"><b id="fin-score">—</b><span id="fin-score-lib">Score du dossier</span></div>
+      <div class="mesure"><b id="fin-score">—</b><span id="fin-score-lib">Indice de solidité · indicatif</span></div>
     </div>
   </div>
 </section>
@@ -112,9 +113,20 @@ export const html = `
   </div>
 </section>
 
+<h2 class="titre-section">Acheter <em>ou louer</em> ?</h2>
+<p class="sous">Au bout de combien d'années l'achat devient-il plus avantageux que la location, à budget égal ?</p>
+<section class="clair" id="fin-achat-location"></section>
+
+<div id="fin-bloc-aides" hidden>
+<h2 class="titre-section">Les <em>aides</em> à vérifier</h2>
+<p class="sous">Non intégrées au calcul : elles dépendent de conditions que la simulation ne connaît pas.</p>
+<section class="clair" id="fin-aides"></section>
+</div>
+
 </div>
 <h2 class="titre-section">Posez <em>vos questions</em></h2>
-<p class="sous">L'assistant utilise les mêmes calculs que la simulation : il ne donne jamais un chiffre au hasard.</p>
+<p class="sous">L'assistant utilise les mêmes calculs que la simulation : il ne donne jamais un chiffre au hasard.
+  Il donne des informations générales, pas un conseil en crédit : seuls une banque ou un intermédiaire habilité (IOBSP) peuvent vous conseiller.</p>
 <section class="clair" style="display:flex;flex-direction:column;gap:14px">
   <div id="fin-fil" style="display:flex;flex-direction:column;gap:10px;min-height:120px;max-height:360px;overflow-y:auto"></div>
   <form id="fin-chat-form" style="display:flex;gap:8px">
@@ -278,6 +290,52 @@ export function mount(root, { apiBase = '', prefill } = {}) {
     afficherDossier(d, p)
   }
 
+  function afficherAchatLocation(d, p) {
+    const el = $('#fin-achat-location')
+    const c = d.credit || {}, plan = d.plan_financement || {}
+    if (!p.loyer) {
+      el.innerHTML = `<p class="fiab-txt">Indiquez votre loyer actuel pour comparer l'achat et la location.</p>`
+      return
+    }
+    const donnees = {
+      prix: p.prix, apport: p.apport, montant: plan.montant_emprunte || 0,
+      tauxAnnuel: c.taux_nominal_retenu || 0, dureeAns: c.duree_annees || p.duree,
+      mensualiteCredit: c.mensualite_credit || 0, assuranceMensuelle: c.mensualite_assurance || 0, loyer: p.loyer,
+    }
+    const cas = [[-0.02, 'Prix en baisse de 2 %/an'], [0, 'Prix stables'], [0.02, 'Reprise de 2 %/an']]
+      .map(([g, nom]) => ({ nom, ...pointMort(donnees, g) }))
+    const ans = (a) => a == null ? 'au-delà de 30 ans' : `${a} an${a > 1 ? 's' : ''}`
+    const central = cas[1]
+    const h = HYPOTHESES, pc = (x) => String(+(x * 100).toFixed(1)).replace('.', ',') + ' %'
+    el.innerHTML = `
+      <p class="ach-verdict">${central.annee == null
+        ? `À prix stables, l'achat ne rattrape pas la location en 30 ans avec un loyer de ${euro(p.loyer)}.`
+        : `À prix stables, acheter devient plus avantageux que louer au bout de <b>${ans(central.annee)}</b>.`}</p>
+      <div class="ach-cas">${cas.map((x, i) => `<div class="ach-tuile${i === 1 ? ' central' : ''}"><b>${ans(x.annee)}</b><span>${x.nom}</span></div>`).join('')}</div>
+      <p class="fiab-txt">Avant ce délai, revendre coûte plus cher que d'avoir loué : frais d'acquisition, intérêts et frais
+        de revente ne sont pas encore amortis. Hypothèses : loyer de ${euro(p.loyer)} revalorisé de ${pc(h.hausseLoyer)} par an,
+        épargne placée à ${pc(h.rendement)} net, charges de propriétaire de ${pc(h.chargesProprio)} du prix par an
+        (taxe foncière, entretien, copropriété), frais de revente de ${pc(h.fraisRevente)}.</p>`
+  }
+
+  // Aides aux primo-accédants : signalées, jamais chiffrées (conditions de
+  // ressources, de zone et d'employeur inconnues de la simulation).
+  function afficherAides(p) {
+    const bloc = $('#fin-bloc-aides')
+    bloc.hidden = !p.primo
+    if (!p.primo) return
+    $('#fin-aides').innerHTML = `<ul class="aides">
+      <li><b>Prêt à taux zéro (PTZ)</b> : pour une première accession, sous conditions de ressources, de zone et de type
+        de logement${p.neuf ? ' ; un logement neuf y est éligible dans toutes les zones' : ` ; dans l'ancien, il est réservé à certains cas (travaux importants, zones précises)`}.</li>
+      <li><b>Prêt Action Logement</b> : jusqu'à 30 000 € à 1 % pour les salariés d'une entreprise privée de 10 salariés
+        ou plus, sous conditions.</li>
+      <li><b>Droits de mutation</b> : en tant que primo-accédant, vous échappez à la hausse votée par les départements
+        en 2025 ; c'est déjà pris en compte dans les frais d'acquisition ci-dessus.</li>
+    </ul>
+    <p class="fiab-txt">Conditions à vérifier sur <a href="https://www.service-public.fr/particuliers/vosdroits/F10871" target="_blank" rel="noopener">service-public.fr</a>
+      et auprès de votre banque.</p>`
+  }
+
   function afficherDossier(d, p) {
     $$('[data-resultat]').forEach((el) => { el.hidden = false })
     const conf = d.conformite_hcsf || {}
@@ -299,7 +357,8 @@ export function mount(root, { apiBase = '', prefill } = {}) {
     $('#fin-endett').textContent = pct(endettement)
     $('#fin-score').textContent = Math.round(d.score_dossier?.score_sur_100 || 0) + '/100'
     const appreciation = d.score_dossier?.appreciation
-    $('#fin-score-lib').textContent = 'Score du dossier' + (appreciation ? ' · ' + appreciation : '')
+    $('#fin-score-lib').textContent = 'Indice de solidité · indicatif' + (appreciation ? ' · ' + appreciation : '')
+    $('#fin-score-lib').title = `Indice propre à RealStateAI : les banques n'utilisent pas de score public, et ce n'est pas un accord de prêt.`
     // La décision n'est affichée que si elle précise le verdict (sinon elle le répète)
     const decision = d.synthese?.decision_indicative || ''
     const verdict = $('#fin-verdict').textContent.toLowerCase()
@@ -307,6 +366,8 @@ export function mount(root, { apiBase = '', prefill } = {}) {
     // la décision binaire du moteur (« dérogation nécessaire ») le contredirait.
     $('#fin-decision').textContent = conforme && decision && !verdict.includes(decision.toLowerCase()) ? decision : ''
 
+    afficherAchatLocation(d, p)
+    afficherAides(p)
     historique.planifier({
       prix: p.prix, apport: p.apport, revenus: p.revenus, duree: credit.duree_annees || p.duree,
       departement: p.departement, verdict: $('#fin-verdict').textContent.trim(),

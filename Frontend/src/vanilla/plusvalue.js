@@ -12,8 +12,8 @@ export const html = `
   <div class="illus" id="pv-illus-heros"></div>
   <div class="accroche">
     <h1>Anticiper<em>votre plus-value</em></h1>
-    <p>Trois scénarios tirés du marché réellement observé, et la fiscalité 2026
-       appliquée à la durée de détention.</p>
+    <p>Trois scénarios de marché (tendance observée, stabilité, reprise modérée) et la
+       fiscalité 2026 appliquée à la durée de détention.</p>
   </div>
 </section>
 
@@ -98,9 +98,11 @@ export const html = `
     <p>Le jeu de données couvre cinq années, dont une crise immobilière. C'est trop court
        pour prévoir un marché : un modèle entraîné sur cette période extrapolerait
        simplement la baisse.</p>
-    <p>On projette donc <b>trois trajectoires tirées du marché observé</b> du secteur.
-       L'écart entre elles est l'information utile : il mesure l'incertitude. Chaque rythme est
-       limité à ±4 % par an : une seule année atypique ne doit pas fausser une projection sur 10 ans.</p>
+    <p>On projette donc <b>trois trajectoires</b> : la tendance observée du secteur depuis 2021
+       prolongée (limitée à ±4 % par an), la stabilité des prix, et une reprise modérée au rythme de
+       l'inflation visée par la BCE (2 % par an). La baisse de 2022-2024 est surtout une correction liée à la
+       remontée des taux : elle sert de borne basse, pas de tendance de fond. L'écart entre les trois
+       trajectoires mesure l'incertitude.</p>
   </div>
   <div>
     <h3>Ce que la simulation <em>ignore</em></h3>

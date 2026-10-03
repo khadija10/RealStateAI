@@ -400,12 +400,15 @@ def _ramener_ventes_au_secteur(comparables: list[dict], secteur: dict | None, su
         base = serie.get(min(max(annee, min(serie)), annee_ref))
         if base and c.get("prix_m2"):
             c["prix_m2_aujourdhui"] = round(c["prix_m2"] * serie[annee_ref] / base)
-            ramenes.append(c["prix_m2_aujourdhui"])
+            # Les ventes sur plan (VEFA) portent la prime du neuf : hors de la médiane
+            if not c.get("vefa"):
+                ramenes.append(c["prix_m2_aujourdhui"])
         c["annee_reference"] = annee_ref
     if not ramenes:
         return None
     med = float(pd.Series(ramenes).median())
-    return {"prix_m2": round(med), "valeur": round(med * surface, -3), "n": len(ramenes), "annee": annee_ref}
+    return {"prix_m2": round(med), "valeur": round(med * surface, -3), "n": len(ramenes), "annee": annee_ref,
+            "n_vefa": sum(1 for c in comparables if c.get("vefa"))}
 
 
 def _construire_secteurs(df: "pd.DataFrame | None") -> dict:

@@ -280,6 +280,10 @@ Les écarts restants s'expliquent :
 | Dépendance aux API externes (BAN, API Carto, ADEME) | **corrigée** | Second essai au délai doublé et cache des réponses ; un délai dépassé isolé ne fait plus basculer sur le repli DVF. Une panne durable de la BAN reste un cas de repli. |
 | DPE retrouvé à l'adresse parfois ambigu | **traitée** | Signalé à l'utilisateur, qui peut corriger la classe dans « Affiner l'estimation ». |
 | Démarrage du backend : 2,6 Go de pic mémoire | **corrigée** | 892 Mo au chargement, 838 Mo pour le service complet (section 5.2). |
+| Ventes sur plan (VEFA) mélangées aux reventes | **en partie traitée** | Dans les ventes de l'immeuble, la VEFA est signalée (« neuf, sur plan ») et exclue de la médiane affichée : sa prime au neuf disparaît à la revente. Le modèle, lui, n'utilise pas encore l'indicateur `est_vefa` du gold. L'ajouter est un changement de modèle, à mesurer sur une nouvelle période de test (ventes 2026), pas sur le test déjà consommé. |
+| Critères qualitatifs absents (étage, ascenseur, extérieur, parking, état, exposition) | **reste** | Ils ne figurent pas dans les ventes notariées : la fourchette (±20 % environ) les reflète. L'application le dit dans la méthodologie et invite à confirmer par une visite. Piste : un ajustement optionnel saisi par l'agent, documenté comme tel. |
+| Données arrêtées à fin 2025 | **affichée** | « Marché observé jusqu'à fin 2025 (dernière publication des ventes notariées) » sous la fourchette. |
+| Projection de plus-value | **revue** | Trois scénarios : tendance du secteur prolongée (bornée à ±4 %/an), stabilité (centrale), reprise modérée à 2 %/an. La correction de 2022-2024 sert de borne basse, pas de tendance de fond. |
 | v1.5 pas encore déployée | **reste** | Tout est fusionné sur `main`. Il reste à pousser sur GitHub, reconstruire l'image Docker (elle embarque la BDNB agrégée, 27 Mo) et redéployer sur Render. |
 
 ---

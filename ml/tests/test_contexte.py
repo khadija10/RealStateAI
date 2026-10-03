@@ -47,11 +47,19 @@ def gold(tmp_path: Path) -> Path:
     df["part_logements_collectifs_iris"], df["part_proprietaires_iris"] = 0.98, 0.35
     df["nb_pieces"] = 2.0
     df["valeur_fonciere"] = df["prix_m2"] * df["surface_bati"]
+    # la vente à fin-10 est une vente sur plan (VEFA)
+    df["est_vefa"] = (df["id_parcelle"] == "P1") & (df["mois_index"] == fin - 10)
     duckdb.sql("SELECT * FROM df").write_parquet(str(dossier / "part.parquet"))
     return tmp_path / "gold"
 
 
 class TestImmeuble:
+    def test_vente_sur_plan_signalee_dans_les_comparables(self, gold):
+        r = ctx.features_immeuble("P1", "2", 320, prix_m2_reference=10_000.0,
+                                  surface=50.0, gold_path=gold)
+        vefa = [c["vefa"] for c in r["comparables_immeuble"]]
+        assert vefa.count(True) == 1 and len(vefa) == 3
+
     def test_mediane_indexee_sur_24_mois(self, gold):
         r = ctx.features_immeuble("P1", "2", 320, prix_m2_reference=10_000.0,
                                   surface=50.0, gold_path=gold)

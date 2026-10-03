@@ -268,7 +268,7 @@ function exporterPDF(bien, modelInfo) {
 
 <h2>Ventes dans l'immeuble</h2>
 ${r.comparables?.length ? `<table><tr><th>Date</th><th class="n">Surface</th><th class="n">Pièces</th><th class="n">Prix</th><th class="n">€/m² à la vente</th><th class="n">€/m² au marché ${r.immeuble?.annee || 'actuel'}</th></tr>
-${r.comparables.map((c) => `<tr><td>${moisAn(c.date)}</td><td class="n">${c.surface_m2} m²</td><td class="n">${c.nb_pieces ?? '—'}</td><td class="n">${euro(c.prix)}</td><td class="n">${euro(c.prix_m2)}</td><td class="n"><b>${euro(c.prix_m2_aujourdhui)}</b></td></tr>`).join('')}</table>
+${r.comparables.map((c) => `<tr><td>${moisAn(c.date)}${c.vefa ? ' <i>(neuf, sur plan)</i>' : ''}</td><td class="n">${c.surface_m2} m²</td><td class="n">${c.nb_pieces ?? '—'}</td><td class="n">${euro(c.prix)}</td><td class="n">${euro(c.prix_m2)}</td><td class="n"><b>${euro(c.prix_m2_aujourdhui)}</b></td></tr>`).join('')}</table>
 <p class="note">Dernières ventes notariées de la même parcelle, ramenées au marché ${r.immeuble?.annee || 'actuel'} avec l'évolution des prix du secteur.${r.immeuble ? ` Leur médiane (${euro(r.immeuble.prix_m2)}/m²) donnerait environ ${euro(r.immeuble.valeur)} pour cette surface. Une vente isolée peut s'écarter du marché (étage, état, travaux).` : ''}</p>`
   : `<p class="vide">Aucune vente récente enregistrée dans cet immeuble${r.sansNumero ? " (adresse sans numéro : immeuble non identifié)" : ''}.</p>`}
 
@@ -359,7 +359,7 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
       modelInfo = {
         mape: d.model_mape, r2: d.model_r2, nFeatures: d.model_n_features,
         trainedAt: d.model_trained_at, nTrain: d.model_n_train,
-        nVentes: d.n_rows, validation: d.model_validation,
+        nVentes: d.n_rows, validation: d.model_validation, anneeMax: d.dvf_max_year,
       }
       afficherStats()
       if (dernierBien) afficher(dernierBien.r, dernierBien.s, dernierBien.adresse, dernierBien.surface, dernierBien.pieces, dernierBien.type)
@@ -573,7 +573,8 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
     $('#rsai-lib-secteur').textContent = (r.adresse || adresse || s?.nom || '') + ' · ' + surface + ' m² · ' + pieces + (pieces > 1 ? ' pièces' : ' pièce')
     $('#rsai-valeur').textContent = euro(rond(r.valeur))
     $('#rsai-fourchette').innerHTML = `Entre <b>${euro(rond(r.basse))}</b> et <b>${euro(rond(r.haute))}</b>` +
-      `<small>${r.modele === 'ml' ? `Le prix de vente réel tombe dans cette fourchette ${(r.confiance || '85 %').replace(' %', '')} fois sur 100.` : 'Fourchette des ventes comparables de la commune.'}</small>`
+      `<small>${r.modele === 'ml' ? `Le prix de vente réel tombe dans cette fourchette ${(r.confiance || '85 %').replace(' %', '')} fois sur 100.` : 'Fourchette des ventes comparables de la commune.'}` +
+      `${modelInfo?.anneeMax ? ` Marché observé jusqu'à fin ${modelInfo.anneeMax} (dernière publication des ventes notariées).` : ''}</small>`
     const place = Math.min(96, Math.max(4, (100 * (r.valeur - r.basse)) / (r.haute - r.basse)))
     $('#rsai-curseur-ci').style.left = place + '%'
     $('#rsai-ci-bas').textContent = euro(rond(r.basse))
@@ -673,7 +674,7 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
     const bloc = $('#rsai-bloc-comparables')
     bloc.hidden = !r.comparables.length
     const date = (d) => new Date(d).toLocaleDateString('fr-FR', { month: 'short', year: 'numeric' })
-    $('#rsai-comparables').innerHTML = r.comparables.map((c) => `<tr><td>${date(c.date)}</td><td>${nb(c.surface_m2)} m²</td>
+    $('#rsai-comparables').innerHTML = r.comparables.map((c) => `<tr${c.vefa ? ' class="vefa"' : ''}><td>${date(c.date)}${c.vefa ? ' <span class="puce claire" title="Vente sur plan (VEFA) : prix du neuf, TVA et prime au neuf comprises">neuf, sur plan</span>' : ''}</td><td>${nb(c.surface_m2)} m²</td>
       <td>${c.nb_pieces ? nb(c.nb_pieces) : '—'}</td><td>${euro(c.prix)}</td><td>${nb(c.prix_m2)} €</td><td><b>${nb(c.prix_m2_aujourdhui)} €</b></td></tr>`).join('')
     const ref = r.immeuble
     if (ref?.annee) $('#rsai-th-actuel').textContent = `€/m² au marché ${ref.annee}`
@@ -681,7 +682,8 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
     const ecart = Math.round(100 * (r.valeur / ref.valeur - 1))
     $('#rsai-immeuble-ref').innerHTML =
       `Chaque vente est ramenée au marché ${ref.annee} avec l'évolution des prix du secteur (courbe ci-dessus). ` +
-      `Leur médiane, <b>${nb(ref.prix_m2)} €/m²</b>, donnerait environ <b>${euro(ref.valeur)}</b> pour cette surface ; ` +
+      (ref.n_vefa ? `Les ventes sur plan (neuf) sont écartées : leur prix inclut la prime au neuf, qui disparaît à la revente. ` : '') +
+      `La médiane des ${ref.n_vefa ? 'reventes' : 'ventes'}, <b>${nb(ref.prix_m2)} €/m²</b>, donnerait environ <b>${euro(ref.valeur)}</b> pour cette surface ; ` +
       (Math.abs(ecart) <= 5 ? 'notre estimation est au même niveau. '
         : `notre estimation est ${ecart > 0 ? `${ecart} % au-dessus` : `${-ecart} % en dessous`}, car elle tient compte aussi du secteur, du DPE et de l'année de construction. `) +
       `Une vente isolée peut s'écarter du marché (étage, état, travaux, vente entre proches) : les données publiques ne le précisent pas.`
@@ -707,7 +709,7 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
     $('#rsai-pv-resume').innerHTML =
       `Dans 10 ans, selon l'évolution du marché, ce bien vaudrait entre <b>${euro(rond(revente(bas)))}</b> et <b>${euro(rond(revente(haut)))}</b>. ` +
       `Scénario central (${central.nom.toLowerCase()}, ${taux(central)}) : environ <b>${euro(rond(revente(central)))}</b>. ` +
-      `Ces scénarios prolongent des rythmes observés depuis 2021 ; ce ne sont pas des prévisions.`
+      `Les trois scénarios : la tendance du secteur depuis 2021 prolongée, la stabilité, une reprise modérée (+2 %/an). Ce ne sont pas des prévisions.`
 
   }
 
@@ -735,7 +737,7 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
       <dl>${lignes.map(([l, v]) => `<div><dt>${l}</dt><dd>${v}</dd></div>`).join('')}</dl>${note ? `<p>${note}</p>` : ''}</section>`
     $('#rsai-methodo').innerHTML =
       carte('Le calcul', calcul, r.adresse ? `Adresse retenue : ${r.adresse}` : '') +
-      carte('Le modèle', modele, ml ? "Ventes atypiques et incomplètes écartées de l'entraînement." : '') +
+      carte('Le modèle', modele, ml ? "Ventes atypiques et incomplètes écartées. Limites des ventes notariées : surface bâtie (pas la surface Carrez), parking ou cave parfois compris dans le prix, ni étage, ni état, ni extérieur." : '') +
       carte("La mesure de l'erreur", erreur, val ? 'Mesurée sur des ventes que le modèle évalué n\'avait jamais vues.' : '')
 
   }

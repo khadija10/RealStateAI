@@ -452,3 +452,16 @@
 /* Choix exclusif (résidence principale / investissement) : aspect de bouton radio */
 .rsai-vanilla .bascule[data-u]::before{border-radius:50%;background-image:none}
 .rsai-vanilla .bascule[data-u][aria-pressed=true]::before{background:var(--blanc);border:5px solid var(--action)}
+/* Vente sur plan (VEFA) : ligne atténuée, hors de la médiane de l'immeuble */
+.rsai-vanilla .comparables tr.vefa td{color:var(--gris)}
+.rsai-vanilla .comparables tr.vefa .puce{margin-left:6px;font-size:12px;padding:2px 8px}
+/* Acheter ou louer, aides */
+.rsai-vanilla .ach-verdict{font-size:19px;margin:0 0 14px;color:var(--encre)}
+.rsai-vanilla .ach-cas{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin:0 0 14px}
+@media (max-width:640px){.rsai-vanilla .ach-cas{grid-template-columns:1fr}}
+.rsai-vanilla .ach-tuile{background:var(--fond);border-radius:16px;padding:14px 16px;border:1px solid transparent}
+.rsai-vanilla .ach-tuile.central{border-color:var(--action)}
+.rsai-vanilla .ach-tuile b{display:block;font-family:var(--serif);font-style:italic;font-weight:400;font-size:30px;line-height:1.1;color:var(--encre)}
+.rsai-vanilla .ach-tuile span{display:block;margin-top:4px;font-size:13px;color:var(--gris)}
+.rsai-vanilla ul.aides{margin:0 0 10px;padding-left:20px;display:grid;gap:8px;font-size:14px;line-height:1.5}
+.rsai-vanilla .fiab-txt a{color:var(--action);text-decoration:underline}
