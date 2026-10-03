@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { getMarketTrends } from '../api/client'
+import FiltresMarche from './FiltresMarche'
 
 const DEPS = [
   { code: '75', label: 'Paris' },
@@ -79,13 +80,18 @@ export default function MarketTrends() {
   const [allData, setAllData] = useState([])
   const [loading, setLoading] = useState(true)
   const [activeDeps, setActiveDeps] = useState(['75', '92', '93'])
+  const [typeBien, setTypeBien] = useState('apartment')
+  const [marche, setMarche] = useState('tous')
 
   useEffect(() => {
-    getMarketTrends()
-      .then(setAllData)
+    let actif = true
+    setLoading(true)
+    getMarketTrends(undefined, typeBien, marche)
+      .then((d) => { if (actif) setAllData(d) })
       .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [])
+      .finally(() => { if (actif) setLoading(false) })
+    return () => { actif = false }
+  }, [typeBien, marche])
 
   function toggleDep(code) {
     setActiveDeps((prev) =>
@@ -116,6 +122,7 @@ export default function MarketTrends() {
 
   return (
     <section className="mb-16">
+      <FiltresMarche typeBien={typeBien} marche={marche} onType={setTypeBien} onMarche={setMarche} />
       {/* Prix actuels */}
       {/* Autant de colonnes que de départements affichés (4 au plus) : les cartes
           couvrent toute la largeur du graphique en dessous */}

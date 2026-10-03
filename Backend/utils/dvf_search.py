@@ -61,6 +61,8 @@ COLONNES_UTILES = {
     "date_mutation", "code_departement", "code_commune", "nom_commune", "code_postal", "ville",
     "type_local", "surface_bati", "nb_pieces", "valeur_fonciere", "prix_m2", "a_terrain",
     "dpe_classe", "dpe_date", "annee_construction", "zone_part_dpe_fg", "annee",
+    # carte des prix et référence du marché, calculées au démarrage (main.py)
+    "latitude", "longitude", "est_vefa",
     *RENAME_MAP.keys(), *RENAME_MAP.values(),
 }
 

@@ -28,6 +28,7 @@ from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, Literal
 
+import numpy as np
 import pandas as pd
 import uvicorn
 from fastapi import Depends, FastAPI, HTTPException, Query, Request
@@ -448,6 +449,69 @@ def _construire_secteurs(df: "pd.DataFrame | None") -> dict:
     return secteurs
 
 
+TYPES_MARCHE = ("apartment", "house")
+SEGMENTS_MARCHE = ("tous", "ancien", "neuf")
+
+
+def _construire_marche(df: "pd.DataFrame | None") -> dict:
+    """Carte des prix (par commune) et référence du marché (par département et
+    par mois), calculées au démarrage sur le dataset chargé, séparément pour les
+    appartements et les maisons, et pour tout le marché, l'ancien ou le neuf (VEFA).
+
+    Une médiane qui mélange maisons et appartements varie selon ce qui s'est
+    vendu (Versailles : 6 930 €/m² en appartement, 9 179 € en maison). Les
+    fichiers statiques de data/samples ne servent plus que de repli."""
+    colonnes = {"commune", "type_bien_norm", "date_mutation", "prix_au_m2", "dep"}
+    if df is None or not colonnes <= set(df.columns):
+        return {}
+    date = pd.to_datetime(df["date_mutation"], errors="coerce")
+    d = pd.DataFrame({
+        "commune": df["commune"].astype(str), "type": df["type_bien_norm"].astype(str),
+        "dep": df["dep"].astype(str).str.zfill(2), "prix": df["prix_au_m2"],
+        "annee": date.dt.year, "mois": date.dt.month,
+        "lat": df["latitude"] if "latitude" in df.columns else np.nan,
+        "lon": df["longitude"] if "longitude" in df.columns else np.nan,
+        "vefa": df["est_vefa"].fillna(False).astype(bool) if "est_vefa" in df.columns else False,
+    }).dropna(subset=["prix", "annee"])
+    derniere = int(d["annee"].max())
+    q1, q3 = (lambda s: s.quantile(0.25)), (lambda s: s.quantile(0.75))
+    marche: dict = {"carte": {}, "tendances": {}, "annee": derniere}
+    for typ in TYPES_MARCHE:
+        for seg in SEGMENTS_MARCHE:
+            sous = d[d["type"] == typ]
+            if seg != "tous":
+                sous = sous[sous["vefa"] == (seg == "neuf")]
+            # Carte : dernière année si la commune y a au moins 10 ventes, sinon 2021-2025
+            tout = sous.groupby("commune").agg(dep=("dep", "first"), lat=("lat", "median"), lon=("lon", "median"),
+                                              n=("prix", "size"), med=("prix", "median"), q1=("prix", q1), q3=("prix", q3))
+            rec = sous[sous["annee"] == derniere].groupby("commune")["prix"].agg(
+                n_rec="size", med_rec="median", q1_rec=q1, q3_rec=q3)
+            stats = tout.join(rec)
+            lignes = []
+            for nom, s in stats.iterrows():
+                recent = pd.notna(s["n_rec"]) and s["n_rec"] >= 10
+                n = int(s["n_rec"] if recent else s["n"])
+                if n < 5:
+                    continue
+                lignes.append({
+                    "nom_commune": nom, "code_departement": s["dep"],
+                    "lat": round(float(s["lat"]), 5) if pd.notna(s["lat"]) else None,
+                    "lon": round(float(s["lon"]), 5) if pd.notna(s["lon"]) else None,
+                    "prix_m2_median": round(float(s["med_rec"] if recent else s["med"])),
+                    "prix_m2_q1": round(float(s["q1_rec"] if recent else s["q1"])),
+                    "prix_m2_q3": round(float(s["q3_rec"] if recent else s["q3"])),
+                    "n_transactions": n, "periode": str(derniere) if recent else f"2021-{derniere}",
+                })
+            marche["carte"][(typ, seg)] = lignes
+            # Référence : médiane mensuelle par département
+            mensuel = sous.groupby(["dep", "annee", "mois"])["prix"].agg(["median", "size"]).reset_index()
+            marche["tendances"][(typ, seg)] = [
+                {"annee": int(m["annee"]), "mois": int(m["mois"]), "mois_index": int((m["annee"] - 2000) * 12 + m["mois"]),
+                 "code_departement": m["dep"], "prix_m2_median": round(float(m["median"])), "n_transactions": int(m["size"])}
+                for _, m in mensuel.iterrows() if m["size"] >= 5]
+    return marche
+
+
 _CACHE_DATASET: dict = {}
 
 
@@ -468,11 +532,13 @@ def _charger_dataset(path: Path) -> dict:
     if cle not in _CACHE_DATASET:
         dvf = load_dvf(path)
         secteurs = _construire_secteurs(dvf)
+        marche = _construire_marche(dvf)
         _CACHE_DATASET.clear()
         _CACHE_DATASET[cle] = {
             "dvf": dvf,
             "communes": commune_display_names(dvf),
             "secteurs": secteurs,
+            "marche": marche,
             "secteurs_par_nom": {(normalize_commune(s["nom"]), typ): s for (_, typ), s in secteurs.items()},
         }
     return _CACHE_DATASET[cle]
@@ -528,6 +594,7 @@ async def lifespan(app: FastAPI):
     app.state.segments = _charger_segments()
     app.state.secteurs = {}
     app.state.secteurs_par_nom = {}
+    app.state.marche = {}
 
     path = resolve_dvf_path()
     if path is None:
@@ -544,6 +611,7 @@ async def lifespan(app: FastAPI):
             app.state.communes = donnees["communes"]
             app.state.secteurs = donnees["secteurs"]
             app.state.secteurs_par_nom = donnees["secteurs_par_nom"]
+            app.state.marche = donnees.get("marche", {})
         except Exception as exc:  # noqa: BLE001 — on veut démarrer malgré tout
             app.state.dvf_error = f"{type(exc).__name__} : {exc}"
             logger.exception("Échec du chargement du dataset DVF")
@@ -1416,9 +1484,23 @@ _COMMUNE_STATS_PATH = _SAMPLES_DIR / "commune_stats.json"
 _MARKET_TRENDS_PATH = _SAMPLES_DIR / "market_trends.json"
 
 
+def _filtres_marche(type_bien: str, marche: str) -> tuple[str, str]:
+    typ = "house" if type_bien == "house" else "apartment"
+    seg = marche if marche in SEGMENTS_MARCHE else "tous"
+    return typ, seg
+
+
 @app.get(f"{API_PREFIX}/market/map", tags=["marché"])
-def market_map():
-    """Statistiques prix/m² par commune pour la carte interactive."""
+def market_map(
+    request: Request,
+    type_bien: str = Query(default="apartment", description="apartment | house"),
+    marche: str = Query(default="tous", description="tous | ancien | neuf (VEFA)"),
+):
+    """Prix au m² par commune pour la carte, séparés par type de bien et par marché
+    (calculés sur le dataset chargé ; fichier statique en repli)."""
+    calcule = getattr(request.app.state, "marche", {}) or {}
+    if calcule.get("carte"):
+        return calcule["carte"].get(_filtres_marche(type_bien, marche), [])
     if not _COMMUNE_STATS_PATH.exists():
         raise HTTPException(503, "Données cartographiques non disponibles.")
     return json.loads(_COMMUNE_STATS_PATH.read_text())
@@ -1441,8 +1523,18 @@ def market_secteurs(
 
 
 @app.get(f"{API_PREFIX}/market/trends", tags=["marché"])
-def market_trends(dep: str | None = Query(default=None, description="Code département (75, 92…)")):
-    """Tendances mensuelles du prix/m² par département."""
+def market_trends(
+    request: Request,
+    dep: str | None = Query(default=None, description="Code département (75, 92…)"),
+    type_bien: str = Query(default="apartment", description="apartment | house"),
+    marche: str = Query(default="tous", description="tous | ancien | neuf (VEFA)"),
+):
+    """Médiane mensuelle du prix au m² par département, séparée par type de bien et
+    par marché (calculée sur le dataset chargé ; fichier statique en repli)."""
+    calcule = getattr(request.app.state, "marche", {}) or {}
+    if calcule.get("tendances"):
+        data = calcule["tendances"].get(_filtres_marche(type_bien, marche), [])
+        return [row for row in data if row["code_departement"] == dep] if dep else data
     if not _MARKET_TRENDS_PATH.exists():
         raise HTTPException(503, "Données de tendances non disponibles.")
     data = json.loads(_MARKET_TRENDS_PATH.read_text())

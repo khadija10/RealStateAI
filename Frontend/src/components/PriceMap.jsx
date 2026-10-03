@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { getMarketMap } from '../api/client'
+import FiltresMarche from './FiltresMarche'
+
+// Contours des communes (geo.api.gouv.fr) : téléchargés une fois, réutilisés
+// quand on change de type de bien ou de marché.
+let contours = null
 
 const DEPS = ['75', '77', '78', '91', '92', '93', '94', '95']
 
@@ -61,6 +66,8 @@ export default function PriceMap() {
   const [activeDep, setActiveDep] = useState('all')
   const [hovered, setHovered] = useState(null)
   const [matchRate, setMatchRate] = useState(null)
+  const [typeBien, setTypeBien] = useState('apartment')
+  const [marche, setMarche] = useState('tous')
 
   useEffect(() => {
     let cancelled = false
@@ -77,9 +84,8 @@ export default function PriceMap() {
       }
       const L = window.L
 
-      const [priceData, ...geoResults] = await Promise.all([
-        getMarketMap(),
-        ...DEPS.map((dep) => {
+      setLoading(true)
+      contours = contours || Promise.all(DEPS.map((dep) => {
           // Paris: l'API retourne 1 commune (75056); on demande les arrondissements séparément
           const type = dep === '75' ? '&type=arrondissement-municipal' : ''
           return fetch(
@@ -87,8 +93,10 @@ export default function PriceMap() {
           )
             .then((r) => r.json())
             .catch(() => null)
-        }),
-      ])
+        }))
+      const [priceData, geoBruts] = await Promise.all([getMarketMap(typeBien, marche), contours])
+      // copie : les propriétés de prix sont fusionnées dans chaque contour
+      const geoResults = geoBruts.map((g) => g && { ...g, features: g.features.map((f) => ({ ...f, properties: { ...f.properties } })) })
 
       if (cancelled) return
 
@@ -160,6 +168,7 @@ export default function PriceMap() {
                 q1: p.prix_m2_q1,
                 q3: p.prix_m2_q3,
                 n: p.n_transactions,
+                periode: p.periode,
               })
             },
             mouseout: () => {
@@ -192,7 +201,7 @@ export default function PriceMap() {
         geoLayerRef.current = null
       }
     }
-  }, [])
+  }, [typeBien, marche])
 
   // Re-centre on department filter change
   useEffect(() => {
@@ -212,6 +221,7 @@ export default function PriceMap() {
 
   return (
     <section>
+      <FiltresMarche typeBien={typeBien} marche={marche} onType={setTypeBien} onMarche={setMarche} />
       {/* Filtre département */}
       <div className="flex flex-wrap gap-2 mb-4">
         <button
@@ -246,7 +256,7 @@ export default function PriceMap() {
           <div className="absolute top-3 right-3 z-[400] bg-white rounded-xl shadow-lg border border-stone-100 px-4 py-3 w-56 pointer-events-none" style={{ zIndex: 1000 }}>
             <p className="text-sm font-semibold text-ink leading-tight">{hovered.nom}</p>
             <p className="text-[11px] text-ink-muted mt-0.5">
-              Dept. {hovered.dep}{hovered.n != null ? ` · ${hovered.n.toLocaleString('fr-FR')} ventes` : ''}
+              Dept. {hovered.dep}{hovered.n != null ? ` · ${hovered.n.toLocaleString('fr-FR')} ventes` : ''}{hovered.periode ? ` en ${hovered.periode.replace('-', '–')}` : ''}
             </p>
             <p className="text-2xl font-bold text-ink tabular-nums mt-2 leading-none">
               {fmt(hovered.prix)} €/m²
