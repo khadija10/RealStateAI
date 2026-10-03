@@ -10,6 +10,9 @@ _MODEL = None
 _Q075 = None
 _Q925 = None
 _CATEGORIES = None
+_TRANSFORM = None       # "log" si le modèle apprend log(prix_m2) (model_info.json)
+_CALIBRATION = {}       # corrections conformes de la fourchette par classe (calibration.json)
+_LOCAL = {}             # MAPE et classe de fiabilité par commune (local_mape.json)
 
 
 def _trouver_modele(defaut: str = "Backend/models/price_model.pkl") -> Path:
@@ -25,12 +28,15 @@ def _trouver_modele(defaut: str = "Backend/models/price_model.pkl") -> Path:
 
 
 def charger_modele(chemin: str = "Backend/models/price_model.pkl"):
-    global _MODEL, _Q075, _Q925, _CATEGORIES
+    global _MODEL, _Q075, _Q925, _CATEGORIES, _TRANSFORM, _CALIBRATION, _LOCAL
     if _MODEL is None:
         path = _trouver_modele(chemin)
         _MODEL = joblib.load(path)
-        cat_path = path.parent / "categories.json"
-        _CATEGORIES = json.loads(cat_path.read_text()) if cat_path.exists() else {}
+        lire = lambda nom: json.loads((path.parent / nom).read_text()) if (path.parent / nom).exists() else {}
+        _CATEGORIES = lire("categories.json")
+        _TRANSFORM = lire("model_info.json").get("target_transform")
+        _CALIBRATION = lire("calibration.json").get("corrections_par_classe", {})
+        _LOCAL = lire("local_mape.json")
         q075_path = path.parent / "lgb_q075.pkl"
         q925_path = path.parent / "lgb_q925.pkl"
         if q075_path.exists():
@@ -75,7 +81,10 @@ def predire(
     zone_part_dpe_fg: float | None = None,
     dpe_classe: str | None = None,
     annee_construction: int | None = None,
+    contexte: dict | None = None,
 ) -> dict:
+    """`contexte` : features d'immeuble, IRIS, BDNB et DPE calculées par
+    ml/contexte.py. Toute feature absente est transmise vide au modèle."""
     import numpy as np
     model = charger_modele(model_path)
 
@@ -129,21 +138,35 @@ def predire(
         "a_terrain": a_terrain,
         "is_studio": is_studio,
         "densite_pieces": densite_pieces,
+        **{k: v for k, v in (contexte or {}).items() if not isinstance(v, (list, dict))},
     }])
+    # Mêmes colonnes, dans le même ordre, qu'à l'entraînement
+    colonnes = getattr(model, "feature_name_", None)
+    if colonnes:
+        X = X.reindex(columns=colonnes)
+        for col in X.columns:
+            if col in _CATEGORIES:
+                X[col] = pd.Categorical(X[col].astype(object), categories=_CATEGORIES[col])
+            elif X[col].dtype == object:
+                X[col] = pd.to_numeric(X[col], errors="coerce")
     # Appliquer le dtype Categorical après construction (pandas ne le préserve pas via dict)
     for col, cats in _CATEGORIES.items():
         if col in X.columns:
             X[col] = pd.Categorical(X[col], categories=cats)
 
-    prix_m2_pred = float(model.predict(X)[0])
+    inv = np.exp if _TRANSFORM == "log" else (lambda v: v)
+    prix_m2_pred = float(inv(model.predict(X)[0]))
     prix_total = prix_m2_pred * surface_m2
+    classe = _LOCAL.get(code_commune or "", {}).get("classe", "donnees_insuffisantes")
 
-    # Fourchette via modèles quantile (85 % CI : q7.5 – q92.5)
+    # Fourchette via modèles quantile (85 % : q7.5 – q92.5), corrigée par la
+    # calibration conforme de la classe de la commune quand elle existe.
     if _Q075 is not None and _Q925 is not None:
-        ci_low = float(_Q075.predict(X)[0]) * surface_m2
-        ci_high = float(_Q925.predict(X)[0]) * surface_m2
-        if ci_low > ci_high:
-            ci_low, ci_high = ci_high, ci_low
+        bas, haut = sorted([float(_Q075.predict(X)[0]), float(_Q925.predict(X)[0])])
+        if _TRANSFORM == "log":
+            d = _CALIBRATION.get(classe, _CALIBRATION.get("donnees_insuffisantes", 0.0))
+            bas, haut = np.exp(bas - d), np.exp(haut + d)
+        ci_low, ci_high = bas * surface_m2, haut * surface_m2
         ci_low = min(ci_low, prix_total * 0.97)
         ci_high = max(ci_high, prix_total * 1.03)
         # Reliability basée sur la largeur relative de la fourchette
@@ -158,11 +181,12 @@ def predire(
         "predicted_price": round(prix_total, 2),
         "price_per_m2": round(prix_m2_pred, 2),
         "confidence_interval": {
-            "lower": round(ci_low, 2),
-            "upper": round(ci_high, 2),
+            "lower": round(float(ci_low), 2),
+            "upper": round(float(ci_high), 2),
             "confidence": "85%",
         },
         "reliability": reliability,
         "model": "lgbm",
         "code_commune": code_commune,
+        "classe_fiabilite": classe,
     }

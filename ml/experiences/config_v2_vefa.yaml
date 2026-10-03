@@ -1,0 +1,98 @@
+# Expérience : modèle v2 + indicateur est_vefa (vente sur plan).
+# Évaluée sur la validation (juil.-sept. 2025) uniquement ; la production reste sur ml/config.yaml.
+data:
+  gold_path: "data/processed/gold_transactions"
+  model_output: "Backend/models/price_model.pkl"
+  mlflow_uri: "sqlite:///mlruns/mlflow.db"
+
+split:
+  train_years: [2021, 2022, 2023, 2024, 2025]
+  holdout_frac: 0.15   # 15% de 2025 réservés comme test set
+
+features:
+  numeric:
+    - surface_bati
+    - nb_pieces
+    - surface_moyenne_piece
+    - prix_m2_reference_12m
+    - nb_ventes_commune_12m
+    - prix_m2_median_dept_12m
+    - nb_ventes_dept_12m
+    - prix_m2_median_local_12m
+    - latitude
+    - longitude
+    - mois_index
+    - mois
+    - trimestre
+    - arrondissement
+    - surface_terrain
+    - log_surface
+    - ratio_local_dept
+    - densite_ventes
+    - zone_part_dpe_fg
+    - annee_construction
+    - dpe_score
+    - densite_pieces
+    - revenu_median_iris
+    - part_logements_collectifs_iris
+    - part_proprietaires_iris
+    - dpe_deperdition_enveloppe_m2
+    # Même immeuble / même logement (gold, étape 5b) — prix passés ramenés au marché du jour
+    - prix_m2_immeuble_indexe
+    - nb_ventes_immeuble
+    - prix_m2_precedent_indexe
+    - mois_depuis_vente_precedente
+    # Caractéristiques de l'immeuble (BDNB, CSTB)
+    - bdnb_nb_niveaux
+    - bdnb_hauteur_max
+    - bdnb_annee_construction
+    - bdnb_nb_logements
+    - bdnb_distance_monument
+    - bdnb_part_logement_social
+    - bdnb_qpv
+  categorical:
+    - code_type_local
+    - code_departement
+    - code_commune
+    - dpe_classe
+    - dpe_type_chauffage
+    - bdnb_mat_mur
+  boolean:
+    - a_terrain
+    - is_studio
+    # Expérience du 3 octobre 2026 : vente sur plan (VEFA), prime au neuf
+    - est_vefa
+
+target: prix_m2
+# Le modèle apprend log(prix_m2) : l'erreur est jugée en pourcentage (MAPE,
+# part à ±10 %), et le log rend une erreur de 10 % équivalente à 3 000 comme
+# à 12 000 €/m². Choisi sur la période de développement (juil.–sept. 2025).
+target_transform: log
+
+# Pondération temporelle — donne plus de poids aux années récentes
+# pour réduire le biais dû au pic 2021-2022
+sample_weights:
+  2021: 0.55
+  2022: 0.65
+  2023: 0.90
+  2024: 1.15
+  2025: 1.30
+
+lightgbm:
+  # Huber sur log(prix) : robuste aux ventes atypiques restantes (alpha = 0,15
+  # soit ~15 % d'écart avant de passer en pénalité linéaire).
+  objective: huber
+  alpha: 0.15
+  n_estimators: 4000
+  learning_rate: 0.05
+  num_leaves: 255
+  max_depth: -1
+  min_child_samples: 20
+  subsample: 0.8
+  colsample_bytree: 0.5
+  reg_alpha: 0.1
+  reg_lambda: 1.0
+  n_jobs: -1
+  random_state: 42
+  early_stopping_rounds: 50
+  verbose: -1

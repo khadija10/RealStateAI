@@ -121,10 +121,24 @@ export const estimatePrice = (payload, opts) =>
 
 // ── Marché ───────────────────────────────────────────────────────────────
 
-export const getMarketMap = (opts) => request('/api/market/map', opts)
+/** Filtres de marché acceptés par le backend : type de bien et marché (tous, ancien, neuf/VEFA). */
+const filtresMarche = (typeBien = 'apartment', marche = 'tous') => ({ type_bien: typeBien, marche })
 
-export const getMarketTrends = (dep, opts) =>
-  request(dep ? `/api/market/trends?dep=${encodeURIComponent(dep)}` : '/api/market/trends', opts)
+/** Prix au m² par commune (carte), pour un type de bien et un marché. */
+export const getMarketMap = (typeBien, marche, opts) =>
+  request(`/api/market/map?${new URLSearchParams(filtresMarche(typeBien, marche))}`, opts)
+
+/** Médiane mensuelle du prix au m² par département (tous si `dep` est vide). */
+export const getMarketTrends = (dep, typeBien, marche, opts) =>
+  request(`/api/market/trends?${new URLSearchParams({ ...filtresMarche(typeBien, marche), ...(dep ? { dep } : {}) })}`, opts)
+
+/** Secteurs (communes, arrondissements) classés par prix médian, avec loyers de référence. */
+export const getMarketSecteurs = (propertyType = 'apartment', minVentes, opts) =>
+  request(`/api/market/secteurs?${new URLSearchParams({ property_type: propertyType, ...(minVentes ? { min_ventes: minVentes } : {}) })}`, opts)
+
+/** Indice Notaires-INSEE trimestriel des prix de l'ancien d'un département. */
+export const getMarketIndices = (dep, propertyType = 'apartment', opts) =>
+  request(`/api/market/indices?${new URLSearchParams({ dep, property_type: propertyType })}`, opts)
 
 // ── Historique ───────────────────────────────────────────────────────────
 

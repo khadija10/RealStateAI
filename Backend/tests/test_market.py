@@ -62,10 +62,14 @@ MARKET_TRENDS_SAMPLE = [
 ]
 
 
-@pytest.fixture(scope="module")
-def client_market(tmp_path_factory):
-    """Client avec fichiers JSON market dans un répertoire temporaire."""
-    samples_dir = tmp_path_factory.mktemp("samples")
+@pytest.fixture
+def client_market(tmp_path):
+    """Client avec fichiers JSON market dans un répertoire temporaire (repli statique).
+
+    Portée « fonction » : l'application est un objet global, et chaque client qui
+    démarre recharge le marché calculé ; le repli doit être posé à chaque test."""
+    samples_dir = tmp_path / "samples"
+    samples_dir.mkdir()
     stats_path  = samples_dir / "commune_stats.json"
     trends_path = samples_dir / "market_trends.json"
     stats_path.write_text(json.dumps(COMMUNE_STATS_SAMPLE, ensure_ascii=False))
@@ -76,7 +80,10 @@ def client_market(tmp_path_factory):
         patch("main._MARKET_TRENDS_PATH", trends_path),
         TestClient(app) as c,
     ):
+        # Repli sur les fichiers statiques : sans marché calculé depuis le dataset
+        calcule, c.app.state.marche = c.app.state.marche, {}
         yield c
+        c.app.state.marche = calcule
 
 
 @pytest.fixture
@@ -88,7 +95,9 @@ def client_sans_fichiers(tmp_path):
         patch("main._MARKET_TRENDS_PATH", vide / "market_trends.json"),
         TestClient(app) as c,
     ):
+        calcule, c.app.state.marche = c.app.state.marche, {}
         yield c
+        c.app.state.marche = calcule
 
 
 # ── /api/market/map ───────────────────────────────────────────────────────────
@@ -177,3 +186,134 @@ class TestMarketTrends:
     def test_503_si_fichier_absent(self, client_sans_fichiers):
         r = client_sans_fichiers.get("/api/market/trends")
         assert r.status_code == 503
+
+
+# ── /api/market/secteurs : statistiques calculées sur le dataset ─────────────
+
+import pandas as pd
+
+from main import _construire_secteurs
+
+
+def _dvf_secteurs() -> pd.DataFrame:
+    """Une commune, deux années : 2024 (3 ventes) et 2025 (12 ventes)."""
+    lignes = [("2024-06-01", 9000.0)] * 3 + [("2025-06-01", 10000.0 + 100 * i) for i in range(12)]
+    return pd.DataFrame({
+        "code_commune": "75111", "commune": "Paris 11e Arrondissement",
+        "type_bien_norm": "apartment",
+        "date_mutation": [d for d, _ in lignes], "prix_au_m2": [p for _, p in lignes],
+    })
+
+
+class TestSecteurs:
+    def test_mediane_et_deciles_de_la_derniere_annee(self):
+        s = _construire_secteurs(_dvf_secteurs())[("75111", "apartment")]
+        assert s["annee"] == 2025
+        assert s["med"] == 10550          # médiane des 12 ventes 2025
+        assert s["p10"] < s["med"] < s["p90"]
+        assert s["n"] == 15               # toutes les ventes de la période
+
+    def test_evolution_annuelle_avec_annees_manquantes(self):
+        s = _construire_secteurs(_dvf_secteurs())[("75111", "apartment")]
+        assert s["eco"] == [None, None, None, 9000, 10550]
+
+    def test_peu_de_ventes_recentes_repli_sur_toute_la_periode(self):
+        df = _dvf_secteurs().iloc[:8]     # 3 ventes 2024 + 5 ventes 2025 (< 10)
+        s = _construire_secteurs(df)[("75111", "apartment")]
+        assert s["med"] == round(df["prix_au_m2"].median())
+
+    def test_dataset_absent(self):
+        assert _construire_secteurs(None) == {}
+
+    def test_endpoint_classe_par_prix_et_filtre_le_volume(self):
+        with TestClient(app) as client:
+            app.state.secteurs = {
+                ("A", "apartment"): {"code": "A", "nom": "A", "med": 5000, "n": 500},
+                ("B", "apartment"): {"code": "B", "nom": "B", "med": 9000, "n": 300},
+                ("C", "apartment"): {"code": "C", "nom": "C", "med": 12000, "n": 50},
+                ("D", "house"): {"code": "D", "nom": "D", "med": 4000, "n": 900},
+            }
+            r = client.get("/api/market/secteurs?property_type=apartment&min_ventes=200")
+        assert r.status_code == 200
+        assert [s["code"] for s in r.json()] == ["B", "A"]
+
+
+
+# ── Marché calculé depuis le dataset : séparé par type de bien et par marché ──
+
+def test_construire_marche_separe_maisons_et_appartements():
+    import pandas as pd
+    from main import _construire_marche
+    lignes = []
+    for i in range(12):   # 12 ventes de chaque type, réparties sur 2 mois (6 par mois)
+        lignes.append({"commune": "Versailles", "type_bien_norm": "apartment", "dep": "78",
+                       "date_mutation": f"2025-0{1 + i % 2}-15", "prix_au_m2": 6000 + 10 * i,
+                       "latitude": 48.80, "longitude": 2.13, "est_vefa": i < 3})
+        lignes.append({"commune": "Versailles", "type_bien_norm": "house", "dep": "78",
+                       "date_mutation": f"2025-0{1 + i % 2}-15", "prix_au_m2": 9000 + 10 * i,
+                       "latitude": 48.80, "longitude": 2.13, "est_vefa": False})
+    m = _construire_marche(pd.DataFrame(lignes))
+    appart = m["carte"][("apartment", "tous")][0]
+    maison = m["carte"][("house", "tous")][0]
+    assert appart["prix_m2_median"] < 7000 < maison["prix_m2_median"]
+    assert appart["n_transactions"] == 12 and appart["periode"] == "2025"
+    # ancien : sans les 3 ventes sur plan ; neuf : moins de 5 ventes, commune absente
+    assert m["carte"][("apartment", "ancien")][0]["n_transactions"] == 9
+    assert m["carte"][("apartment", "neuf")] == []
+    mois = m["tendances"][("house", "tous")]
+    assert {r["code_departement"] for r in mois} == {"78"} and all(r["mois_index"] > 300 for r in mois)
+
+
+def test_endpoints_filtrent_par_type_et_marche():
+    with TestClient(app) as c:
+        if not c.app.state.marche:
+            pytest.skip("dataset absent : marché non calculé")
+        appart = c.get("/api/market/map", params={"type_bien": "apartment"}).json()
+        maison = c.get("/api/market/map", params={"type_bien": "house"}).json()
+        assert appart and maison and appart != maison
+        assert {"nom_commune", "prix_m2_median", "n_transactions", "periode"} <= set(appart[0])
+        t = c.get("/api/market/trends", params={"dep": "78", "type_bien": "house", "marche": "ancien"}).json()
+        assert t and all(r["code_departement"] == "78" for r in t)
+
+
+def test_secteurs_calcules_sur_l_ancien():
+    import pandas as pd
+    from main import _construire_secteurs
+    lignes = [{"code_commune": "93008", "commune": "Bobigny", "type_bien_norm": "apartment",
+               "date_mutation": "2025-03-01", "prix_au_m2": 3400 + i, "est_vefa": False} for i in range(12)]
+    lignes += [{"code_commune": "93008", "commune": "Bobigny", "type_bien_norm": "apartment",
+                "date_mutation": "2025-03-01", "prix_au_m2": 7400, "est_vefa": True} for _ in range(20)]
+    s = _construire_secteurs(pd.DataFrame(lignes))[("93008", "apartment")]
+    assert s["n"] == 12 and s["med"] < 3500     # les 20 ventes sur plan sont écartées
+
+
+def test_indices_insee_par_departement(tmp_path):
+    import main
+    ref = {"source": "INSEE", "series": {
+        "75": {"apartment": {"debut": "1992-Q1", "fin": "2026-Q2", "valeurs": [40.0, 41.0]}},
+        "93": {"apartment": {"debut": "1992-Q1", "fin": "2026-Q2", "valeurs": [47.0, 48.0]},
+               "house": {"debut": "1992-Q1", "fin": "2026-Q2", "valeurs": [46.0, 47.0]}}}}
+    f = tmp_path / "indices.json"
+    f.write_text(json.dumps(ref))
+    main._reference_json.cache_clear()
+    try:
+        with patch.object(main, "_INDICES_INSEE_PATH", f), TestClient(app) as c:
+            r = c.get("/api/market/indices", params={"dep": "93", "property_type": "house"}).json()
+            assert r["type_reel"] == "house" and r["valeurs"] == [46.0, 47.0]
+            # Paris n'a pas d'indice « maisons » : repli sur les appartements, signalé
+            r = c.get("/api/market/indices", params={"dep": "75", "property_type": "house"}).json()
+            assert r["type_reel"] == "apartment"
+            assert c.get("/api/market/indices", params={"dep": "13"}).status_code == 404
+        with patch.object(main, "_INDICES_INSEE_PATH", tmp_path / "absent.json"), TestClient(app) as c:
+            main._reference_json.cache_clear()
+            assert c.get("/api/market/indices", params={"dep": "93"}).status_code == 503
+    finally:
+        main._reference_json.cache_clear()
+
+
+def test_secteurs_portent_le_loyer_anil():
+    with TestClient(app) as c:
+        if not c.app.state.secteurs:
+            pytest.skip("dataset absent : secteurs non calculés")
+        secteurs = c.get("/api/market/secteurs").json()
+        assert all("loyer" in s for s in secteurs)

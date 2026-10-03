@@ -103,6 +103,8 @@ Méthode complète et résultats mesurés : `docs/enrichissement_dpe.md`.
 | `periode_construction` | string | oui | `avant 1949`, `1949-1974`, `1975-1989`, `1990-2005`, `depuis 2006`. **Variable de contrôle indispensable** : sans elle, l'étiquette énergie est confondue avec l'âge du bâti |
 | `zone_part_dpe_fg` | float | oui | Part des logements classés F ou G parmi tous les DPE du code postal, 0 à 1. **Attention : corrélée à +0,38 avec le prix** — les quartiers haussmanniens cumulent vieux bâti et prix élevés. Ne pas utiliser sans variables de localisation. |
 | `zone_nb_dpe` | int | oui | Nombre de DPE du code postal, pour juger de la fiabilité du précédent |
+| `dpe_deperdition_enveloppe_m2` | float | oui | Déperdition thermique totale de l'enveloppe (murs, planchers, baies vitrées), normalisée par la surface du logement. **Proxy de l'état du bien** : DVF ne trace ni l'étage ni l'état du logement, et aucune source ouverte équivalente n'existe pour ces deux variables précises (voir « Pièges connus »). Une enveloppe mal isolée est un signe concret de logement non rénové. Couverture ~58 % (même taux que `dpe_classe`, dérivé du même appariement). 3e feature en importance du modèle v1.5. |
+| `dpe_type_chauffage` | string | oui | Type de générateur de chauffage principal (ex. `Chaudière gaz à condensation après 2015`, `Convecteur électrique NFC`). Encode indirectement l'âge de l'équipement. **Couverture faible (~9 %)** : ce champ ADEME n'est renseigné que pour certaines configurations d'installation (individuelle), pas pour le chauffage collectif — majoritaire dans le parc d'appartements parisien. |
 
 ---
 
@@ -150,9 +152,114 @@ appariements `exacte`, contre −1,1 seulement sur les `probable`. La colonne
 **Aucune fuite de la cible.** Le DPE décrit le logement, pas son prix. L'indicateur
 de zone décrit le parc de logements du code postal, pas les transactions.
 
+## Enrichissement IRIS — INSEE
+
+**Pourquoi.** La feature de marché la plus fine disponible nativement est la
+commune (ou l'arrondissement pour Paris/Lyon/Marseille). L'IRIS — découpage
+INSEE d'environ 2 000 habitants, ~48 000 zones en France — donne un grain de
+quartier, auquel deux statistiques de recensement sont rattachées : le revenu
+médian et le type d'habitat. Contrairement à l'étage ou l'état du bien (cf.
+pièges connus ci-dessous), ces variables EXISTENT en open data et sont
+exploitées depuis la v1.5.
+
+**Méthode de rattachement.** Contrairement au DPE (jointure par adresse texte,
+appariement incertain), le rattachement à l'IRIS est un calcul GÉOMÉTRIQUE :
+chaque mutation a des coordonnées déjà validées, chaque IRIS est un polygone.
+Le taux de rattachement attendu est proche de 100 %, sans la couverture
+partielle du DPE. Implémenté avec l'extension `spatial` de DuckDB
+(`ST_Within`), voir `data-pipeline/src/realstate_data/enrichment/iris.py`.
+
+| Colonne | Type | Nullable | Description |
+|---|---|---|---|
+| `code_iris` | string | oui | Code INSEE de l'IRIS de rattachement. `NULL` si les contours IRIS n'ont pas été téléchargés, ou si la mutation tombe hors de tout polygone connu. |
+| `revenu_median_iris` | float | oui | Revenu médian disponible par unité de consommation de l'IRIS (INSEE Filosofi). La variable socio-démographique la plus corrélée au prix immobilier. |
+| `part_logements_collectifs_iris` | float | oui | Part de logements collectifs (immeubles) parmi le parc de l'IRIS, 0 à 1. Décrit la COMPOSITION DU QUARTIER — à ne pas confondre avec `type_local`, qui décrit uniquement le bien vendu. |
+| `part_proprietaires_iris` | float | oui | Part de résidences principales occupées par leur propriétaire dans l'IRIS, 0 à 1. |
+| `iris_nb_menages` | int | oui | Nombre de résidences principales de l'IRIS. Indicateur de fiabilité des trois colonnes précédentes. |
+
+**Seuil de fiabilité.** Sous `iris_min_menages_zone` résidences principales
+(50 par défaut), les statistiques de l'IRIS sont neutralisées (`NULL`) plutôt
+que publiées peu fiables — `code_iris`, lui, reste renseigné : seul le signal
+statistique est jugé fragile, pas la localisation.
+
+**On exclut volontairement les catégories socio-professionnelles** de
+l'IRIS : signal diffus, redondant avec le revenu médian, qui ajouterait des
+colonnes corrélées sans gain net pour un modèle d'arbres.
+
+**Incertitude assumée sur le format des sources.** Comme pour le DPE, les URLs
+et noms de colonnes INSEE/IGN dérivent d'un millésime de publication à
+l'autre. Lancer `pipeline iris-diagnostic` avant tout téléchargement en masse
+si une nouvelle publication est sortie depuis l'écriture de ce module.
+
+## Même immeuble et même logement — DVF
+
+**Pourquoi.** La preuve qu'un agent montre à un vendeur, ce sont les ventes de
+l'immeuble. DVF fournit la parcelle cadastrale (qui identifie l'immeuble) et le
+numéro de lot de copropriété (qui identifie l'appartement), jusqu'ici
+abandonnés au passage silver. 53,8 % des ventes ont au moins une vente
+antérieure dans leur immeuble ; 2,7 % sont des reventes du même logement
+(l'historique ne remonte qu'à 2021 : Etalab ne publie que 5 millésimes).
+
+**Sans fuite.** Mois strictement antérieurs à celui de la mutation. Les prix
+passés sont ramenés au marché du jour : ratio prix / référence communale à la
+date de la vente passée, multiplié par la référence actuelle.
+
+| Colonne | Type | Nullable | Description |
+|---|---|---|---|
+| `id_parcelle` | string | oui | Parcelle cadastrale du logement (ex. `75111000AA0012`). Clé de jointure avec la BDNB. |
+| `lot1_numero` | string | oui | Numéro de lot de copropriété du logement. Stable d'une vente à l'autre. |
+| `prix_m2_immeuble_indexe` | float | oui | Médiane des prix au m² des ventes du même immeuble et du même type sur les 24 mois précédents, ramenés au marché du jour. |
+| `nb_ventes_immeuble` | int | non | Nombre de ventes entrant dans la médiane précédente (0 si aucune). |
+| `prix_m2_precedent_indexe` | float | oui | Dernière vente du même logement (même parcelle, même lot, surface à 10 % près ; même parcelle sans lot pour une maison), ramenée au marché du jour. |
+| `mois_depuis_vente_precedente` | int | oui | Écart en mois avec cette vente précédente. |
+
+À l'inférence, `ml/contexte.py` recalcule ces colonnes avec les mêmes
+définitions ; la parcelle est retrouvée par l'API Carto de l'IGN, le lot est
+saisi par l'agent s'il le connaît.
+
+## Enrichissement BDNB — bâtiments (CSTB)
+
+**Pourquoi.** DVF décrit le logement, jamais l'immeuble. La Base de Données
+Nationale des Bâtiments (licence ouverte 2.0, millésime 2026-02.a) en donne la
+carte d'identité, croisée d'une cinquantaine de sources publiques. Jointure
+exacte sur `id_parcelle` ; 93,4 % des ventes rattachées. Une parcelle portant
+plusieurs bâtiments garde le plus haut, le plus ancien, la somme des logements.
+Voir `data-pipeline/src/realstate_data/enrichment/bdnb.py`.
+
+| Colonne | Type | Nullable | Description |
+|---|---|---|---|
+| `bdnb_nb_niveaux` | int | oui | Nombre de niveaux du bâtiment le plus haut de la parcelle (fichiers fonciers). |
+| `bdnb_hauteur_max` | float | oui | Hauteur maximale du bâti en mètres (BD TOPO, IGN). |
+| `bdnb_annee_construction` | int | oui | Année de construction la plus ancienne de la parcelle (fichiers fonciers). |
+| `bdnb_nb_logements` | int | oui | Nombre de logements de la parcelle. |
+| `bdnb_mat_mur` | string | oui | Matériau principal des murs (ex. pierre, brique, béton). |
+| `bdnb_distance_monument` | float | oui | Distance en mètres au monument historique le plus proche (Mérimée). |
+| `bdnb_part_logement_social` | float | oui | Part de logements sociaux (RPLS) de la parcelle, 0 à 1. |
+| `bdnb_qpv` | int | oui | 1 si un bâtiment de la parcelle est en quartier prioritaire de la ville. |
+
+**Limite assumée.** Instantané 2026 appliqué à des ventes de 2021 à 2025. Les
+caractéristiques physiques d'un immeuble changent rarement en cinq ans ; la
+part de logement social peut évoluer à la marge.
+
+## Références hors DVF — indices INSEE et loyers ANIL
+
+Deux petits JSON versionnés dans `data/samples/`, produits par `make references`
+(`realstate_data.ingestion.references_marche`). Ils ne passent pas par la table gold
+et ne servent pas au modèle : seulement à la page Plus-value, via le backend.
+
+| Fichier | Source | Contenu |
+|---|---|---|
+| `indices_prix_insee.json` | Indices Notaires-INSEE des prix des logements anciens (BDM, jeu `IPLA-IPLNA-2015`), CVS, base 100 en 2015 | une série trimestrielle par département et type (`apartment`, `house`), depuis 1992 (75, 92, 93, 94) ou 1996 ; pas d'indice maisons pour Paris |
+| `loyers_anil.json` | Carte des loyers 2025 (ANIL, ministère du Logement), data.gouv.fr | par code commune INSEE et type : loyer d'annonce prédit au m² charges comprises (`m2`), intervalle (`bas`, `haut`), `niveau` (`commune` ou `maille` de communes voisines), nombre d'annonces de la commune |
+
+Les codes communes de l'ANIL sont ceux de DVF (arrondissements de Paris compris) :
+la jointure avec les secteurs est directe.
+
 ## Pièges connus et limites assumées
 
-- **Variables qualitatives absentes.** DVF ne contient ni étage, ni état du bien, ni DPE, ni présence d'ascenseur, ni exposition. C'est la limite structurelle de la source et elle plafonne mécaniquement la performance du modèle. L'enrichissement externe (DPE de l'ADEME, IRIS de l'INSEE) est la piste pour la lever.
+- **Étage : aucune source ouverte, pas de proxy identifié.** DVF ne trace pas l'étage, ni aucune source administrative française — ce n'est collecté nulle part en dehors des annonces immobilières elles-mêmes (non open data). C'est une limite structurelle assumée, pas un oubli du pipeline.
+- **État du bien : pas de donnée directe, mais un proxy technique exploité depuis la v1.5.** Comme l'étage, l'état du bien n'est tracé par aucune administration. Le DPE (ADEME) porte en revanche des champs techniques — déperditions thermiques de l'enveloppe, type de générateur de chauffage — qui sont de vrais indicateurs de qualité de rénovation, sans être littéralement « l'état » d'une annonce immobilière. Voir `dpe_deperdition_enveloppe_m2` et `dpe_type_chauffage` ci-dessus, et `enrichment/dpe.py` pour la justification complète. Mesuré : ce proxy, ajouté à `dpe_classe`, fait gagner 0,1 à 0,3 point de MAPE selon la configuration — un signal réel mais qui ne change pas fondamentalement la part des estimations à plus de 20 % d'écart, qui reste structurellement élevée sur les biens atypiques (très petites/grandes surfaces, maisons, Paris ancien).
+- **Présence d'ascenseur, exposition.** Mêmes causes que l'étage : aucune source ouverte ne les trace, et aucun proxy n'a été identifié (contrairement à l'état du bien).
 - **Biens identiques indiscernables.** Une mutation portant sur deux logements strictement identiques (même surface, même parcelle, même nombre de pièces) est comptée comme un seul bien : la source ne permet pas de les distinguer. Impact marginal, mais à mentionner plutôt qu'à cacher.
 - **`surface_reelle_bati` et non `surface_carrez`.** La surface Carrez est renseignée de façon très inégale ; la surface réelle bâtie est plus complète et plus homogène. Elle est en revanche légèrement supérieure à la surface Carrez d'un appartement, ce qui tire les prix au m² très légèrement vers le bas.
 - **Représentativité après nettoyage.** Le pipeline conserve 73,5 % des mutations initiales. Le détail étape par étape est produit par `python -m realstate_data.pipeline rapport`, et chaque règle est justifiée dans `docs/cleaning_rules.md`.

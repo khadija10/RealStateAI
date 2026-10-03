@@ -17,7 +17,7 @@ import { usePageTitle } from '../hooks/usePageTitle'
 import { heroEstimation, vignetteBois } from '../illustrations'
 import { euro, nb, pctPoints } from '../lib/format'
 import { extraireCodePostal, findCommuneStats, localisationDepuisCodePostal } from '../lib/geo'
-import { memoriserLocalement, valeursDepuisUrl } from '../lib/estimationExport'
+import { memoriserLocalement, valeursDepuisHistorique, valeursDepuisUrl } from '../lib/estimationExport'
 import { ecrireSession, lireSession } from '../lib/estimationSession'
 
 /** Pastille d'état du serveur, posée sur l'illustration du héros. */
@@ -212,6 +212,18 @@ export default function EstimationPage() {
   // Lien de partage (/estimation?address=…&area_m2=…) : formulaire rempli,
   // estimation relancée une fois, puis l'URL est nettoyée.
   useEffect(() => {
+    // « Voir » depuis l'historique : résultat enregistré, sans nouveau calcul.
+    const voir = location.state?.voir
+    if (voir?.resultat) {
+      const v = valeursDepuisHistorique(voir, FORM_VIDE)
+      const at = voir.created_at ?? new Date().toISOString()
+      setValues(v)
+      setResultat({ r: normalizeEstimate(voir.resultat), values: v, at })
+      ecrireSession({ raw: voir.resultat, values: v, at })
+      navigate('/estimation', { replace: true })
+      requestAnimationFrame(() => resultRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }))
+      return
+    }
     const v = valeursDepuisUrl(location.search, FORM_VIDE)
     if (!v) return
     setValues(v)

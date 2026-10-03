@@ -1,5 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
 import { getMarketMap } from '../api/client'
+import FiltresMarche from './FiltresMarche'
+
+// Contours des communes (geo.api.gouv.fr) : téléchargés une fois, réutilisés
+// quand on change de type de bien ou de marché.
+let contours = null
 
 const DEPS = ['75', '77', '78', '91', '92', '93', '94', '95']
 
@@ -27,12 +32,14 @@ const DEP_VIEWS = {
 }
 
 const PRICE_SCALE = [
-  { max: 3000, color: '#4ade80' },
-  { max: 5000, color: '#a3e635' },
-  { max: 7000, color: '#facc15' },
-  { max: 9000, color: '#fb923c' },
-  { max: 12000, color: '#f87171' },
-  { max: Infinity, color: '#dc2626' },
+  // Échelle d'une seule teinte, du sable au brun : lisible par les daltoniens,
+  // et sans le jugement du vert / rouge (Paris n'est pas « mauvais », il est cher).
+  { max: 3000, color: '#F3E3C6' },
+  { max: 5000, color: '#E3C08C' },
+  { max: 7000, color: '#C99A5B' },
+  { max: 9000, color: '#A6733A' },
+  { max: 12000, color: '#7A4F28' },
+  { max: Infinity, color: '#4A2E17' },
 ]
 
 function priceColor(prix) {
@@ -59,6 +66,8 @@ export default function PriceMap() {
   const [activeDep, setActiveDep] = useState('all')
   const [hovered, setHovered] = useState(null)
   const [matchRate, setMatchRate] = useState(null)
+  const [typeBien, setTypeBien] = useState('apartment')
+  const [marche, setMarche] = useState('tous')
 
   useEffect(() => {
     let cancelled = false
@@ -75,9 +84,8 @@ export default function PriceMap() {
       }
       const L = window.L
 
-      const [priceData, ...geoResults] = await Promise.all([
-        getMarketMap(),
-        ...DEPS.map((dep) => {
+      setLoading(true)
+      contours = contours || Promise.all(DEPS.map((dep) => {
           // Paris: l'API retourne 1 commune (75056); on demande les arrondissements séparément
           const type = dep === '75' ? '&type=arrondissement-municipal' : ''
           return fetch(
@@ -85,8 +93,10 @@ export default function PriceMap() {
           )
             .then((r) => r.json())
             .catch(() => null)
-        }),
-      ])
+        }))
+      const [priceData, geoBruts] = await Promise.all([getMarketMap(typeBien, marche), contours])
+      // copie : les propriétés de prix sont fusionnées dans chaque contour
+      const geoResults = geoBruts.map((g) => g && { ...g, features: g.features.map((f) => ({ ...f, properties: { ...f.properties } })) })
 
       if (cancelled) return
 
@@ -158,6 +168,7 @@ export default function PriceMap() {
                 q1: p.prix_m2_q1,
                 q3: p.prix_m2_q3,
                 n: p.n_transactions,
+                periode: p.periode,
               })
             },
             mouseout: () => {
@@ -190,7 +201,7 @@ export default function PriceMap() {
         geoLayerRef.current = null
       }
     }
-  }, [])
+  }, [typeBien, marche])
 
   // Re-centre on department filter change
   useEffect(() => {
@@ -210,6 +221,7 @@ export default function PriceMap() {
 
   return (
     <section>
+      <FiltresMarche typeBien={typeBien} marche={marche} onType={setTypeBien} onMarche={setMarche} />
       {/* Filtre département */}
       <div className="flex flex-wrap gap-2 mb-4">
         <button
@@ -241,17 +253,17 @@ export default function PriceMap() {
       <div className="relative">
         {/* Tooltip hover — en dehors du overflow-hidden */}
         {hovered && (
-          <div className="absolute top-3 left-3 z-[400] bg-white rounded-xl shadow-lg border border-stone-100 px-4 py-3 w-56 pointer-events-none" style={{ zIndex: 1000 }}>
+          <div className="absolute top-3 right-3 z-[400] bg-white rounded-xl shadow-lg border border-stone-100 px-4 py-3 w-56 pointer-events-none" style={{ zIndex: 1000 }}>
             <p className="text-sm font-semibold text-ink leading-tight">{hovered.nom}</p>
             <p className="text-[11px] text-ink-muted mt-0.5">
-              Dept. {hovered.dep}{hovered.n != null ? ` · ${hovered.n.toLocaleString('fr-FR')} ventes` : ''}
+              Dept. {hovered.dep}{hovered.n != null ? ` · ${hovered.n.toLocaleString('fr-FR')} ventes` : ''}{hovered.periode ? ` en ${hovered.periode.replace('-', '–')}` : ''}
             </p>
             <p className="text-2xl font-bold text-ink tabular-nums mt-2 leading-none">
               {fmt(hovered.prix)} €/m²
             </p>
             {hovered.q1 && hovered.q3 && (
               <p className="text-[11px] text-ink-muted mt-1.5">
-                Q1–Q3 : {fmt(hovered.q1)} – {fmt(hovered.q3)} €/m²
+                La moitié des ventes entre {fmt(hovered.q1)} et {fmt(hovered.q3)} €/m²
               </p>
             )}
           </div>
@@ -277,12 +289,12 @@ export default function PriceMap() {
       <div className="mt-3 flex flex-wrap gap-x-4 gap-y-1.5 items-center">
         <p className="text-xs text-ink-muted font-medium">Prix/m² :</p>
         {[
-          { label: '< 3 000 €', color: '#4ade80' },
-          { label: '3–5 000 €', color: '#a3e635' },
-          { label: '5–7 000 €', color: '#facc15' },
-          { label: '7–9 000 €', color: '#fb923c' },
-          { label: '9–12 000 €', color: '#f87171' },
-          { label: '> 12 000 €', color: '#dc2626' },
+          { label: '< 3 000 €', color: '#F3E3C6' },
+          { label: '3–5 000 €', color: '#E3C08C' },
+          { label: '5–7 000 €', color: '#C99A5B' },
+          { label: '7–9 000 €', color: '#A6733A' },
+          { label: '9–12 000 €', color: '#7A4F28' },
+          { label: '> 12 000 €', color: '#4A2E17' },
         ].map((item) => (
           <div key={item.label} className="flex items-center gap-1.5">
             <div className="h-3 w-3 rounded border border-white/80" style={{ backgroundColor: item.color }} />

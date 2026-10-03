@@ -18,6 +18,26 @@ def _resolve_sqlite_path(database_url: str) -> str:
     return str(Path(".").resolve() / "search_history.db")
 
 
+def _json(texte: Any) -> Any:
+    if not texte:
+        return None
+    if isinstance(texte, (dict, list)):
+        return texte
+    try:
+        return json.loads(texte)
+    except (TypeError, ValueError):
+        return None
+
+
+def _decoder(ligne: dict[str, Any]) -> dict[str, Any]:
+    """Colonnes JSON (resultat, simulations) relues en objets ; dates en ISO."""
+    ligne["resultat"] = _json(ligne.get("resultat"))
+    ligne["simulations"] = _json(ligne.get("simulations")) or {}
+    if hasattr(ligne.get("created_at"), "isoformat"):
+        ligne["created_at"] = ligne["created_at"].isoformat()
+    return ligne
+
+
 class SearchHistoryService:
     """Service de persistance pour l'historique des recherches immobilières.
 
@@ -71,6 +91,8 @@ class SearchHistoryService:
                         adresse_normalisee TEXT,
                         dpe_classe TEXT,
                         annee_construction INTEGER,
+                        resultat TEXT,
+                        simulations TEXT,
                         created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
                     )
                     """
@@ -84,6 +106,10 @@ class SearchHistoryService:
                     ("adresse_normalisee", "TEXT"),
                     ("dpe_classe", "TEXT"),
                     ("annee_construction", "INTEGER"),
+                    # Réponse complète de l'estimation (fourchette, fiabilité, DPE, version du
+                    # modèle) et dernières simulations rattachées au bien, en JSON
+                    ("resultat", "TEXT"),
+                    ("simulations", "TEXT"),
                 ]:
                     try:
                         conn.execute(f"ALTER TABLE search_history ADD COLUMN {_col} {_typ}")
@@ -141,6 +167,8 @@ class SearchHistoryService:
                         adresse_normalisee TEXT,
                         dpe_classe TEXT,
                         annee_construction INTEGER,
+                        resultat TEXT,
+                        simulations TEXT,
                         created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
                     )
                     """
@@ -154,6 +182,10 @@ class SearchHistoryService:
                     ("adresse_normalisee", "TEXT"),
                     ("dpe_classe", "TEXT"),
                     ("annee_construction", "INTEGER"),
+                    # Réponse complète de l'estimation (fourchette, fiabilité, DPE, version du
+                    # modèle) et dernières simulations rattachées au bien, en JSON
+                    ("resultat", "TEXT"),
+                    ("simulations", "TEXT"),
                 ]:
                     try:
                         cur.execute(f"ALTER TABLE search_history ADD COLUMN IF NOT EXISTS {_col} {_typ}")
@@ -235,8 +267,10 @@ class SearchHistoryService:
         adresse_normalisee: str | None = None,
         dpe_classe: str | None = None,
         annee_construction: int | None = None,
+        resultat: dict[str, Any] | None = None,
     ) -> dict[str, Any]:
         created_at = datetime.now(timezone.utc).isoformat()
+        resultat_json = json.dumps(resultat, ensure_ascii=False, default=str) if resultat else None
 
         if self._db_type == "sqlite":
             conn = sqlite3.connect(_resolve_sqlite_path(self.database_url))
@@ -244,8 +278,8 @@ class SearchHistoryService:
                 cursor = conn.execute(
                     """
                     INSERT INTO search_history
-                        (user_id, query, commune, property_type, area_m2, estimated_price, rooms, address, postal_code, adresse_normalisee, dpe_classe, annee_construction, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        (user_id, query, commune, property_type, area_m2, estimated_price, rooms, address, postal_code, adresse_normalisee, dpe_classe, annee_construction, resultat, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                     """,
                     (
                         user_id,
@@ -260,6 +294,7 @@ class SearchHistoryService:
                         adresse_normalisee,
                         dpe_classe,
                         annee_construction,
+                        resultat_json,
                         created_at,
                     ),
                 )
@@ -281,6 +316,8 @@ class SearchHistoryService:
                 "adresse_normalisee": adresse_normalisee,
                 "dpe_classe": dpe_classe,
                 "annee_construction": annee_construction,
+                "resultat": resultat,
+                "simulations": {},
                 "created_at": created_at,
             }
 
@@ -296,8 +333,8 @@ class SearchHistoryService:
                 cur.execute(
                     """
                     INSERT INTO search_history
-                        (user_id, query, commune, property_type, area_m2, estimated_price, rooms, address, postal_code, adresse_normalisee, dpe_classe, annee_construction, created_at)
-                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+                        (user_id, query, commune, property_type, area_m2, estimated_price, rooms, address, postal_code, adresse_normalisee, dpe_classe, annee_construction, resultat, created_at)
+                    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
                     RETURNING id
                     """,
                     (
@@ -313,6 +350,7 @@ class SearchHistoryService:
                         adresse_normalisee,
                         dpe_classe,
                         annee_construction,
+                        resultat_json,
                         created_at,
                     ),
                 )
@@ -333,6 +371,8 @@ class SearchHistoryService:
             "adresse_normalisee": adresse_normalisee,
             "dpe_classe": dpe_classe,
             "annee_construction": annee_construction,
+            "resultat": resultat,
+            "simulations": {},
             "created_at": created_at,
         }
 
@@ -345,7 +385,8 @@ class SearchHistoryService:
                     rows = conn.execute(
                         """
                         SELECT id, user_id, query, commune, property_type, area_m2, estimated_price,
-                               rooms, address, postal_code, adresse_normalisee, dpe_classe, annee_construction, created_at
+                               rooms, address, postal_code, adresse_normalisee, dpe_classe, annee_construction,
+                               resultat, simulations, created_at
                         FROM search_history WHERE user_id = ?
                         ORDER BY id DESC LIMIT ?
                         """,
@@ -355,7 +396,8 @@ class SearchHistoryService:
                     rows = conn.execute(
                         """
                         SELECT id, user_id, query, commune, property_type, area_m2, estimated_price,
-                               rooms, address, postal_code, adresse_normalisee, dpe_classe, annee_construction, created_at
+                               rooms, address, postal_code, adresse_normalisee, dpe_classe, annee_construction,
+                               resultat, simulations, created_at
                         FROM search_history WHERE user_id IS NULL
                         ORDER BY id DESC LIMIT ?
                         """,
@@ -363,7 +405,7 @@ class SearchHistoryService:
                     ).fetchall()
             finally:
                 conn.close()
-            return [dict(row) for row in rows]
+            return [_decoder(dict(row)) for row in rows]
 
         try:
             import psycopg
@@ -378,7 +420,8 @@ class SearchHistoryService:
                     cur.execute(
                         """
                         SELECT id, user_id, query, commune, property_type, area_m2, estimated_price,
-                               rooms, address, postal_code, adresse_normalisee, dpe_classe, annee_construction, created_at
+                               rooms, address, postal_code, adresse_normalisee, dpe_classe, annee_construction,
+                               resultat, simulations, created_at
                         FROM search_history WHERE user_id = %s
                         ORDER BY created_at DESC LIMIT %s
                         """,
@@ -388,13 +431,54 @@ class SearchHistoryService:
                     cur.execute(
                         """
                         SELECT id, user_id, query, commune, property_type, area_m2, estimated_price,
-                               rooms, address, postal_code, adresse_normalisee, dpe_classe, annee_construction, created_at
+                               rooms, address, postal_code, adresse_normalisee, dpe_classe, annee_construction,
+                               resultat, simulations, created_at
                         FROM search_history WHERE user_id IS NULL
                         ORDER BY created_at DESC LIMIT %s
                         """,
                         (limit,),
                     )
-                return cur.fetchall()
+                return [_decoder(dict(row)) for row in cur.fetchall()]
+
+    def attach_simulation(
+        self, item_id: int, user_id: int | None, kind: str, data: dict[str, Any]
+    ) -> bool:
+        """Rattache la dernière simulation (« plusvalue » ou « financement ») à une estimation.
+
+        Seule la dernière simulation de chaque sorte est gardée : la fiche du bien
+        résume « estimé, financé, plus-value », sans empiler chaque réglage de curseur.
+        """
+        p = "?" if self._db_type == "sqlite" else "%s"
+        cond = f"id={p} AND user_id={p}" if user_id is not None else f"id={p} AND user_id IS NULL"
+        args = (item_id, user_id) if user_id is not None else (item_id,)
+        data = {**data, "date": datetime.now(timezone.utc).isoformat()}
+        if self._db_type == "sqlite":
+            conn = sqlite3.connect(_resolve_sqlite_path(self.database_url))
+            try:
+                row = conn.execute(f"SELECT simulations FROM search_history WHERE {cond}", args).fetchone()
+                if row is None:
+                    return False
+                sims = _json(row[0]) or {}
+                sims[kind] = data
+                conn.execute(f"UPDATE search_history SET simulations={p} WHERE {cond}",
+                             (json.dumps(sims, ensure_ascii=False, default=str), *args))
+                conn.commit()
+                return True
+            finally:
+                conn.close()
+        import psycopg
+        with psycopg.connect(self.database_url) as conn:
+            with conn.cursor() as cur:
+                cur.execute(f"SELECT simulations FROM search_history WHERE {cond}", args)
+                row = cur.fetchone()
+                if row is None:
+                    return False
+                sims = _json(row[0]) or {}
+                sims[kind] = data
+                cur.execute(f"UPDATE search_history SET simulations={p} WHERE {cond}",
+                            (json.dumps(sims, ensure_ascii=False, default=str), *args))
+                conn.commit()
+                return True
 
     # ── Réinitialisation mot de passe ─────────────────────────────────────────
 

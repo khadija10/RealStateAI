@@ -9,18 +9,16 @@ function seeded(g) {
   return () => ((g = (g * 16807) % 2147483647) - 1) / 2147483646
 }
 
-function palmier(x, y, e) {
-  let s = `<g transform="translate(${x},${y}) scale(${e})"><path d="M0 0 Q-8 -120 6 -250" stroke="#2A2118" stroke-width="7" fill="none"/>`
-  for (let a = 0; a < 9; a++) {
-    const rad = ((-160 + a * 40) * Math.PI) / 180
-    const lx = Math.cos(rad) * 110
-    const ly = Math.sin(rad) * 52
-    s += `<path d="M6 -250 Q${6 + lx * 0.5} ${-250 + ly - 30} ${6 + lx} ${-250 + ly + 26}" stroke="#1F3A26" stroke-width="9" fill="none" stroke-linecap="round"/>`
-  }
-  return s + `</g>`
+// Arbre d'alignement (platane) : tronc et couronne arrondie, comme dans les
+// rues d'Île-de-France — remplace les palmiers de l'artefact d'origine.
+function arbre(x, y, e) {
+  return `<g transform="translate(${x},${y}) scale(${e})">
+    <path d="M-6 0 L-4 -150 L4 -150 L6 0 Z" fill="#3A2E24"/>
+    <circle cx="-38" cy="-170" r="52" fill="#2D4A34"/><circle cx="34" cy="-176" r="56" fill="#26402D"/>
+    <circle cx="0" cy="-215" r="58" fill="#33543B"/><circle cx="-6" cy="-160" r="44" fill="#2A4631"/></g>`
 }
 
-/** Immeubles au crépuscule, palmiers — fond du bandeau "Estimation". */
+/** Immeubles au crépuscule, arbres d'alignement — fond du bandeau "Estimation". */
 export function heroEstimation() {
   const c = id('c'), d = id('d'), v = id('v'), s = id('s'), t = id('t')
   let svg = `<svg viewBox="0 0 1200 680" preserveAspectRatio="xMidYMid slice"><defs>
@@ -46,7 +44,7 @@ export function heroEstimation() {
     const x = r() * 1240 - 20, y = 560 + r() * 110, rr = 34 + r() * 46
     svg += `<circle cx="${x}" cy="${y}" r="${rr}" fill="url(#${t})" opacity="${(0.72 + r() * 0.28).toFixed(2)}"/>`
   }
-  return svg + palmier(1030, 640, 1) + palmier(150, 660, 0.85) + `</svg>`
+  return svg + arbre(1050, 640, 1) + arbre(140, 660, 0.85) + `</svg>`
 }
 
 /** Salon avec baie vitrée sur les toits au crépuscule — fond "Financement". */

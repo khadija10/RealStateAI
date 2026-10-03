@@ -1,0 +1,43 @@
+{
+  "mesure_le": "2026-10-02T21:59:30",
+  "mape_controle": 14.91,
+  "n_arbres": 1617,
+  "fourchette": "calibrée (CQR sur la validation)",
+  "globale": {
+    "n": 31696,
+    "couverture": 84.7,
+    "largeur_mediane": 50.0
+  },
+  "par_classe": {
+    "a_completer": {
+      "n": 974,
+      "couverture": 78.2,
+      "largeur_mediane": 54.3
+    },
+    "donnees_insuffisantes": {
+      "n": 5642,
+      "couverture": 84.4,
+      "largeur_mediane": 53.5
+    },
+    "fiable": {
+      "n": 1031,
+      "couverture": 90.3,
+      "largeur_mediane": 36.7
+    },
+    "indicative": {
+      "n": 24049,
+      "couverture": 84.8,
+      "largeur_mediane": 49.8
+    }
+  },
+  "fourchette_brute_avant_calibration": {
+    "couverture": 71.5,
+    "largeur_mediane": 37.1
+  },
+  "criteres": {
+    "couverture_globale": true,
+    "couverture_par_classe": false,
+    "largeur_mediane": false
+  },
+  "tenue": false
+}

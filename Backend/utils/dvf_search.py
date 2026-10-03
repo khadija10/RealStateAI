@@ -53,6 +53,29 @@ TYPE_BIEN_MAP = {
 }
 
 
+# Colonnes du gold lues par le backend (recherche DVF, secteurs, carte, tendances,
+# indicateurs DPE). Le gold en compte 66 : les features du modèle sont relues par
+# ml/contexte.py, pas ici. Lire les seules colonnes utiles divise par ~3 la
+# mémoire au démarrage (2,6 Go de pic auparavant, au-delà d'une petite instance).
+COLONNES_UTILES = {
+    "date_mutation", "code_departement", "code_commune", "nom_commune", "code_postal", "ville",
+    "type_local", "surface_bati", "nb_pieces", "valeur_fonciere", "prix_m2", "a_terrain",
+    "dpe_classe", "dpe_date", "annee_construction", "zone_part_dpe_fg", "annee",
+    # carte des prix et référence du marché, calculées au démarrage (main.py)
+    "latitude", "longitude", "est_vefa",
+    *RENAME_MAP.keys(), *RENAME_MAP.values(),
+}
+
+
+def _colonnes_utiles(fichier: Path) -> list[str] | None:
+    try:
+        import pyarrow.parquet as pq
+        noms = pq.read_schema(fichier).names
+    except Exception:  # pragma: no cover - pyarrow absent : lecture complète
+        return None
+    return [c for c in noms if c in COLONNES_UTILES]
+
+
 def load_dvf(path: str | Path) -> pd.DataFrame:
     """Lit le dataset (.parquet de préférence, .csv accepté) et l'indexe."""
     path = Path(path)
@@ -60,9 +83,9 @@ def load_dvf(path: str | Path) -> pd.DataFrame:
         files = sorted(path.rglob("*.parquet"))
         if not files:
             raise ValueError(f"Aucun fichier Parquet trouvé dans {path}")
-        df = pd.concat((pd.read_parquet(file) for file in files), ignore_index=True)
+        df = pd.concat((pd.read_parquet(file, columns=_colonnes_utiles(file)) for file in files), ignore_index=True)
     elif path.suffix == ".parquet":
-        df = pd.read_parquet(path)
+        df = pd.read_parquet(path, columns=_colonnes_utiles(path))
     else:
         df = pd.read_csv(path, low_memory=False)
 

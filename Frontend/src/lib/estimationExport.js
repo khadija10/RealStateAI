@@ -3,6 +3,11 @@
 
 /** Lien qui reconstitue le formulaire et relance l'estimation à l'ouverture. */
 export function lienPartage(values) {
+  return `${window.location.origin}${cheminEstimation(values)}`
+}
+
+/** Chemin interne qui relance l'estimation de ce bien (même format que le lien de partage). */
+export function cheminEstimation(values) {
   const p = new URLSearchParams()
   if (values.mode === 'commune') p.set('commune', values.commune)
   else p.set('address', values.address)
@@ -11,7 +16,24 @@ export function lienPartage(values) {
   p.set('type', values.type)
   if (values.dpe) p.set('dpe', values.dpe)
   if (values.annee) p.set('annee', values.annee)
-  return `${window.location.origin}/estimation?${p.toString()}`
+  return `/estimation?${p.toString()}`
+}
+
+/** Saisie du formulaire reconstituée depuis une ligne de GET /api/search-history. */
+export function valeursDepuisHistorique(item, base) {
+  const saisie = item?.resultat?.saisie ?? {}
+  const address = item.address || saisie.address || ''
+  return {
+    ...base,
+    mode: address ? 'adresse' : 'commune',
+    address,
+    commune: address ? '' : item.commune || item.query || saisie.commune || '',
+    type: item.property_type || saisie.property_type || base.type,
+    surface: String(item.area_m2 ?? saisie.surface ?? ''),
+    rooms: item.rooms != null ? String(item.rooms) : '',
+    dpe: item.dpe_classe || item.resultat?.dpe_classe || '',
+    annee: item.annee_construction != null ? String(item.annee_construction) : '',
+  }
 }
 
 /** Valeurs de formulaire lues dans l'URL (liens de partage, anciens compris). */

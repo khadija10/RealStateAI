@@ -457,6 +457,27 @@ def test_history_endpoint_returns_recent_searches(client):
     assert payload[0]["commune"] == "PARIS 15"
 
 
+def test_historique_garde_le_resultat_et_les_simulations(client):
+    est = client.post(
+        "/api/predictions/estimate",
+        json={"area_m2": 60, "rooms": 3, "property_type": "apartment", "commune": "PARIS 15"},
+    ).json()
+    hid = est["historique_id"]
+    assert isinstance(hid, int)
+    r = client.put(f"/api/history/{hid}/simulation",
+                   json={"type": "financement", "donnees": {"mensualite": 1500, "verdict": "conforme"}})
+    assert r.status_code == 200
+    ligne = next(e for e in client.get("/api/search-history?limit=200").json() if e["id"] == hid)
+    assert ligne["resultat"]["estimated_price"] == est["estimated_price"]
+    assert ligne["resultat"]["price_range"] == est["price_range"]
+    assert ligne["resultat"]["saisie"]["surface"] == 60
+    assert ligne["simulations"]["financement"]["mensualite"] == 1500
+    assert client.put("/api/history/999999/simulation",
+                      json={"type": "plusvalue", "donnees": {}}).status_code == 404
+    assert client.put(f"/api/history/{hid}/simulation",
+                      json={"type": "autre", "donnees": {}}).status_code == 422
+
+
 def test_financing_dossier_endpoint_uses_deterministic_module(client):
     response = client.post(
         "/api/financing/dossier",
@@ -624,3 +645,35 @@ def test_estimate_dpe_g_persiste(client):
     entries = client.get("/api/search-history").json()
     assert entries[0]["dpe_classe"] == "G"
     assert entries[0]["annee_construction"] == 1960
+
+
+def test_segments_difficiles_signales_et_ordonnes():
+    from main import _segments_difficiles
+    segments = {"ensemble": {"mape": 14.9}, "dpe_inconnu": {"mape": 18.7, "n": 1, "dans_20pct": 69.3},
+                "petite_surface": {"mape": 17.4, "n": 1, "dans_20pct": 71.6},
+                "paris": {"mape": 16.5, "n": 1, "dans_20pct": 73.2},
+                "maison": {"mape": 16.8, "n": 1, "dans_20pct": 73.5}}
+    res = _segments_difficiles(segments, departement="75", type_bien="apartment", surface=25,
+                               dpe_connu=False, ventes_immeuble=3)
+    assert [s["segment"] for s in res] == ["dpe_inconnu", "petite_surface", "paris"]
+    assert _segments_difficiles(segments, departement="78", type_bien="apartment", surface=60,
+                                dpe_connu=True, ventes_immeuble=2) == []
+
+
+def test_mediane_immeuble_hors_ventes_sur_plan():
+    from main import _ramener_ventes_au_secteur
+    secteur = {"eco": [3000, 3000, 3000, 3000, 3000]}
+    ventes = [{"date": "2025-04-01", "prix_m2": 2800, "vefa": False},
+              {"date": "2024-12-01", "prix_m2": 3000, "vefa": False},
+              {"date": "2021-08-01", "prix_m2": 3900, "vefa": True}]
+    ref = _ramener_ventes_au_secteur(ventes, secteur, 50)
+    assert ref["prix_m2"] == 2900 and ref["n"] == 2 and ref["n_vefa"] == 1
+
+
+def test_alerte_type_de_bien_incoherent():
+    from main import _alerte_type
+    assert "appartements" in _alerte_type("house", {"2": 3})
+    assert _alerte_type("house", {"2": 3, "1": 1}) is None     # une maison s'y est déjà vendue
+    assert _alerte_type("house", {"2": 2}) is None             # trop peu de ventes pour conclure
+    assert _alerte_type("apartment", {"1": 5}) is not None
+    assert _alerte_type("apartment", {}) is None

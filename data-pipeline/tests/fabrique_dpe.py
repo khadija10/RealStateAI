@@ -39,6 +39,20 @@ VOIES_BAN = {
 CLASSES = ["A", "B", "C", "D", "E", "F", "G"]
 POIDS_CLASSES = [2, 5, 14, 30, 28, 13, 8]  # distribution proche du parc réel
 
+# Types de chauffage réels (echantillon), pour le proxy d'état du bien.
+TYPES_CHAUFFAGE = [
+    "Chaudière fioul standard 1991-2015",
+    "Chaudière gaz basse température",
+    "Convecteur électrique NFC, NF** et NF***",
+    "Réseau de chaleur isolé",
+    "Pompe à chaleur air/eau",
+]
+
+# Déperditions d'enveloppe (W/K) par classe DPE : corrélées à la classe pour
+# que le test synthétique reflète un déperditions_enveloppe_m2 plausible
+# (une passoire F/G a une enveloppe nettement plus déperditive qu'un A/B).
+DEPERDITION_PAR_M2_BASE = {"A": 0.8, "B": 1.0, "C": 1.3, "D": 1.7, "E": 2.2, "F": 2.8, "G": 3.5}
+
 
 def generer_dpe(gold: Path, destination: Path, taux_couverture: float = 0.55,
                 graine: int = 7) -> dict[str, str]:
@@ -81,6 +95,10 @@ def generer_dpe(gold: Path, destination: Path, taux_couverture: float = 0.55,
             "date_etablissement_dpe": date.date().isoformat(),
             "type_batiment": "maison" if vente.type_local == "Maison" else "appartement",
             "annee_construction": rng.randint(1900, 2015),
+            "deperditions_enveloppe": round(
+                DEPERDITION_PAR_M2_BASE[classe] * vente.surface_bati
+                * rng.uniform(0.9, 1.1), 1),
+            "type_generateur_chauffage_principal": rng.choice(TYPES_CHAUFFAGE),
             "adresse_ban": adresse,
             "code_postal_ban": vente.code_postal,
             "nom_commune_ban": vente.nom_commune,
@@ -101,6 +119,8 @@ def generer_dpe(gold: Path, destination: Path, taux_couverture: float = 0.55,
                     "date_etablissement_dpe": date.date().isoformat(),
                     "type_batiment": "appartement",
                     "annee_construction": rng.randint(1900, 2015),
+                    "deperditions_enveloppe": round(rng.uniform(20, 150), 1),
+                    "type_generateur_chauffage_principal": rng.choice(TYPES_CHAUFFAGE),
                     "adresse_ban": adresse,
                     "code_postal_ban": vente.code_postal,
                     "nom_commune_ban": vente.nom_commune,

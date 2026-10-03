@@ -1,0 +1,16 @@
+{
+  "couverture_visee": 0.85,
+  "echelle": "log",
+  "corrections_par_classe": {
+    "a_completer": 0.11912,
+    "donnees_insuffisantes": 0.0865,
+    "fiable": 0.03436,
+    "indicative": 0.06135
+  },
+  "couverture_reglage": {
+    "a_completer": 85.0,
+    "donnees_insuffisantes": 85.0,
+    "fiable": 85.1,
+    "indicative": 85.0
+  }
+}

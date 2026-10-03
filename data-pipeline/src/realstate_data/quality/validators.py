@@ -96,6 +96,13 @@ def construire_schema(settings: Settings) -> DataFrameSchema:
             "dpe_qualite_appariement": Column(
                 None, Check.isin(["exacte", "probable"]), nullable=True),
             "zone_part_dpe_fg": Column(float, Check.in_range(0, 1), nullable=True),
+            "dpe_deperdition_enveloppe_m2": Column(float, Check.ge(0), nullable=True),
+            # Colonnes IRIS : vides tant que l'enrichissement n'a pas été
+            # lancé, même logique que le DPE ci-dessus.
+            "code_iris": Column(str, nullable=True),
+            "revenu_median_iris": Column(float, Check.ge(0), nullable=True),
+            "part_logements_collectifs_iris": Column(float, Check.in_range(0, 1), nullable=True),
+            "part_proprietaires_iris": Column(float, Check.in_range(0, 1), nullable=True),
         },
         # strict=False : l'équipe ML peut recevoir des colonnes supplémentaires
         # sans faire échouer la validation. Seules les colonnes du contrat sont

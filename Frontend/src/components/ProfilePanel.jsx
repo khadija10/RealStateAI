@@ -97,9 +97,9 @@ export default function ProfilePanel({ user, onLogout }) {
   const initiale = user?.email?.[0]?.toUpperCase() ?? '?'
 
   return (
-    <div className="max-w-md space-y-6">
+    <div className="grid gap-6 lg:grid-cols-2 items-start">
       {/* Infos compte */}
-      <div className="bg-white rounded-2xl border border-stone-100 shadow-[var(--shadow-card)] p-6 overflow-hidden relative">
+      <div className="lg:col-span-2 bg-white rounded-2xl border border-stone-100 shadow-[var(--shadow-card)] p-6 overflow-hidden relative">
         <div className="h-1 w-full absolute inset-x-0 top-0 bg-[linear-gradient(90deg,var(--color-seine),var(--color-ambre),var(--color-vert))]" />
         <div className="flex items-center gap-4 pt-1">
           <div className="h-14 w-14 shrink-0 rounded-full grid place-items-center text-white text-xl font-semibold bg-[linear-gradient(135deg,var(--color-seine),var(--color-ambre))]">
@@ -152,7 +152,7 @@ export default function ProfilePanel({ user, onLogout }) {
           <button
             type="submit"
             disabled={loading}
-            className="w-full text-white rounded-full py-2.5 text-sm font-medium disabled:opacity-60 transition-opacity hover:opacity-90 bg-[linear-gradient(100deg,var(--color-seine),var(--color-ambre))]"
+            className="w-full text-white rounded-full py-2.5 text-sm font-medium disabled:opacity-60 transition-opacity hover:opacity-90 bg-[#9C6A26]"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">
