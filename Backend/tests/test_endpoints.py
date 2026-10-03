@@ -645,3 +645,16 @@ def test_estimate_dpe_g_persiste(client):
     entries = client.get("/api/search-history").json()
     assert entries[0]["dpe_classe"] == "G"
     assert entries[0]["annee_construction"] == 1960
+
+
+def test_segments_difficiles_signales_et_ordonnes():
+    from main import _segments_difficiles
+    segments = {"ensemble": {"mape": 14.9}, "dpe_inconnu": {"mape": 18.7, "n": 1, "dans_20pct": 69.3},
+                "petite_surface": {"mape": 17.4, "n": 1, "dans_20pct": 71.6},
+                "paris": {"mape": 16.5, "n": 1, "dans_20pct": 73.2},
+                "maison": {"mape": 16.8, "n": 1, "dans_20pct": 73.5}}
+    res = _segments_difficiles(segments, departement="75", type_bien="apartment", surface=25,
+                               dpe_connu=False, ventes_immeuble=3)
+    assert [s["segment"] for s in res] == ["dpe_inconnu", "petite_surface", "paris"]
+    assert _segments_difficiles(segments, departement="78", type_bien="apartment", surface=60,
+                                dpe_connu=True, ventes_immeuble=2) == []

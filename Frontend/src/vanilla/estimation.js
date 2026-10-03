@@ -459,6 +459,7 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
       alerteGeo: d.geocoding_warning || null, codePostal: d.code_postal || null,
       notes: d.meta?.notes || [],
       historiqueId: d.historique_id ?? null,
+      segments: d.segments_difficiles || [],
       enregistreLe: null,
     }
   }
@@ -535,6 +536,15 @@ export function mount(root, { apiBase = '', onPlusValue, onFinancement, onEstime
     if (r.alerteGeo) a.push(['ambre', r.alerteGeo])
     if (r.modele !== 'ml') r.notes.filter((n) => !/estimation fournie/i.test(n)).forEach((n) => a.push(['gris', n]))
     if (r.modele !== 'ml' && r.modele) a.push(['gris', "Sans adresse précise, l'estimation repose sur la médiane des ventes comparables de la commune ; indiquez l'adresse pour activer le modèle."])
+    // Segments où le modèle se trompe plus que sa moyenne, mesurés sur le test officiel
+    if (r.modele === 'ml' && r.segments?.length) {
+      const fr = (x) => String(x).replace('.', ',')
+      const moy = modelInfo?.validation?.mape
+      const s = r.segments
+      a.push(['ambre', `<b>Bien dans un segment plus difficile pour le modèle.</b> Erreur moyenne mesurée sur les ventes de test : ` +
+        s.map((x) => `${x.libelle}, <b>${fr(x.mape)} %</b>`).join(' ; ') +
+        `${moy ? `, contre ${fr(moy)} % sur l'ensemble` : ''}. Appuyez le prix sur les ventes de l'immeuble et une visite.`])
+    }
     if (r.enregistreLe) a.push(['gris', `<b>Estimation enregistrée le ${dateFr(r.enregistreLe)}</b>, réaffichée telle qu'elle était. Cliquez sur « Estimer » pour obtenir le prix d'aujourd'hui.`])
     if (['F', 'G'].includes(r.dpeClasse)) a.push(['rouge', `<b>Passoire thermique (classe ${r.dpeClasse})</b> — depuis la loi Climat et Résilience, les biens F et G se vendent avec une décote, et leur mise en location est interdite${r.dpeClasse === 'G' ? ' depuis 2025' : ' à partir de 2028'}.`])
     $('#rsai-alertes').innerHTML = a.map(([ton, txt]) => `<p class="alerte alerte-${ton}">${txt}</p>`).join('')

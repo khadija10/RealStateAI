@@ -1,0 +1,49 @@
+{
+  "source": "docs/scenarios_performance.md",
+  "modele": "v2",
+  "test": "2025-10 → 2025-12",
+  "segments": {
+    "paris": {
+      "n": 6908,
+      "mape": 16.5,
+      "dans_10pct": 45.3,
+      "dans_20pct": 73.2
+    },
+    "maison": {
+      "n": 9483,
+      "mape": 16.8,
+      "dans_10pct": 45.8,
+      "dans_20pct": 73.5
+    },
+    "petite_surface": {
+      "n": 3792,
+      "mape": 17.4,
+      "dans_10pct": 44.6,
+      "dans_20pct": 71.6
+    },
+    "grande_surface": {
+      "n": 5644,
+      "mape": 15.9,
+      "dans_10pct": 45.2,
+      "dans_20pct": 73.7
+    },
+    "dpe_inconnu": {
+      "n": 9579,
+      "mape": 18.7,
+      "dans_10pct": 42.7,
+      "dans_20pct": 69.3
+    },
+    "sans_vente_immeuble": {
+      "n": 13372,
+      "mape": 17.0,
+      "dans_10pct": 44.7,
+      "dans_20pct": 72.9
+    },
+    "ensemble": {
+      "n": 31696,
+      "mape": 14.9,
+      "dans_10pct": 50.2,
+      "dans_20pct": 78.0
+    }
+  }
+}

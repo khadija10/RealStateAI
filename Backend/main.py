@@ -266,6 +266,7 @@ class EstimationResponse(BaseModel):
     dpe_appariement: str | None = None     # exacte | probable (DPE retrouvé à l'adresse)
     code_postal: str | None = None
     historique_id: int | None = None       # ligne d'historique, pour y rattacher les simulations
+    segments_difficiles: list[dict[str, Any]] | None = None  # erreur mesurée des segments du bien
 
 
 class SimulationRequest(BaseModel):
@@ -327,6 +328,45 @@ def _charger_validation() -> dict | None:
             except Exception:  # noqa: BLE001
                 pass
     return None
+
+
+def _charger_segments() -> dict:
+    """Erreur mesurée par segment (Backend/models/segments_performance.json,
+    produit par ml/exporter_segments.py à partir du test officiel)."""
+    p = BASE_DIR / "models" / "segments_performance.json"
+    try:
+        return json.loads(p.read_text()).get("segments", {}) if p.exists() else {}
+    except Exception:  # noqa: BLE001
+        return {}
+
+
+_LIBELLES_SEGMENT = {
+    "dpe_inconnu": "DPE introuvable à cette adresse",
+    "petite_surface": "surface de moins de 30 m²",
+    "sans_vente_immeuble": "aucune vente récente dans l'immeuble",
+    "maison": "maison",
+    "paris": "Paris",
+    "grande_surface": "surface de 100 m² ou plus",
+}
+
+
+def _segments_difficiles(segments: dict, *, departement: str | None, type_bien: str | None,
+                         surface: float, dpe_connu: bool, ventes_immeuble: int) -> list[dict]:
+    """Segments du bien où le modèle se trompe plus que sa moyenne, mesurés sur le
+    test officiel : l'utilisateur sait que l'estimation y est moins sûre."""
+    ensemble = segments.get("ensemble", {}).get("mape")
+    concernes = {
+        "dpe_inconnu": not dpe_connu,
+        "petite_surface": surface < 30,
+        "sans_vente_immeuble": ventes_immeuble == 0,
+        "maison": type_bien == "house",
+        "paris": departement == "75",
+        "grande_surface": surface >= 100,
+    }
+    res = [{"segment": k, "libelle": _LIBELLES_SEGMENT[k], **segments[k]}
+           for k, oui in concernes.items() if oui and k in segments
+           and (ensemble is None or segments[k]["mape"] > ensemble)]
+    return sorted(res, key=lambda s: -s["mape"])
 
 
 ANNEES_SECTEUR = (2021, 2022, 2023, 2024, 2025)
@@ -446,6 +486,7 @@ async def lifespan(app: FastAPI):
     app.state.model_info = _charger_model_info()
     app.state.local_mape = _charger_local_mape()
     app.state.validation = _charger_validation()
+    app.state.segments = _charger_segments()
     app.state.secteurs = {}
     app.state.secteurs_par_nom = {}
 
@@ -1184,6 +1225,12 @@ def estimate(
                     normalized.dpe_zone_fg_pct = round(float(zone) * 100, 1)
                 if isinstance(ml_result, dict) and ml_result.get("code_postal"):
                     normalized.code_postal = ml_result["code_postal"]
+                normalized.segments_difficiles = _segments_difficiles(
+                    getattr(request.app.state, "segments", {}),
+                    departement=str((ml_result.get("code_commune") if isinstance(ml_result, dict) else "") or "")[:2] or None,
+                    type_bien=req.property_type, surface=surface,
+                    dpe_connu=bool(getattr(normalized, "dpe_classe", None)),
+                    ventes_immeuble=len(normalized.comparables_immeuble or []))
                 _inscrire_historique(request, req, surface, normalized, adresse_normalisee=(
                     ml_result.get("adresse_normalisee") if isinstance(ml_result, dict) else None))
                 return normalized
